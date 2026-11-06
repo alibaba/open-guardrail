@@ -6,7 +6,7 @@ OpenAPI generator. The public build excludes all private modules.
 
 ## Result
 
-- Inventory updated on 2026-10-29: 26 runtime modules and 17 tool modules.
+- Inventory updated on 2026-11-06: 26 runtime modules and 17 tool modules.
 - The runtime and tool closure contains only the reviewed MIT, BSD-3-Clause and
   Apache-2.0 module-level labels; no private dependency is recorded.
 - These are module-level findings, not an exhaustive per-file legal audit.
