@@ -1,0 +1,72 @@
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'CANARY_CASE', choices: ['healthy', 'unhealthy', 'unknown'],
+               description: 'Synthetic canary observation for this demo')
+        string(name: 'AGENT_AGE_RECIPIENT', defaultValue: '',
+               description: 'Ephemeral age public key from the Agent that triggered this build')
+    }
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Build CLI') {
+            steps { sh 'mkdir -p .demo-bin && go build -o .demo-bin/guardrailctl ./cmd/guardrailctl' }
+        }
+        stage('Deploy synthetic canary') {
+            steps {
+                sh '''case "$CANARY_CASE" in healthy|unhealthy|unknown) ;; *) exit 1 ;; esac
+                      cp "examples/agent-demo/${CANARY_CASE}.json" .demo-bin/observation.json'''
+                echo 'Synthetic deployment only: replace this stage and the observation source for a real canary.'
+            }
+        }
+        stage('Create Run and hand off token') {
+            steps {
+                withCredentials([file(credentialsId: 'open-guardrail-project-key', variable: 'GUARDRAIL_KEY_FILE')]) {
+                    sh '''private_key=$(mktemp "${TMPDIR:-/tmp}/open-guardrail-key.XXXXXX")
+                          trap 'rm -f "$private_key"' EXIT
+                          trap 'exit 1' HUP INT TERM
+                          (umask 077; cp "$GUARDRAIL_KEY_FILE" "$private_key")
+                          chmod 600 "$private_key"
+                          GUARDRAIL_KEY_FILE="$private_key" python3 -m integrations.jenkins.adapter --phase prepare \
+                            --state-dir "$WORKSPACE/.demo-bin/gate-state-$BUILD_NUMBER" \
+                            --observation .demo-bin/observation.json \
+                            --envelope .demo-bin/gate-envelope.age \
+                            --recipient "$AGENT_AGE_RECIPIENT" \
+                            --cli "$WORKSPACE/.demo-bin/guardrailctl" \
+                            --instance-id "$JENKINS_INSTANCE_ID" \
+                            --checkpoint recovery-canary \
+                            --service sample-checkout --environment synthetic-jenkins \
+                            --candidate "$BUILD_TAG"'''
+                }
+                archiveArtifacts artifacts: '.demo-bin/gate-envelope.age', onlyIfSuccessful: true
+            }
+        }
+        stage('Wait for Agent submission and Decision') {
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    script {
+                        waitUntil(initialRecurrencePeriod: 5000, quiet: true) {
+                            withCredentials([file(credentialsId: 'open-guardrail-project-key', variable: 'GUARDRAIL_KEY_FILE')]) {
+                                def status = sh(script: '''private_key=$(mktemp "${TMPDIR:-/tmp}/open-guardrail-key.XXXXXX")
+                                        trap 'rm -f "$private_key"' EXIT
+                                        trap 'exit 1' HUP INT TERM
+                                        (umask 077; cp "$GUARDRAIL_KEY_FILE" "$private_key")
+                                        chmod 600 "$private_key"
+                                        GUARDRAIL_KEY_FILE="$private_key" python3 -m integrations.jenkins.adapter --phase poll \
+                                        --state-dir "$WORKSPACE/.demo-bin/gate-state-$BUILD_NUMBER" \
+                                        --cli "$WORKSPACE/.demo-bin/guardrailctl"''', returnStatus: true)
+                                if (status == 0) { return true }
+                                if (status == 2) { return false }
+                                error('Guardrail Decision is non-ALLOW or cannot be verified')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('Continue rollout') {
+            steps { echo 'Guardrail returned a current ALLOW; this synthetic rollout may continue.' }
+        }
+    }
+}

@@ -1,0 +1,68 @@
+# IDE and editor state
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# Operating-system metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Build outputs and local dependency caches
+/bin/
+/dist/
+/open-guardrail
+/open-guardrail.exe
+/guardrailctl
+/guardrailctl.exe
+/cmd/open-guardrail/open-guardrail
+/cmd/open-guardrail/open-guardrail.exe
+/cmd/guardrailctl/guardrailctl
+/cmd/guardrailctl/guardrailctl.exe
+/vendor/
+/.cache/
+node_modules/
+*.test
+*.test.exe
+/go.work
+/go.work.sum
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Test, profiling and log outputs
+/coverage/
+coverage*.out
+coverage*.txt
+coverage*.html
+*.prof
+*.pprof
+*.trace
+*.log
+
+# Local configuration; keep distributable examples
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.*.example
+config.local.yaml
+config.local.yml
+
+# Runtime data and private credentials
+/data/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+bootstrap.token
+*-session.json
+orchestrator-key.json
+
+# Local TLS material used by the Docker example
+/deploy/tls/

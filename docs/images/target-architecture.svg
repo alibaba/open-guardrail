@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="diagram-title diagram-description">
+  <title id="diagram-title">OpenGuardrail target architecture: execution guardrails for agents</title>
+  <desc id="diagram-description">Target architecture of OpenGuardrail, illustrated by CD delivery. An external agent reads checks and evaluation context through a reference Skill and guardrailctl, investigates observation systems and submits findings and evidence. The CLI and management UI call the same OpenAPI service. GuardrailSpec defines policy revisions, checks and evidence requirements. Runs freeze policy references, evaluation context and deadlines. The service validates submission structure and completeness, but does not independently attest to observations. Stored decisions include a validity window; the CD integration verifies evidence and validity before acting. Execution Claims and receipts, replaceable identity, delivery and telemetry providers, and some CD integrations remain planned. SQLite and PostgreSQL support one service instance per database in the preview. Blue indicates product components; gray indicates the agent and external systems. Asterisks mark planned capabilities.</desc>
+  <!-- Adapted from the supplied target architecture. Editable SVG; English labels match the README. -->
+  <defs>
+    <linearGradient id="product-wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1f8ff"/><stop offset="1" stop-color="#fbfdff"/></linearGradient>
+    <linearGradient id="external-wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#fcfdff"/></linearGradient>
+    <linearGradient id="module-wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#f4f9ff"/></linearGradient>
+    <linearGradient id="protocol-wash" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#deedff"/><stop offset="1" stop-color="#eef6ff"/></linearGradient>
+    <linearGradient id="gate-wash" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7e3"/><stop offset="1" stop-color="#fff0cb"/></linearGradient>
+    <linearGradient id="brand-blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#268cf3"/><stop offset="1" stop-color="#155cc0"/></linearGradient>
+    <marker id="arrow-navy" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0 L9 5 L0 10 Z" fill="#294760"/></marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0 L9 5 L0 10 Z" fill="#287bda"/></marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill:#17324d; }
+      .muted { fill:#64778d; }
+      .blue { fill:#155db8; }
+      .title { font-size:24px; font-weight:700; }
+      .body { font-size:18px; fill:#4c6680; }
+      .edge-label { font-size:21px; font-weight:600; fill:#38536e; }
+      .external { fill:url(#external-wash); stroke:#a6b5c6; stroke-width:1.8; }
+      .tool { fill:url(#module-wash); stroke:#89b6e9; stroke-width:1.7; }
+      .module { fill:#fff; stroke:#b5d0ee; stroke-width:1.5; }
+      .wire { fill:none; stroke:#294760; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+      .wire-blue { fill:none; stroke:#287bda; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+      .layer-link { fill:none; stroke:#8bb4e5; stroke-width:1.8; }
+      .icon { fill:none; stroke:currentColor; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; color:#264664; }
+      .icon-blue { fill:none; stroke:currentColor; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; color:#217bda; }
+    </style>
+    <g id="icon-shield"><path d="M0 -23 L19 -15 V0 C19 13 9 21 0 25 C-9 21 -19 13 -19 0 V-15 Z"/><path d="M-9 0 L-2 7 L11 -8"/></g>
+    <g id="icon-robot"><rect x="-20" y="-14" width="40" height="32" rx="8"/><path d="M0 -14 V-23 M-20 -5 H-26 V7 H-20 M20 -5 H26 V7 H20 M-10 18 L-13 25 H13 L10 18 M-6 10 H6"/><circle cx="-7" cy="-2" r="2.5" fill="currentColor" stroke="none"/><circle cx="7" cy="-2" r="2.5" fill="currentColor" stroke="none"/><circle cx="0" cy="-26" r="3" fill="currentColor" stroke="none"/></g>
+    <g id="icon-file"><path d="M-15 -22 H6 L17 -11 V22 H-15 Z M6 -22 V-11 H17 M-7 -3 H9 M-7 5 H9 M-7 13 H4"/></g>
+    <g id="icon-clipboard"><rect x="-17" y="-17" width="34" height="39" rx="4"/><rect x="-8" y="-23" width="16" height="10" rx="3" fill="#fff"/><path d="M-9 -3 L-5 1 L1 -6 M6 -2 H11 M-9 10 L-5 14 L1 7 M6 11 H11"/></g>
+    <g id="icon-console"><rect x="-23" y="-18" width="46" height="32" rx="4"/><path d="M-23 -9 H23 M0 14 V23 M-12 23 H12 M-12 -1 H-2 M-12 6 H9"/><circle cx="-16" cy="-13.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="-10" cy="-13.5" r="1.2" fill="currentColor" stroke="none"/></g>
+    <g id="icon-terminal"><rect x="-23" y="-17" width="46" height="34" rx="5"/><path d="M-13 -7 L-5 0 L-13 7 M2 8 H14"/></g>
+    <g id="icon-plug"><path d="M-9 -23 V-10 M9 -23 V-10 M-15 -10 H15 V-1 C15 10 9 15 0 15 C-9 15 -15 10 -15 -1 Z M0 15 V25"/></g>
+    <g id="icon-cube"><path d="M0 -22 L20 -11 V12 L0 24 L-20 12 V-11 Z M-20 -11 L0 1 L20 -11 M0 1 V24"/></g>
+    <g id="icon-pipeline"><rect x="-25" y="-7" width="13" height="14" rx="3"/><rect x="-6" y="-7" width="13" height="14" rx="3"/><rect x="13" y="-7" width="13" height="14" rx="3"/><path d="M-12 0 H-6 M7 0 H13"/></g>
+    <g id="icon-search"><circle cx="-5" cy="-5" r="15"/><path d="M6 6 L23 23 M-12 -4 H2 M-5 -11 V3"/></g>
+    <g id="icon-chart"><path d="M-22 -21 V21 H24 M-13 13 V0 M-2 13 V-9 M9 13 V-17 M20 13 V-27"/></g>
+    <g id="icon-evidence"><path d="M-17 -22 H5 L16 -11 V22 H-17 Z M5 -22 V-11 H16 M-9 -3 H6 M-9 5 H-1"/><circle cx="10" cy="13" r="11" fill="#fff"/><path d="M4 13 L8 17 L16 8"/></g>
+    <g id="icon-audit"><path d="M-17 -20 H7 L15 -12 V21 H-17 Z M-9 -9 H6 M-9 -1 H3"/><circle cx="11" cy="11" r="12" fill="#fff"/><path d="M11 4 V11 L16 14"/></g>
+    <g id="icon-key"><circle cx="-10" cy="-8" r="11"/><path d="M-2 0 L20 22 M9 11 L15 5 M15 17 L21 11"/></g>
+    <g id="icon-context"><rect x="-22" y="-18" width="44" height="36" rx="4"/><path d="M-22 -6 H22 M-7 -6 V18 M-15 2 H-12 M-1 2 H14 M-1 10 H9"/></g>
+    <g id="icon-data"><ellipse cx="0" cy="-16" rx="21" ry="7"/><path d="M-21 -16 V15 C-21 24 21 24 21 15 V-16 M-21 -1 C-21 8 21 8 21 -1"/></g>
+    <g id="icon-server"><rect x="-22" y="-20" width="44" height="16" rx="4"/><rect x="-22" y="4" width="44" height="16" rx="4"/><path d="M-13 -12 H-6 M-13 12 H-6"/><circle cx="13" cy="-12" r="2" fill="currentColor" stroke="none"/><circle cx="13" cy="12" r="2" fill="currentColor" stroke="none"/></g>
+    <g id="icon-code"><path d="M-8 -13 L-21 0 L-8 13 M8 -13 L21 0 L8 13 M4 -19 L-4 19"/></g>
+    <g id="icon-api"><circle cx="-18" cy="0" r="5"/><circle cx="16" cy="-17" r="5"/><circle cx="16" cy="17" r="5"/><path d="M-13 0 H-4 L11 -14 M-4 0 L11 14"/></g>
+  </defs>
+  <rect id="canvas-background" width="1920" height="1080" fill="#fff"/>
+  <g id="title-and-value" inkscape:label="title and value">
+    <path d="M62 37 L84 46 V65 C84 80 72 90 62 94 C52 90 40 80 40 65 V46 Z" fill="url(#brand-blue)"/>
+    <path d="M51 65 L59 73 L74 55" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="104" y="80" font-size="56" font-weight="800" letter-spacing="-1.7">OpenGuardrail</text>
+    <path d="M510 42 V85" stroke="#d4e0ed" stroke-width="2"/>
+    <text x="536" y="75" font-size="30" font-weight="700">Execution guardrails for agents</text>
+    <text x="1856" y="115" text-anchor="end" font-size="18" class="muted">Target view · * Planned capability</text>
+    <text x="104" y="119" font-size="23" class="muted">Define the rules. Agents investigate and submit evidence; your systems control execution.</text>
+  </g>
+
+  <g id="existing-cd" inkscape:label="existing cd">
+    <rect x="40" y="140" width="1840" height="178" rx="13" class="external"/>
+    <use href="#icon-pipeline" transform="translate(84 166) scale(.62)" class="icon"/>
+    <text x="116" y="174" class="title">Example: CD delivery</text>
+    <text x="1856" y="174" text-anchor="end" font-size="21" class="muted">Jenkins / Argo / your delivery system</text>
+    <g id="cd-stage-links" inkscape:label="cd stage links">
+      <path d="M1256 234 H1492" class="wire" marker-end="url(#arrow-navy)"/>
+      <path d="M328 234 H384" class="wire" marker-end="url(#arrow-navy)"/>
+      <path d="M628 234 H684" class="wire" marker-end="url(#arrow-navy)"/>
+      <path d="M956 234 H1012" class="wire" marker-end="url(#arrow-navy)"/>
+      <text x="1378" y="220" text-anchor="middle" class="edge-label">Deploy</text>
+    </g>
+    <g id="pre-release-check" inkscape:label="pre release check">
+      <rect x="64" y="192" width="264" height="84" rx="9" fill="url(#gate-wash)" stroke="#e7ad35" stroke-width="1.7"/>
+      <circle cx="102" cy="234" r="19" fill="#eda813"/>
+      <path d="M93 234 L100 241 L112 226" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="136" y="226" font-size="23" font-weight="700">Pre-release</text>
+      <text x="136" y="260" font-size="20">May we start?</text>
+    </g>
+    <g id="first-batch" inkscape:label="first batch">
+      <rect x="392" y="192" width="236" height="84" rx="9" class="external"/>
+      <use href="#icon-cube" transform="translate(432 234) scale(.7)" class="icon"/>
+      <text x="470" y="243" class="title">First batch</text>
+    </g>
+    <g id="between-batches-check" inkscape:label="between batches check">
+      <rect x="692" y="192" width="264" height="84" rx="9" fill="url(#gate-wash)" stroke="#e7ad35" stroke-width="1.7"/>
+      <circle cx="730" cy="234" r="19" fill="#eda813"/>
+      <path d="M721 234 L728 241 L740 226" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="766" y="226" font-size="23" font-weight="700">Between batches</text>
+      <text x="766" y="260" font-size="20">May we continue?</text>
+    </g>
+    <g id="next-batch" inkscape:label="next batch">
+      <rect x="1020" y="192" width="236" height="84" rx="9" class="external"/>
+      <use href="#icon-cube" transform="translate(1060 234) scale(.7)" class="icon"/>
+      <text x="1098" y="243" class="title">Next batch</text>
+    </g>
+    <g id="execution-targets" inkscape:label="execution targets">
+      <rect x="1500" y="192" width="356" height="84" rx="9" class="external"/>
+      <use href="#icon-context" transform="translate(1538 234) scale(.65)" class="icon"/>
+      <text x="1576" y="226" font-size="23" font-weight="700">Deployment targets</text>
+      <text x="1576" y="260" class="body">Apps · Config · Flags</text>
+    </g>
+    <text id="release-stop-condition" x="824" y="304" text-anchor="middle" font-size="20" font-weight="600" style="fill:#936213">Only a current ALLOW permits delivery</text>
+  </g>
+
+
+  <g id="agent-workspace" inkscape:label="agent workspace">
+    <rect x="40" y="370" width="600" height="678" rx="16" fill="url(#external-wash)" stroke="#a2b4c9" stroke-width="2.2"/>
+    <use href="#icon-robot" transform="translate(90 407) scale(.93)" class="icon"/>
+    <text x="136" y="422" font-size="36" font-weight="750">Agent</text>
+    <g id="agent-integration" inkscape:label="agent integration">
+      <rect x="64" y="448" width="552" height="124" rx="12" fill="url(#product-wash)" stroke="#2784ee" stroke-width="2.5"/>
+      <use href="#icon-file" transform="translate(104 485) scale(.75)" class="icon-blue"/>
+      <text x="142" y="482" font-size="26" font-weight="700" class="blue">Agent Skill</text>
+      <text x="142" y="518" font-size="22" class="blue">OpenGuardrail reference Skill</text>
+      <text x="142" y="550" class="body">Check instructions · Evidence format</text>
+    </g>
+    <g id="agent-receives-check-task" inkscape:label="agent receives check task">
+      <rect x="64" y="610" width="552" height="96" rx="11" fill="#fff" stroke="#aabed3" stroke-width="1.6"/>
+      <use href="#icon-clipboard" transform="translate(104 650) scale(.7)" class="icon"/>
+      <text x="142" y="648" font-size="25" font-weight="700">Read the Run's frozen checks</text>
+      <text x="142" y="682" font-size="21">Checks · Evidence requirements · Context</text>
+    </g>
+    <g id="agent-observes-and-checks" inkscape:label="agent observes and checks">
+      <rect x="64" y="752" width="252" height="124" rx="11" fill="#fff" stroke="#aabed3" stroke-width="1.6"/>
+      <use href="#icon-search" transform="translate(94 788) scale(.57)" class="icon"/>
+      <text x="126" y="797" font-size="23" font-weight="700">Investigate</text>
+      <text x="84" y="846" class="body">Query logs and metrics</text>
+    </g>
+    <g id="observation-systems" inkscape:label="observation systems">
+      <rect x="364" y="752" width="252" height="124" rx="11" class="external"/>
+      <use href="#icon-chart" transform="translate(392 788) scale(.55)" class="icon"/>
+      <text x="422" y="797" font-size="21" font-weight="700">Observability</text>
+      <text x="384" y="846" class="body">Metrics · Logs · Resources</text>
+    </g>
+    <g id="agent-submits-findings" inkscape:label="agent submits findings">
+      <rect x="64" y="920" width="552" height="96" rx="11" fill="#fff" stroke="#aabed3" stroke-width="1.6"/>
+      <use href="#icon-evidence" transform="translate(104 961) scale(.7)" class="icon"/>
+      <text x="142" y="958" font-size="25" font-weight="700">Submit findings and evidence</text>
+      <text x="142" y="992" class="body">Per-check verdicts · Reasoning · Evidence</text>
+    </g>
+    <g id="agent-workflow-links" inkscape:label="agent workflow links">
+      <path d="M190 706 V744" class="wire" marker-end="url(#arrow-navy)"/>
+      <path d="M190 876 V912" class="wire" marker-end="url(#arrow-navy)"/>
+      <path d="M318 814 H356" class="wire" marker-start="url(#arrow-navy)" marker-end="url(#arrow-navy)"/>
+    </g>
+  </g>
+
+  <g id="open-source-boundary" inkscape:label="open source boundary">
+    <rect x="704" y="370" width="1176" height="678" rx="16" fill="url(#product-wash)" stroke="#2784ee" stroke-width="2.8"/>
+    <use href="#icon-shield" transform="translate(754 407) scale(.85)" class="icon-blue"/>
+    <text x="796" y="422" font-size="36" font-weight="750" class="blue">OpenGuardrail</text>
+  </g>
+
+  <g id="tools-and-integrations" inkscape:label="tools and integrations">
+    <g id="guardrail-cli" inkscape:label="guardrail cli">
+      <rect x="728" y="448" width="300" height="112" rx="11" class="tool"/>
+      <use href="#icon-terminal" transform="translate(752 474) scale(.52)" class="icon-blue"/>
+      <text x="776" y="482" class="title blue">guardrailctl</text>
+      <text x="1008" y="477" text-anchor="end" font-size="18" font-weight="700" class="blue">CLI</text>
+      <text x="748" y="518" class="body">Run queries · Submissions</text>
+      <text x="748" y="544" class="body">Decision checks · Receipts*</text>
+    </g>
+    <g id="cd-integrations" inkscape:label="cd integrations">
+      <rect x="1060" y="448" width="440" height="112" rx="11" class="tool"/>
+      <use href="#icon-plug" transform="translate(1087 474) scale(.52) rotate(10)" class="icon-blue"/>
+      <text x="1116" y="482" class="title blue">CD integrations</text>
+      <text x="1080" y="518" class="body">Jenkins · GitHub Actions · Argo</text>
+      <text x="1080" y="544" class="body">Call the shared guardrailctl CLI</text>
+      <path d="M1058 504 H1036" class="wire-blue" marker-end="url(#arrow-blue)"/>
+    </g>
+    <g id="management-console" inkscape:label="management console">
+      <rect x="1532" y="448" width="324" height="112" rx="11" class="tool"/>
+      <use href="#icon-console" transform="translate(1562 474) scale(.55)" class="icon-blue"/>
+      <text x="1590" y="482" class="title blue">Management UI</text>
+      <text x="1552" y="530" class="body">Scenes · Policies · Runs</text>
+    </g>
+  </g>
+
+  <g id="guardrail-server" inkscape:label="guardrail server">
+    <rect x="716" y="576" width="1152" height="460" rx="12" fill="#e9f3ff" stroke="#9cbfe9" stroke-width="1.6"/>
+    <g id="common-http-protocol" inkscape:label="common http protocol">
+      <path d="M878 560 V582 M1694 560 V568 H878" class="layer-link"/>
+      <rect x="728" y="582" width="300" height="48" rx="8" fill="url(#protocol-wash)" stroke="#a4c5ef" stroke-width="1.4"/>
+      <use href="#icon-api" transform="translate(758 606) scale(.58)" class="icon-blue"/>
+      <text x="794" y="615" font-size="25" font-weight="700" class="blue">OpenAPI</text>
+    </g>
+    <use href="#icon-server" transform="translate(1066 606) scale(.58)" class="icon-blue"/>
+    <text x="1098" y="615" font-size="25" font-weight="700" class="blue">Guardrail service</text>
+    <rect x="1740" y="590" width="100" height="32" rx="7" fill="#d6eaff" stroke="#9ec8f3" stroke-width="1.2"/>
+    <text x="1790" y="613" text-anchor="middle" font-size="19" font-weight="600" class="blue">Standalone</text>
+
+    <g id="policy-and-versions" inkscape:label="policy and versions">
+      <rect x="728" y="650" width="1128" height="80" rx="10" fill="url(#protocol-wash)" stroke="#9fc2eb" stroke-width="1.6"/>
+      <use href="#icon-file" transform="translate(762 683) scale(.65)" class="icon-blue"/>
+      <text x="794" y="682" class="title">GuardrailSpec: scenario checks and evidence requirements</text>
+      <text x="794" y="714" class="body">Instructions · Required evidence · Immutable policy revisions</text>
+    </g>
+
+    <g id="checkpoint-and-change-context" inkscape:label="checkpoint and change context">
+      <rect x="728" y="766" width="344" height="120" rx="10" class="module"/>
+      <use href="#icon-clipboard" transform="translate(760 794) scale(.58)" class="icon-blue"/>
+      <text x="794" y="804" class="title">Run and context</text>
+      <text x="748" y="841" class="body">Checks · Evaluation context</text>
+      <text x="748" y="868" class="body">Frozen policy · State · Deadline</text>
+    </g>
+    <g id="submission-and-evidence" inkscape:label="submission and evidence">
+      <rect x="1120" y="766" width="344" height="120" rx="10" class="module"/>
+      <use href="#icon-evidence" transform="translate(1152 794) scale(.58)" class="icon-blue"/>
+      <text x="1186" y="804" class="title">Evidence acceptance</text>
+      <text x="1140" y="841" class="body">Validate each submitted check</text>
+      <text x="1140" y="868" class="body">Required evidence · Context binding</text>
+    </g>
+    <g id="release-decision-and-feedback" inkscape:label="release decision and feedback">
+      <rect x="1512" y="766" width="344" height="120" rx="10" class="module"/>
+      <use href="#icon-shield" transform="translate(1544 794) scale(.58)" class="icon-blue"/>
+      <text x="1578" y="804" class="title">Decision and feedback</text>
+      <text x="1532" y="841" class="body">ALLOW / DENY · Validity window</text>
+      <text x="1532" y="868" class="body">CD enforces; reports receipts*</text>
+    </g>
+
+    <g id="core-component-dependencies" inkscape:label="core component dependencies">
+      <path d="M900 730 V758" class="wire-blue" marker-end="url(#arrow-blue)"/>
+      <path d="M1292 730 V758" class="wire-blue" marker-end="url(#arrow-blue)"/>
+      <path d="M1684 730 V758" class="wire-blue" marker-end="url(#arrow-blue)"/>
+      <text x="920" y="752" font-size="18" class="muted">Checks</text>
+      <text x="1312" y="752" font-size="18" class="muted">Evidence rules</text>
+      <text x="1704" y="752" font-size="18" class="muted">Decision rules</text>
+      <path d="M1080 826 H1112" class="wire-blue" marker-end="url(#arrow-blue)"/>
+      <path d="M1472 826 H1504" class="wire-blue" marker-end="url(#arrow-blue)"/>
+    </g>
+
+    <g id="audit-and-traceability" inkscape:label="audit and traceability">
+      <path d="M900 886 V898 H1684 V886 M1292 886 V902" class="layer-link"/>
+      <path d="M1292 898 V902" class="wire-blue" marker-end="url(#arrow-blue)"/>
+      <rect x="728" y="910" width="1128" height="50" rx="9" class="module"/>
+      <use href="#icon-audit" transform="translate(762 935) scale(.57)" class="icon-blue"/>
+      <text x="794" y="944" class="title">Audit trail</text>
+      <text x="952" y="944" class="body">Policies · Context · Evidence · Decisions · Receipts*</text>
+    </g>
+
+    <g id="service-extension-points" inkscape:label="service extension points">
+      <rect x="728" y="980" width="760" height="48" rx="9" fill="url(#protocol-wash)" stroke="#aac7e9" stroke-width="1.5"/>
+      <use href="#icon-plug" transform="translate(752 1004) scale(.4)" class="icon-blue"/>
+      <text x="776" y="1012" font-size="21" font-weight="700" class="blue">Extensions*</text>
+      <text x="930" y="1012" font-size="18">Identity · Delivery · Telemetry</text>
+      <text x="1468" y="1012" text-anchor="end" font-size="18" class="muted">Replaceable*</text>
+    </g>
+    <g id="storage-adapters" inkscape:label="storage adapters">
+      <path d="M1684 960 V972" class="wire-blue" marker-end="url(#arrow-blue)"/>
+      <rect x="1512" y="980" width="344" height="48" rx="9" fill="url(#protocol-wash)" stroke="#aac7e9" stroke-width="1.5"/>
+      <use href="#icon-data" transform="translate(1538 1004) scale(.4)" class="icon-blue"/>
+      <text x="1564" y="1012" font-size="21" font-weight="700" class="blue">Storage</text>
+      <text x="1660" y="1012" font-size="18">SQLite / PostgreSQL</text>
+    </g>
+  </g>
+
+  <g id="architecture-connections" inkscape:label="architecture connections">
+    <g id="agent-submits-release" inkscape:label="agent submits release">
+      <path d="M320 368 V326" class="wire" marker-end="url(#arrow-navy)"/>
+      <text x="340" y="351" font-size="20" font-weight="600">Start delivery</text>
+    </g>
+    <g id="cd-calls-default-integration" inkscape:label="cd calls default integration">
+      <path d="M1280 320 V440" class="wire-blue" marker-start="url(#arrow-blue)" marker-end="url(#arrow-blue)"/>
+      <text x="1296" y="394" font-size="20" font-weight="600">Verify decision</text>
+      <text x="1296" y="424" font-size="20" font-weight="600">Report receipts*</text>
+    </g>
+    <g id="agent-receives-context" inkscape:label="agent receives context">
+      <path d="M720 488 H624" class="wire-blue" marker-end="url(#arrow-blue)"/>
+    </g>
+    <g id="agent-submits-results" inkscape:label="agent submits results">
+      <path d="M624 536 H720" class="wire-blue" marker-end="url(#arrow-blue)"/>
+    </g>
+  </g>
+</svg>

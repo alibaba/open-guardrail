@@ -1,0 +1,21 @@
+apiVersion: guardrail.open/v1alpha1
+kind: GuardrailSpec
+metadata:
+  name: recovery
+spec:
+  description: Check whether recovery can safely continue
+  instructions: Inspect current state and submit a verdict with evidence for every check
+  validForSeconds: 900
+  checks:
+    - id: readiness
+      displayName: Recovery readiness
+      description: Check recovery readiness
+      instructions: Inspect current health and provide evidence
+      criteria:
+        pass: Health checks are passing and recovery can continue
+        block: A confirmed health failure makes recovery unsafe
+        unknown: Health cannot be verified with the available evidence
+      evidenceRequirements:
+        - id: health
+          description: Record the observed health state and its source
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]

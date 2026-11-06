@@ -1,0 +1,19 @@
+.git
+bin
+dist
+.cache
+data
+.env
+config.local.yaml
+*.db*
+enterprise
+go.work
+go.work.sum
+
+# Build context must not contain deployment credentials or local state.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/bootstrap.token
+deploy/tls

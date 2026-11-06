@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: guardrail-demo
+  annotations:
+    guardrail-demo/case: healthy
+    guardrail-demo/recipient: replace-with-fresh-age-public-recipient
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: guardrail-demo
+  strategy:
+    canary:
+      steps:
+        - setWeight: 33
+        - analysis:
+            templates:
+              - templateName: open-guardrail-recovery
+            args:
+              - name: rollout
+                value: guardrail-demo
+              - name: revision
+                valueFrom:
+                  podTemplateHashValue: Latest
+              - name: case
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.annotations['guardrail-demo/case']
+              - name: recipient
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.annotations['guardrail-demo/recipient']
+        - setWeight: 100
+  template:
+    metadata:
+      labels:
+        app: guardrail-demo
+      annotations:
+        guardrail-demo/attempt: baseline
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: demo
+          image: argoproj/rollouts-demo:blue
+          ports:
+            - containerPort: 8080

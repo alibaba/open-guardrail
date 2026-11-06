@@ -1,0 +1,99 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: open-guardrail-recovery
+spec:
+  args:
+    - name: rollout
+    - name: revision
+    - name: case
+    - name: recipient
+  metrics:
+    - name: recovery-readiness
+      count: 1
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            # A new Pod must never silently create a second Run for this Job.
+            backoffLimit: 0
+            activeDeadlineSeconds: 840
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/component: open-guardrail-analysis
+              spec:
+                restartPolicy: Never
+                automountServiceAccountToken: false
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 10001
+                  runAsGroup: 10001
+                  fsGroup: 10001
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: guardrail
+                    # Build/push Dockerfile first; use an immutable image digest in real use.
+                    image: open-guardrail-argo-demo:local
+                    imagePullPolicy: IfNotPresent
+                    args:
+                      - --instance-id
+                      - $(ARGO_INSTANCE_ID)
+                      - --rollout
+                      - '{{args.rollout}}'
+                      - --revision
+                      - '{{args.revision}}'
+                      - --case
+                      - '{{args.case}}'
+                      - --recipient
+                      - '{{args.recipient}}'
+                      - --result-file
+                      - /dev/termination-log
+                    terminationMessagePolicy: File
+                    env:
+                      # Operator-controlled configuration, never Agent-supplied args.
+                      - name: OPEN_GUARDRAIL_URL
+                        value: https://guardrail.example.com
+                      - name: ARGO_INSTANCE_ID
+                        value: local-demo-cluster
+                      - name: GUARDRAIL_KEY_FILE
+                        value: /credentials/project-key.json
+                      - name: POD_NAMESPACE
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.namespace
+                      - name: JOB_UID
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.labels['batch.kubernetes.io/controller-uid']
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities:
+                        drop: [ALL]
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 64Mi
+                      limits:
+                        cpu: '1'
+                        memory: 256Mi
+                    volumeMounts:
+                      - name: state
+                        mountPath: /state
+                      - name: credentials
+                        mountPath: /credentials
+                        readOnly: true
+                volumes:
+                  - name: state
+                    emptyDir:
+                      medium: Memory
+                      sizeLimit: 16Mi
+                  - name: credentials
+                    secret:
+                      secretName: open-guardrail-project-key
+                      defaultMode: 0440
+                      items:
+                        - key: project-key.json
+                          path: project-key.json

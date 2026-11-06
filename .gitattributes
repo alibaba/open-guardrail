@@ -1,0 +1,3 @@
+# Keep original third-party legal files byte-for-byte, including upstream line
+# endings and whitespace. Their SHA-256 inventory checks preservation separately.
+third_party/licenses/** -text -whitespace

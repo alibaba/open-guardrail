@@ -1,0 +1,739 @@
+openapi: 3.0.3
+info:
+  title: OpenGuardrail API
+  version: 0.1.0-alpha.0
+  description: Local administrator sessions, Scene and Policy Revision management, immutable Runs and complete Snapshot Submissions. No OIDC or multi-user management.
+paths:
+  /livez:
+    get:
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Process is alive; this check has no database dependency
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /readyz:
+    get:
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Database is reachable and schema is current
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: Database or schema is unavailable
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1alpha1/meta/version:
+    get:
+      operationId: getVersion
+      responses:
+        '200':
+          description: Server build metadata
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+  /api/v1alpha1/meta/capabilities:
+    get:
+      operationId: getCapabilities
+      responses:
+        '200':
+          description: Public API, CLI compatibility and feature discovery
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+        '503':
+          description: Runtime capability provider returned an unsupported value
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /openapi.yaml:
+    get:
+      operationId: getOpenAPI
+      responses:
+        '200':
+          description: This OpenAPI document
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/yaml:
+              schema:
+                type: string
+  /api/v1alpha1/bootstrap:
+    get:
+      operationId: getBootstrapStatus
+      responses:
+        '200':
+          description: Initialization state; never includes a token
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BootstrapStatus'
+        default: {$ref: '#/components/responses/IdentityError'}
+    post:
+      operationId: bootstrapAdministrator
+      description: >
+        One-time transaction creating the administrator and default workspace/project, shared by
+        the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409.
+        Direct local setup does not require a token only when the actual listener and peer are
+        loopback, public_url is unset and no forwarding headers are present. Host, Origin and
+        CSRF checks still apply. Other deployments require a BootstrapToken.
+        With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie.
+        On an uncertain response, check initialization state before retrying.
+      security: [{}, {BootstrapToken: []}]
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BootstrapRequest'}
+      responses:
+        '201':
+          description: Administrator initialized; signIn=true also sets the browser session cookie
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BootstrapResult'}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /api/v1alpha1/auth/api-keys:
+    get:
+      operationId: listProjectAPIKeys
+      description: Lists secret-free key metadata in key-ID order, including expired and revoked keys.
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      parameters:
+        - {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: after, in: query, schema: {type: string}}
+      responses:
+        '200':
+          description: Bounded page; follow nextAfter until absent
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/APIKeyPage'}
+        default: {$ref: '#/components/responses/IdentityError'}
+    post:
+      operationId: createProjectAPIKey
+      description: >
+        Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login.
+        Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read,
+        and submission-credential:rotate and may additionally receive runs:create-with-revision.
+        POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants.
+        Returns the secret once; only a hash is stored.
+        Keys issued by this release persist their complete effective scopes.
+        Lifetime defaults to 90 days and must be between 60 seconds and 365 days.
+        Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication,
+        not operations that already authenticated before it committed.
+        Do not automatically retry uncertain requests; each successful request creates a new key.
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateAPIKeyRequest'}
+      responses:
+        '201':
+          description: Save the machine secret securely; it cannot be retrieved again
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/APIKeyResult'}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /api/v1alpha1/auth/api-keys/{keyId}:
+    delete:
+      operationId: revokeProjectAPIKey
+      description: Atomically revokes a key and records an audit event. Repeated revocation returns 204.
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      parameters: [{$ref: '#/components/parameters/APIKeyID'}, {$ref: '#/components/parameters/CSRF'}]
+      responses:
+        '204':
+          description: Key revoked
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /api/v1alpha1/auth/api-keys/{keyId}/rotation:
+    post:
+      operationId: rotateProjectAPIKey
+      description: >
+        Replaces the secret of an active key atomically, preserving its ID, role and scopes.
+        The old secret stops authenticating immediately after commit. expectedVersion must match
+        the current metadata, preventing concurrent rotations and exact request retries from
+        replacing a newly issued secret. Omitted lifetime preserves the existing expiry.
+        Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain
+        response, list keys and inspect the version before deciding how to recover.
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      parameters: [{$ref: '#/components/parameters/APIKeyID'}, {$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RotateAPIKeyRequest'}
+      responses:
+        '201':
+          description: Replacement secret; save it in a new private file
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/APIKeyResult'}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /api/v1alpha1/auth/session:
+    post:
+      operationId: loginAdministrator
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '201':
+          description: >
+            Browser login sets og_session (HttpOnly, SameSite=Strict, Secure for HTTPS).
+            Only CLI login returns a bearer token. Absolute session lifetime is eight hours.
+          headers:
+            X-Trace-ID: {$ref: '#/components/headers/TraceID'}
+            Set-Cookie: {schema: {type: string}, description: Browser session cookie only}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LoginResult'}
+        default: {$ref: '#/components/responses/IdentityError'}
+    delete:
+      operationId: logoutAdministrator
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      responses:
+        '204':
+          description: Session revoked and browser cookie cleared
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /api/v1alpha1/auth/me:
+    get:
+      operationId: getCurrentAdministrator
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      responses:
+        '200':
+          description: Authenticated administrator, never a machine key
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Principal'}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /api/v1alpha1/auth/password:
+    put:
+      operationId: changeAdministratorPassword
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      parameters: [{$ref: '#/components/parameters/CSRF'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordRequest'
+      responses:
+        '204':
+          description: Password changed and all administrator sessions revoked
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /runtime/v1alpha1/identity:
+    get:
+      operationId: getMachineIdentity
+      security: [{ProjectKey: []}]
+      responses:
+        '200':
+          description: Authenticated machine identity
+          headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Principal'}
+        default: {$ref: '#/components/responses/IdentityError'}
+  /runtime/v1alpha1/runs:
+    get: {"operationId":"listPolicyRuns","description":"Requires runs:read.","parameters":[{"$ref":"#/components/parameters/RunStatusFilter"},{"$ref":"#/components/parameters/RunSceneFilter"},{"$ref":"#/components/parameters/RunLimit"},{"$ref":"#/components/parameters/RunCursor"}],"security":[{"ProjectKey":[]}],"responses":{"default":{"$ref":"#/components/responses/RunError"},"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRunPage"}}}}}}
+    post: {"operationId":"createPolicyRun","security":[{"ProjectKey":[]}],"responses":{"201":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRunCreation"}}}},"default":{"$ref":"#/components/responses/RunError"},"200":{"description":"Idempotent replay; credential is not reissued","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRun"}}}}},"description":"Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.","parameters":[{"$ref":"#/components/parameters/IdempotencyKey"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreatePolicyRunRequest"}}}}}
+  /runtime/v1alpha1/runs/{runId}:
+    get: {"operationId":"getPolicyRun","description":"Requires runs:read.","security":[{"ProjectKey":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRun"}}}},"default":{"$ref":"#/components/responses/RunError"}},"parameters":[{"name":"runId","in":"path","required":true,"schema":{"type":"string"}}]}
+  /runtime/v1alpha1/runs/{runId}/submission-credential:rotate:
+    post: {"operationId":"rotatePolicySubmissionCredential","description":"Requires submission-credential:rotate.","security":[{"ProjectKey":[]}],"responses":{"201":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RunSubmissionCredential"}}}},"default":{"$ref":"#/components/responses/RunError"}},"parameters":[{"name":"runId","in":"path","required":true,"schema":{"type":"string"}}]}
+  /runtime/v1alpha1/runs/{runId}/submissions:
+    post: {"operationId":"submitSnapshot","security":[{"SubmissionCredential":[]}],"responses":{"201":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SnapshotSubmission"}}}},"default":{"$ref":"#/components/responses/RunError"},"200":{"description":"Idempotent replay of the accepted Submission","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SnapshotSubmission"}}}}},"description":"Full Snapshot with baseSubmissionNo CAS. finishRun=false keeps the Run OPEN; finishRun=true freezes Result and Decision. Verdict is derived from Check verdicts.","parameters":[{"name":"runId","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/IdempotencyKey"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SnapshotSubmitRequest"}}}}}
+  /api/v1alpha1/runs:
+    get: {"operationId":"listManagedPolicyRuns","parameters":[{"$ref":"#/components/parameters/RunStatusFilter"},{"$ref":"#/components/parameters/RunSceneFilter"},{"$ref":"#/components/parameters/RunLimit"},{"$ref":"#/components/parameters/RunCursor"}],"security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRunPage"}}}},"default":{"$ref":"#/components/responses/RunError"}}}
+  /api/v1alpha1/runs/{runId}:
+    get: {"operationId":"getManagedPolicyRun","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRun"}}}},"default":{"$ref":"#/components/responses/RunError"}},"parameters":[{"name":"runId","in":"path","required":true,"schema":{"type":"string"}}]}
+  /api/v1alpha1/runs/{runId}/submissions:
+    get:
+      operationId: listManagedRunSubmissions
+      description: Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
+      security: [{AdminSession: []}, {BrowserSession: []}]
+      parameters:
+        - {name: runId, in: path, required: true, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+        - {name: before, in: query, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        "200":
+          description: Newest-first metadata without evidence payloads
+          headers: {X-Trace-ID: {$ref: "#/components/headers/TraceID"}}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SubmissionPage"}
+        default: {$ref: "#/components/responses/RunError"}
+  /api/v1alpha1/runs/{runId}/submissions/{submissionId}:
+    get: {"operationId":"getManagedRunSubmission","description":"Read a stored Submission and its evidence within the administrator's workspace, project and selected Run.","security":[{"AdminSession":[]},{"BrowserSession":[]}],"parameters":[{"name":"runId","in":"path","required":true,"schema":{"type":"string"}},{"name":"submissionId","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"Immutable stored Submission","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StoredSubmission"}}}},"default":{"$ref":"#/components/responses/RunError"}}}
+  /api/v1alpha1/scenes:
+    get: {"operationId":"listSceneModels","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SceneModelList"}}}},"default":{"$ref":"#/components/responses/SpecError"}}}
+  /api/v1alpha1/scenes/{key}:initialize:
+    post: {"operationId":"initializeScene","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"201":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InitializedScene"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"description":"Atomically create Scene, default Policy, Revision 1 and activation. Retry with the same Idempotency-Key.","parameters":[{"name":"key","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"},{"$ref":"#/components/parameters/IdempotencyKey"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/InitializeSceneRequest"}}}}}
+  /api/v1alpha1/scenes/{key}:
+    get: {"operationId":"getSceneModel","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SceneModel"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"key","in":"path","required":true,"schema":{"type":"string"}}]}
+    patch: {"operationId":"setSceneTTL","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SceneModel"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"key","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SetSceneTTLRequest"}}}}}
+  /api/v1alpha1/scenes/{key}/policies:
+    get: {"operationId":"listPolicies","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyList"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"key","in":"path","required":true,"schema":{"type":"string"}}]}
+    post: {"operationId":"createPolicy","description":"A Project key requires policies:create, granted by the POLICY_PUBLISHER role.","security":[{"AdminSession":[]},{"BrowserSession":[]},{"ProjectKey":[]}],"responses":{"201":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Policy"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"key","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"},{"$ref":"#/components/parameters/IdempotencyKey"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CreatePolicyRequest"}}}}}
+  /api/v1alpha1/scenes/{key}/default-policy:
+    put: {"operationId":"setDefaultPolicy","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SceneModel"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"key","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/SetDefaultPolicyRequest"}}}}}
+  /api/v1alpha1/policies/{policyId}:
+    get: {"operationId":"getPolicy","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Policy"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}}]}
+  /api/v1alpha1/policies/{policyId}/draft:
+    put: {"operationId":"savePolicyDraft","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRevision"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyDraftRequest"}}}}}
+    get: {"operationId":"getPolicyDraft","security":[{"AdminSession":[]},{"BrowserSession":[]}],"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}}],"description":"Return the current DRAFT Revision, or NOT_FOUND when no draft exists.","responses":{"200":{"description":"Draft Revision","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRevision"}}}},"default":{"$ref":"#/components/responses/SpecError"}}}
+  /api/v1alpha1/policies/{policyId}/draft:publish:
+    post: {"operationId":"publishPolicyDraft","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"201":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRevision"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"},{"$ref":"#/components/parameters/IdempotencyKey"}],"description":"Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyDraftRequest"}}}}}
+  /api/v1alpha1/policies/{policyId}/revisions:
+    get: {"operationId":"listPolicyRevisions","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRevisionPage"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}},{"name":"pageSize","in":"query","schema":{"type":"integer","minimum":1,"maximum":100,"default":20}},{"name":"before","in":"query","schema":{"type":"integer","format":"int64","minimum":1}}],"description":"Returns a bounded page of summaries without YAML. Fetch content by revision ID. before is the exclusive revision-number cursor; new publications do not shift older pages."}
+    post: {"operationId":"publishPolicyRevision","description":"A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.","security":[{"AdminSession":[]},{"BrowserSession":[]},{"ProjectKey":[]}],"responses":{"201":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRevision"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"},{"$ref":"#/components/parameters/IdempotencyKey"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PublishPolicyRevisionRequest"}}}}}
+  /api/v1alpha1/policies/{policyId}/active-revision:
+    put: {"operationId":"activatePolicyRevision","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Policy"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ActivatePolicyRevisionRequest"}}}}}
+  /api/v1alpha1/policies/{policyId}:archive:
+    post: {"operationId":"archivePolicy","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Policy"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"}]}
+  /api/v1alpha1/policies/{policyId}:unarchive:
+    post: {"operationId":"unarchivePolicy","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Policy"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"policyId","in":"path","required":true,"schema":{"type":"string"}},{"$ref":"#/components/parameters/CSRF"}]}
+  /api/v1alpha1/policy-revisions/{revisionId}:
+    get: {"operationId":"getPolicyRevision","security":[{"AdminSession":[]},{"BrowserSession":[]}],"responses":{"200":{"description":"Success","headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}},"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRevision"}}}},"default":{"$ref":"#/components/responses/SpecError"}},"parameters":[{"name":"revisionId","in":"path","required":true,"schema":{"type":"string"}}]}
+  /runtime/v1alpha1/runs/{runId}/policy-revision:
+    get: {"operationId":"getRunPolicyRevision","description":"Requires runs:read.","security":[{"ProjectKey":[]}],"parameters":[{"name":"runId","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"Run-scoped immutable content","content":{"application/json":{"schema":{"$ref":"#/components/schemas/PolicyRevision"}}},"headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}}},"default":{"$ref":"#/components/responses/RunError"}}}
+  /runtime/v1alpha1/runs/{runId}/submissions/{submissionId}:
+    get: {"operationId":"getRunSubmission","description":"Requires runs:read.","security":[{"ProjectKey":[]}],"parameters":[{"name":"runId","in":"path","required":true,"schema":{"type":"string"}},{"name":"submissionId","in":"path","required":true,"schema":{"type":"string"}}],"responses":{"200":{"description":"Run-scoped immutable content","content":{"application/json":{"schema":{"$ref":"#/components/schemas/StoredSubmission"}}},"headers":{"X-Trace-ID":{"$ref":"#/components/headers/TraceID"}}},"default":{"$ref":"#/components/responses/RunError"}}}
+components:
+  headers:
+    TraceID:
+      description: Opaque request correlation identifier generated by the server; safe to include in support reports
+      required: true
+      schema: {type: string, pattern: '^[a-f0-9]{32}$'}
+  securitySchemes:
+    BootstrapToken: {type: http, scheme: bearer, description: One-time host-issued bootstrap token; expires after one hour}
+    AdminSession: {type: http, scheme: bearer, description: CLI administrator session; not a Project key}
+    BrowserSession: {type: apiKey, in: cookie, name: og_session}
+    ProjectKey: {type: http, scheme: bearer, description: Project-scoped machine key; each operation checks its required permission}
+    SubmissionCredential: {type: http, scheme: bearer, description: Run-scoped credential accepted only by that Run's Submission endpoint}
+  parameters:
+    APIKeyID:
+      name: keyId
+      in: path
+      required: true
+      schema: {type: string, pattern: '^key_[a-zA-Z0-9]{32,64}$'}
+    SceneKey:
+      name: key
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/SceneKey'}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$'
+      description: Stable caller operation ID; scoped to the authenticated Project and not a credential or Run ID
+    RunStatusFilter:
+      name: status
+      in: query
+      schema: {$ref: '#/components/schemas/RunStatus'}
+      description: Optional effective Run status. Overdue OPEN Runs match EXPIRED rather than OPEN.
+    RunSceneFilter:
+      name: sceneKey
+      in: query
+      schema: {$ref: '#/components/schemas/SceneKey'}
+      description: Optional exact Scene key.
+    RunLimit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      description: Maximum number of Runs returned.
+    RunCursor:
+      name: cursor
+      in: query
+      schema: {type: string, minLength: 1, maxLength: 512}
+      description: Opaque cursor returned by the preceding page. Do not inspect or construct it.
+    CSRF:
+      name: X-Guardrail-CSRF
+      in: header
+      required: true
+      schema: {type: string, enum: ['1']}
+      description: >
+        Required for all management mutations. Browser requests must also pass exact
+        Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
+  responses:
+    RunError:
+      description: >
+        400 INVALID_ARGUMENT; 401 UNAUTHENTICATED; 403 PERMISSION_DENIED; 404 NOT_FOUND;
+        409 SPEC_NOT_PUBLISHED, IDEMPOTENCY_CONFLICT, RUN_FINISHED or BASE_SUBMISSION_MISMATCH; 410 RUN_EXPIRED;
+        422 INVALID_SUBMISSION, VERDICT_MISMATCH or SENSITIVE_EVIDENCE_DETECTED; 503 RUN_UNAVAILABLE.
+        Cross-Project reads return 404. Runtime operations use Project or Run credentials;
+        read-only management Run operations use the authenticated administrator session.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+      headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+    SpecError:
+      description: >
+        400 INVALID_ARGUMENT; 401 UNAUTHENTICATED; 403 PERMISSION_DENIED, UNTRUSTED_ORIGIN or CSRF_REQUIRED;
+        404 NOT_FOUND; 409 RESOURCE_STATE_CONFLICT or SCENE_ALREADY_INITIALIZED; 422 SPEC_VALIDATION_FAILED with safe validation guidance;
+        503 SPEC_UNAVAILABLE or IDENTITY_UNAVAILABLE.
+        Scene mutations require X-Guardrail-CSRF and exact Host/Origin checks.
+        Copy unsaved edits before reloading after a conflict.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+      headers: {X-Trace-ID: {$ref: '#/components/headers/TraceID'}}
+    IdentityError:
+      description: >
+        400 INVALID_ARGUMENT; 401 UNAUTHENTICATED; 403 UNTRUSTED_ORIGIN or CSRF_REQUIRED;
+        409 ALREADY_INITIALIZED;
+        429 RATE_LIMITED for temporary login backoff, with Retry-After in seconds;
+        503 IDENTITY_UNAVAILABLE. Raw errors and credential values are never returned.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+      headers:
+        X-Trace-ID: {$ref: '#/components/headers/TraceID'}
+        Retry-After:
+          description: Conservative retry delay in seconds, present for RATE_LIMITED.
+          schema: {type: integer, minimum: 1}
+  schemas:
+    SceneModel: {"type":"object","additionalProperties":false,"required":["key","name","runTtlSeconds"],"properties":{"key":{"$ref":"#/components/schemas/SceneKey"},"name":{"type":"string"},"runTtlSeconds":{"type":"integer","format":"int64"},"defaultPolicyId":{"type":"string"}}}
+    SceneModelList: {"type":"array","items":{"$ref":"#/components/schemas/SceneModel"}}
+    Policy: {"type":"object","additionalProperties":false,"required":["id","sceneKey","name","lifecycleState"],"properties":{"id":{"type":"string"},"sceneKey":{"$ref":"#/components/schemas/SceneKey"},"name":{"type":"string"},"lifecycleState":{"type":"string","enum":["ACTIVE","ARCHIVED"]},"activeRevisionId":{"type":"string"}}}
+    PolicyList: {"type":"array","items":{"$ref":"#/components/schemas/Policy"}}
+    PolicyRevision: {"type":"object","additionalProperties":false,"required":["id","policyId","status","yaml","updatedBy","updatedAt"],"properties":{"id":{"type":"string"},"policyId":{"type":"string"},"revisionNumber":{"type":"integer","format":"int64","description":"Present only for PUBLISHED Revisions."},"yaml":{"type":"string"},"digest":{"type":"string","description":"Present only for PUBLISHED Revisions."},"publishedAt":{"type":"integer","format":"int64","description":"Present only for PUBLISHED Revisions."},"publishedBy":{"type":"string","description":"Present only for PUBLISHED Revisions."},"status":{"type":"string","enum":["DRAFT","PUBLISHED"]},"updatedBy":{"type":"string"},"updatedAt":{"type":"integer","format":"int64"}}}
+    InitializedScene: {"type":"object","additionalProperties":false,"required":["scene","policy","revision"],"properties":{"scene":{"$ref":"#/components/schemas/SceneModel"},"policy":{"$ref":"#/components/schemas/Policy"},"revision":{"$ref":"#/components/schemas/PolicyRevision"}}}
+    InitializeSceneRequest: {"type":"object","additionalProperties":false,"required":["name","defaultPolicyName","yaml"],"properties":{"name":{"type":"string"},"defaultPolicyName":{"type":"string"},"yaml":{"type":"string"}}}
+    SetSceneTTLRequest: {"type":"object","additionalProperties":false,"required":["runTtlSeconds"],"properties":{"runTtlSeconds":{"type":"integer","format":"int64"}}}
+    CreatePolicyRequest: {"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"type":"string"}}}
+    SetDefaultPolicyRequest: {"type":"object","additionalProperties":false,"required":["policyId","expectedDefaultPolicyId"],"properties":{"policyId":{"type":"string"},"expectedDefaultPolicyId":{"type":"string","nullable":true}}}
+    PolicyDraftRequest: {"type":"object","additionalProperties":false,"required":["yaml"],"properties":{"yaml":{"type":"string"}}}
+    PublishPolicyRevisionRequest: {"type":"object","additionalProperties":false,"required":["yaml"],"properties":{"yaml":{"type":"string"}}}
+    ActivatePolicyRevisionRequest: {"type":"object","additionalProperties":false,"required":["policyRevisionId","expectedActiveRevisionId"],"properties":{"policyRevisionId":{"type":"string"},"expectedActiveRevisionId":{"type":"string","nullable":true}}}
+    CreatePolicyRunRequest: {"type":"object","additionalProperties":false,"required":["sceneKey","changeSet"],"properties":{"sceneKey":{"$ref":"#/components/schemas/SceneKey"},"changeSet":{"type":"object","additionalProperties":true,"x-go-type":"json.RawMessage"},"policyRevisionRef":{"type":"object","additionalProperties":false,"required":["policyRevisionId"],"properties":{"policyRevisionId":{"type":"string"}}}}}
+    PolicyRun: {"type":"object","additionalProperties":false,"required":["id","sceneKey","policyId","policyRevisionId","specDigest","status","changeSet","changeSetDigest","runTtlSeconds","deadlineAt","latestSubmissionNo","createdAt"],"properties":{"id":{"type":"string"},"sceneKey":{"$ref":"#/components/schemas/SceneKey"},"policyId":{"type":"string"},"policyRevisionId":{"type":"string"},"specDigest":{"type":"string"},"status":{"type":"string","enum":["OPEN","FINISHED","EXPIRED"]},"changeSet":{"type":"object","additionalProperties":true,"x-go-type":"json.RawMessage"},"changeSetDigest":{"type":"string"},"runTtlSeconds":{"type":"integer","format":"int64"},"deadlineAt":{"type":"integer","format":"int64"},"latestSubmissionNo":{"type":"integer","format":"int64"},"finalSubmissionId":{"type":"string"},"createdAt":{"type":"integer","format":"int64"},"finishedAt":{"type":"integer","format":"int64"},"expiredAt":{"type":"integer","format":"int64"},"result":{"$ref":"#/components/schemas/RunResult"},"decision":{"$ref":"#/components/schemas/Decision"},"decisionExpiresAt":{"type":"integer","format":"int64"}}}
+    PolicyRunSummary: {"type":"object","description":"Bounded Run list item. Read the Run detail endpoint for changeSet.","additionalProperties":false,"required":["id","sceneKey","policyId","policyRevisionId","specDigest","status","changeSetDigest","runTtlSeconds","deadlineAt","latestSubmissionNo","createdAt"],"properties":{"id":{"type":"string"},"sceneKey":{"$ref":"#/components/schemas/SceneKey"},"policyId":{"type":"string"},"policyRevisionId":{"type":"string"},"specDigest":{"type":"string"},"status":{"type":"string","enum":["OPEN","FINISHED","EXPIRED"]},"changeSetDigest":{"type":"string"},"runTtlSeconds":{"type":"integer","format":"int64"},"deadlineAt":{"type":"integer","format":"int64"},"latestSubmissionNo":{"type":"integer","format":"int64"},"finalSubmissionId":{"type":"string"},"createdAt":{"type":"integer","format":"int64"},"finishedAt":{"type":"integer","format":"int64"},"expiredAt":{"type":"integer","format":"int64"},"result":{"$ref":"#/components/schemas/RunResult"},"decision":{"$ref":"#/components/schemas/Decision"},"decisionExpiresAt":{"type":"integer","format":"int64"}}}
+    SnapshotSubmitRequest: {"type":"object","additionalProperties":false,"required":["baseSubmissionNo","finishRun","verdict","summary","checks"],"properties":{"baseSubmissionNo":{"type":"integer","format":"int64"},"finishRun":{"type":"boolean"},"verdict":{"$ref":"#/components/schemas/RunResult"},"summary":{"type":"string"},"checks":{"type":"array","items":{"$ref":"#/components/schemas/SnapshotCheck"}}}}
+    SnapshotCheck: {"type":"object","additionalProperties":false,"required":["checkId","verdict","summary","evidence"],"properties":{"checkId":{"type":"string"},"verdict":{"$ref":"#/components/schemas/RunResult"},"summary":{"type":"string"},"evidence":{"type":"array","items":{"$ref":"#/components/schemas/SnapshotEvidence"}}}}
+    SnapshotEvidence: {"type":"object","additionalProperties":false,"required":["requirementId","observedAt","querySummary","resultSummary"],"properties":{"requirementId":{"type":"string"},"observedAt":{"type":"string","format":"date-time"},"querySummary":{"type":"string"},"resultSummary":{"type":"string"},"reference":{"type":"string"}}}
+    StoredSubmission: {"type":"object","additionalProperties":false,"required":["id","runId","submissionNo","baseSubmissionNo","verdict","summary","finishRun","createdAt","snapshot"],"properties":{"id":{"type":"string"},"runId":{"type":"string"},"submissionNo":{"type":"integer","format":"int64"},"baseSubmissionNo":{"type":"integer","format":"int64"},"verdict":{"$ref":"#/components/schemas/RunResult"},"summary":{"type":"string"},"finishRun":{"type":"boolean"},"createdAt":{"type":"integer","format":"int64"},"snapshot":{"$ref":"#/components/schemas/SnapshotSubmitRequest"}}}
+    SnapshotSubmission: {"type":"object","additionalProperties":false,"required":["id","runId","submissionNo","baseSubmissionNo","verdict","summary","finishRun","createdAt"],"properties":{"id":{"type":"string"},"runId":{"type":"string"},"submissionNo":{"type":"integer","format":"int64"},"baseSubmissionNo":{"type":"integer","format":"int64"},"verdict":{"$ref":"#/components/schemas/RunResult"},"summary":{"type":"string"},"finishRun":{"type":"boolean"},"createdAt":{"type":"integer","format":"int64"}}}
+    PolicyRunCreation: {"type":"object","additionalProperties":false,"required":["run","submissionCredential"],"properties":{"run":{"$ref":"#/components/schemas/PolicyRun"},"submissionCredential":{"$ref":"#/components/schemas/RunSubmissionCredential"}}}
+    PolicyRunPage: {"type":"object","additionalProperties":false,"required":["items"],"properties":{"items":{"type":"array","items":{"$ref":"#/components/schemas/PolicyRunSummary"}},"nextCursor":{"type":"string"}}}
+    SubmissionPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: {type: array, maxItems: 50, items: {$ref: "#/components/schemas/SnapshotSubmission"}}
+        nextBefore: {type: integer, format: int64, minimum: 1}
+    RunSubmissionCredential:
+      type: object
+      additionalProperties: false
+      required: [runId, token, expiresAt]
+      properties:
+        runId: {type: string}
+        token: {type: string, description: Plaintext returned only on creation or rotation}
+        expiresAt: {type: integer, format: int64}
+    RunResult: {type: string, enum: [PASS, BLOCKED, UNKNOWN]}
+    Decision: {type: string, enum: [ALLOW, DENY]}
+    RunStatus: {type: string, enum: [OPEN, FINISHED, EXPIRED]}
+    SceneKey: {type: string, pattern: '^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$'}
+    GuardrailSpec:
+      type: object
+      additionalProperties: false
+      description: >
+        Schema for YAML content at publication. validForSeconds is an integer from 1 to 9007199254740991;
+        all other scalars are strings. Run timeout is not part of this YAML.
+        One YAML document, at most 64 KiB, 4096 nodes and nesting depth 16.
+        Duplicate keys, anchors, aliases, custom tags, unknown fields and implicit scalar coercions are rejected.
+        Canonicalization uses RFC 8785 rules for this fixed schema. The numeric range is
+        restricted to IEEE 754 safe integers; out-of-range values are rejected without rounding.
+      required: [apiVersion, kind, metadata, spec]
+      properties:
+        apiVersion: {type: string, enum: [guardrail.open/v1alpha1]}
+        kind: {type: string, enum: [GuardrailSpec]}
+        metadata:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name: {$ref: '#/components/schemas/SpecIdentifier'}
+        spec:
+          type: object
+          additionalProperties: false
+          required: [description, instructions, checks]
+          properties:
+            description: {type: string, minLength: 1, maxLength: 1024, description: Overall purpose of this Spec; must not be whitespace-only}
+            instructions: {type: string, minLength: 1, maxLength: 8000, description: Overall instructions for the evaluator; must not be whitespace-only}
+            validForSeconds: {type: integer, format: int64, minimum: 1, maximum: 9007199254740991, default: 3600, description: Accepted result validity in seconds; omitted values use 3600. Values above the IEEE 754 safe-integer maximum are rejected without rounding}
+            checks:
+              type: array
+              minItems: 1
+              maxItems: 20
+              description: Check IDs must be unique within the Spec
+              items:
+                type: object
+                additionalProperties: false
+                required: [id, displayName, description, instructions, criteria, evidenceRequirements]
+                properties:
+                  id: {$ref: '#/components/schemas/SpecIdentifier'}
+                  displayName: {type: string, minLength: 1, maxLength: 128, description: Human-readable check name}
+                  description: {type: string, minLength: 1, maxLength: 1024, description: Must not be whitespace-only}
+                  instructions: {type: string, minLength: 1, maxLength: 8000, description: Must not be whitespace-only}
+                  criteria:
+                    type: object
+                    additionalProperties: false
+                    required: [pass, block, unknown]
+                    description: Verdict-specific criteria
+                    properties:
+                      pass: {type: string, minLength: 1, maxLength: 2048}
+                      block: {type: string, minLength: 1, maxLength: 2048}
+                      unknown: {type: string, minLength: 1, maxLength: 2048}
+                  evidenceRequirements:
+                    type: array
+                    minItems: 1
+                    maxItems: 20
+                    description: Evidence IDs must be unique within this check
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, description, appliesToVerdicts]
+                      properties:
+                        id: {$ref: '#/components/schemas/SpecIdentifier'}
+                        description: {type: string, minLength: 1, maxLength: 1024, description: Evidence purpose}
+                        appliesToVerdicts:
+                          type: array
+                          description: Verdicts requiring this evidence
+                          minItems: 1
+                          maxItems: 3
+                          uniqueItems: true
+                          items: {type: string, enum: [PASS, BLOCKED, UNKNOWN]}
+    SpecIdentifier:
+      type: string
+      pattern: '^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$'
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, username, workspaceId, projectId]
+      properties:
+        id: {type: string}
+        username: {type: string}
+        workspaceId: {type: string}
+        projectId: {type: string}
+    Principal:
+      type: object
+      additionalProperties: false
+      required: [kind, workspaceId, projectId, role, scopes]
+      properties:
+        kind: {type: string, enum: [admin, api_key]}
+        role: {type: string, enum: [ADMIN, RUN_ORCHESTRATOR, POLICY_PUBLISHER], x-enum-varnames: [Admin, RunOrchestrator, PolicyPublisher]}
+        workspaceId: {type: string}
+        projectId: {type: string}
+        scopes:
+          type: array
+          uniqueItems: true
+          description: Complete persisted machine permissions used for authorization.
+          items: {$ref: '#/components/schemas/MachineScope'}
+        user: {$ref: '#/components/schemas/User'}
+    BootstrapRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: {type: string, pattern: '^[a-zA-Z0-9][a-zA-Z0-9_.-]{2,63}$'}
+        password: {type: string, format: password, writeOnly: true, minLength: 6, maxLength: 128, description: at least 6 characters and at most 128 UTF-8 bytes}
+        signIn: {type: boolean, default: false, description: Atomically create a browser session; token is sent only as an HttpOnly cookie}
+    BootstrapStatus:
+      type: object
+      additionalProperties: false
+      required: [initialized, requiresToken]
+      properties:
+        initialized: {type: boolean}
+        requiresToken: {type: boolean, description: Server-derived transport requirement; never includes a token}
+    BootstrapResult:
+      type: object
+      additionalProperties: false
+      required: [user]
+      properties:
+        user: {$ref: '#/components/schemas/User'}
+    APIKeyResult:
+      type: object
+      additionalProperties: false
+      required: [apiKey, id, role, scopes, createdAt, expiresAt, version]
+      properties:
+        apiKey: {type: string, description: One-time machine secret; never log this response}
+        id: {type: string, description: Stable non-secret identifier used for rotation and revocation}
+        createdAt: {type: integer, format: int64}
+        expiresAt: {type: integer, format: int64}
+        version: {type: integer, format: int64, minimum: 1}
+        role: {type: string, enum: [RUN_ORCHESTRATOR, POLICY_PUBLISHER], x-enum-varnames: [RunOrchestrator, PolicyPublisher]}
+        scopes:
+          type: array
+          uniqueItems: true
+          description: Complete effective permissions persisted with the new machine key.
+          items: {$ref: '#/components/schemas/MachineScope'}
+    CreateAPIKeyRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expiresInSeconds: {type: integer, format: int64, minimum: 60, maximum: 31536000, default: 7776000}
+        role: {type: string, enum: [RUN_ORCHESTRATOR, POLICY_PUBLISHER], default: RUN_ORCHESTRATOR, x-enum-varnames: [RunOrchestrator, PolicyPublisher]}
+        scopes:
+          type: array
+          maxItems: 1
+          uniqueItems: true
+          description: Optional elevated permissions added to the fixed role template; accepted only for RUN_ORCHESTRATOR keys.
+          items:
+            type: string
+            enum: [runs:create-with-revision]
+    APIKeyMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, role, scopes, createdAt, expiresAt, version]
+      properties:
+        id: {type: string}
+        role: {type: string, enum: [RUN_ORCHESTRATOR, POLICY_PUBLISHER]}
+        scopes:
+          type: array
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/MachineScope'}
+        createdAt: {type: integer, format: int64}
+        expiresAt: {type: integer, format: int64}
+        version: {type: integer, format: int64, minimum: 1}
+        revokedAt: {type: integer, format: int64}
+    APIKeyPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/APIKeyMetadata'}
+        nextAfter: {type: string}
+    RotateAPIKeyRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: {type: integer, format: int64, minimum: 1}
+        expiresInSeconds: {type: integer, format: int64, minimum: 60, maximum: 31536000, description: Omit to preserve the current expiry}
+    MachineScope:
+      type: string
+      enum: [policies:create, revisions:publish, runs:create, runs:create-with-revision, runs:read, submission-credential:rotate]
+    PasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: {type: string, format: password, writeOnly: true, maxLength: 128}
+        newPassword: {type: string, format: password, writeOnly: true, minLength: 6, maxLength: 128, description: at least 6 characters and at most 128 UTF-8 bytes}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: {type: string, maxLength: 64}
+        password: {type: string, format: password, writeOnly: true, maxLength: 128}
+        kind: {type: string, enum: [browser, cli], default: browser}
+    LoginResult:
+      type: object
+      additionalProperties: false
+      required: [expiresAt, user]
+      properties:
+        user: {$ref: '#/components/schemas/User'}
+        expiresAt: {type: integer, format: int64, description: Unix timestamp in seconds}
+        token: {type: string, description: Present only for CLI login; never log}
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [alive, ready]
+    Version:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version:
+          type: string
+    Capabilities:
+      type: object
+      additionalProperties: false
+      required: [apiVersions, cli, features, storage]
+      properties:
+        apiVersions:
+          type: array
+          minItems: 1
+          items: {type: string}
+        cli:
+          $ref: '#/components/schemas/CLICompatibility'
+        features:
+          type: array
+          description: Enabled HTTP features. run-final-submission-decision covers one immutable final Submission and fixed PASS/ALLOW, BLOCKED/DENY or UNKNOWN/DENY evaluation. run-expiry-decision-validity covers frozen deadlines, lazy expiration and Decision expiry timestamps. run-scoped-submission-token covers one-time Run credentials and Project-key-authorized rotation. No feature implies Claims.
+          items: {type: string}
+        storage:
+          $ref: '#/components/schemas/StorageCapability'
+    StorageCapability:
+      type: object
+      description: Non-sensitive operating envelope of the active storage adapter
+      additionalProperties: false
+      required: [supportLevel, multiInstance]
+      properties:
+        supportLevel:
+          type: string
+          enum: [official-local, official-shared]
+        multiInstance:
+          type: boolean
+          description: Whether this release supports multiple service instances sharing the active database
+    CLICompatibility:
+      type: object
+      description: CLI protocol compatibility window; independent of the running server build version
+      additionalProperties: false
+      required: [minimumVersion, maximumVersionExclusive]
+      properties:
+        minimumVersion: {type: string, description: Oldest compatible CLI version, inclusive}
+        maximumVersionExclusive: {type: string, description: First incompatible CLI version, exclusive}
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          description: Same value as the X-Trace-ID response header
+    RevisionSummary: {"type":"object","additionalProperties":false,"required":["id","policyId","revisionNumber","digest","publishedAt","publishedBy"],"properties":{"id":{"type":"string"},"policyId":{"type":"string"},"revisionNumber":{"type":"integer","format":"int64"},"digest":{"type":"string"},"publishedAt":{"type":"integer","format":"int64"},"publishedBy":{"type":"string"}}}
+    PolicyRevisionPage: {"type":"object","additionalProperties":false,"required":["items"],"properties":{"items":{"type":"array","maxItems":100,"items":{"$ref":"#/components/schemas/RevisionSummary"}},"nextBefore":{"type":"integer","format":"int64","minimum":1}}}

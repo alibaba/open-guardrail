@@ -1,0 +1,16 @@
+# Local defaults. Resolve ./data relative to the working directory.
+listen: 127.0.0.1:8080
+data_dir: ./data
+# For a non-loopback listener behind a trusted TLS reverse proxy, also set:
+# public_url: https://guardrail.example.com
+# Preserve the external Host and prevent direct access to the plaintext backend.
+database:
+  driver: sqlite
+  max_connections: 10
+  migrations: auto
+
+# For PostgreSQL, set driver: postgres and inject DATABASE_URL externally.
+# When DDL is applied through an external managed-database process, set migrations:
+# external. The service then requires the current schema version and never
+# runs migrations at startup.
+# Never put real credentials in this example.

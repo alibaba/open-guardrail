@@ -1,0 +1,13 @@
+{
+  "caseId": "recovery-unknown",
+  "changeSet": {
+    "service": "sample-checkout",
+    "environment": "synthetic-local",
+    "candidate": "build-unverified"
+  },
+  "observations": {
+    "health": {
+      "probeError": "TimeoutError"
+    }
+  }
+}

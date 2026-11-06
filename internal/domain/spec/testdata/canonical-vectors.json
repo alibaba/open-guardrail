@@ -1,0 +1,38 @@
+[
+  {
+    "name": "default_omitted",
+    "validForSeconds": null,
+    "canonical": "{\"apiVersion\":\"guardrail.open/v1alpha1\",\"kind\":\"GuardrailSpec\",\"metadata\":{\"name\":\"recovery\"},\"spec\":{\"checks\":[{\"criteria\":{\"block\":\"Health is bad\",\"pass\":\"Health is good\",\"unknown\":\"Health is not verified\"},\"description\":\"Check recovery readiness\",\"displayName\":\"Recovery readiness\",\"evidenceRequirements\":[{\"appliesToVerdicts\":[\"PASS\",\"BLOCKED\",\"UNKNOWN\"],\"description\":\"Record current health\",\"id\":\"health\"}],\"id\":\"readiness\",\"instructions\":\"Inspect current health and provide evidence\"}],\"description\":\"Check recovery readiness\",\"instructions\":\"Inspect current state and provide evidence\",\"validForSeconds\":3600}}",
+    "sha256": "75eb70857095ecceb35ca819214f5b1a49a40fcaf096f8731f1eead8b52c5c08"
+  },
+  {
+    "name": "minimum",
+    "validForSeconds": "1",
+    "canonical": "{\"apiVersion\":\"guardrail.open/v1alpha1\",\"kind\":\"GuardrailSpec\",\"metadata\":{\"name\":\"recovery\"},\"spec\":{\"checks\":[{\"criteria\":{\"block\":\"Health is bad\",\"pass\":\"Health is good\",\"unknown\":\"Health is not verified\"},\"description\":\"Check recovery readiness\",\"displayName\":\"Recovery readiness\",\"evidenceRequirements\":[{\"appliesToVerdicts\":[\"PASS\",\"BLOCKED\",\"UNKNOWN\"],\"description\":\"Record current health\",\"id\":\"health\"}],\"id\":\"readiness\",\"instructions\":\"Inspect current health and provide evidence\"}],\"description\":\"Check recovery readiness\",\"instructions\":\"Inspect current state and provide evidence\",\"validForSeconds\":1}}",
+    "sha256": "44c83e8c41aff0b48e4c68820ce68ab58b043804adb89788d643ccc2285d00af"
+  },
+  {
+    "name": "default_explicit",
+    "validForSeconds": "3600",
+    "canonical": "{\"apiVersion\":\"guardrail.open/v1alpha1\",\"kind\":\"GuardrailSpec\",\"metadata\":{\"name\":\"recovery\"},\"spec\":{\"checks\":[{\"criteria\":{\"block\":\"Health is bad\",\"pass\":\"Health is good\",\"unknown\":\"Health is not verified\"},\"description\":\"Check recovery readiness\",\"displayName\":\"Recovery readiness\",\"evidenceRequirements\":[{\"appliesToVerdicts\":[\"PASS\",\"BLOCKED\",\"UNKNOWN\"],\"description\":\"Record current health\",\"id\":\"health\"}],\"id\":\"readiness\",\"instructions\":\"Inspect current health and provide evidence\"}],\"description\":\"Check recovery readiness\",\"instructions\":\"Inspect current state and provide evidence\",\"validForSeconds\":3600}}",
+    "sha256": "75eb70857095ecceb35ca819214f5b1a49a40fcaf096f8731f1eead8b52c5c08"
+  },
+  {
+    "name": "existing_duration",
+    "validForSeconds": "7200",
+    "canonical": "{\"apiVersion\":\"guardrail.open/v1alpha1\",\"kind\":\"GuardrailSpec\",\"metadata\":{\"name\":\"recovery\"},\"spec\":{\"checks\":[{\"criteria\":{\"block\":\"Health is bad\",\"pass\":\"Health is good\",\"unknown\":\"Health is not verified\"},\"description\":\"Check recovery readiness\",\"displayName\":\"Recovery readiness\",\"evidenceRequirements\":[{\"appliesToVerdicts\":[\"PASS\",\"BLOCKED\",\"UNKNOWN\"],\"description\":\"Record current health\",\"id\":\"health\"}],\"id\":\"readiness\",\"instructions\":\"Inspect current health and provide evidence\"}],\"description\":\"Check recovery readiness\",\"instructions\":\"Inspect current state and provide evidence\",\"validForSeconds\":7200}}",
+    "sha256": "6e41a91bb41afce5fd2392d873d03cf09aedd4c5976bb1c64c95ec5106084c84"
+  },
+  {
+    "name": "near_maximum",
+    "validForSeconds": "9007199254740990",
+    "canonical": "{\"apiVersion\":\"guardrail.open/v1alpha1\",\"kind\":\"GuardrailSpec\",\"metadata\":{\"name\":\"recovery\"},\"spec\":{\"checks\":[{\"criteria\":{\"block\":\"Health is bad\",\"pass\":\"Health is good\",\"unknown\":\"Health is not verified\"},\"description\":\"Check recovery readiness\",\"displayName\":\"Recovery readiness\",\"evidenceRequirements\":[{\"appliesToVerdicts\":[\"PASS\",\"BLOCKED\",\"UNKNOWN\"],\"description\":\"Record current health\",\"id\":\"health\"}],\"id\":\"readiness\",\"instructions\":\"Inspect current health and provide evidence\"}],\"description\":\"Check recovery readiness\",\"instructions\":\"Inspect current state and provide evidence\",\"validForSeconds\":9007199254740990}}",
+    "sha256": "06dd367c6fe70a539add0008ef60eb072a8e012fe2d2c403e87d33946911f3d9"
+  },
+  {
+    "name": "maximum",
+    "validForSeconds": "9007199254740991",
+    "canonical": "{\"apiVersion\":\"guardrail.open/v1alpha1\",\"kind\":\"GuardrailSpec\",\"metadata\":{\"name\":\"recovery\"},\"spec\":{\"checks\":[{\"criteria\":{\"block\":\"Health is bad\",\"pass\":\"Health is good\",\"unknown\":\"Health is not verified\"},\"description\":\"Check recovery readiness\",\"displayName\":\"Recovery readiness\",\"evidenceRequirements\":[{\"appliesToVerdicts\":[\"PASS\",\"BLOCKED\",\"UNKNOWN\"],\"description\":\"Record current health\",\"id\":\"health\"}],\"id\":\"readiness\",\"instructions\":\"Inspect current health and provide evidence\"}],\"description\":\"Check recovery readiness\",\"instructions\":\"Inspect current state and provide evidence\",\"validForSeconds\":9007199254740991}}",
+    "sha256": "7bc468b6f9648edcf66864b7e0cc873e22f295fcf37a3fdf590b4db39f008c82"
+  }
+]

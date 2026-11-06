@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenGuardrail</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/i18n.js" defer></script>
+<script src="/console.js" defer></script>
+<script src="/editor.js" defer></script>
+<script src="/specs.js" defer></script>
+<script src="/runs.js" defer></script>
+<script src="/app.js" defer></script>
+</head>
+<body>
+<main id="shell">
+<aside id="sidebar" hidden>
+<a class="brand" href="/" aria-label="OpenGuardrail"><span class="brand-mark" aria-hidden="true">G</span>OpenGuardrail</a>
+<p class="nav-caption" data-i18n="workspaceNav">WORKSPACE</p>
+<nav aria-label="Main">
+<button id="nav-scenes" class="nav-item" type="button" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-i18n="scenesTitle">Scenes and Specs</span></button>
+<button id="nav-runs" class="nav-item" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="7" cy="5" r="1"/><circle cx="7" cy="12" r="1"/><circle cx="7" cy="19" r="1"/></svg><span data-i18n="runsTitle">Runs</span></button>
+<button id="nav-settings" class="nav-item" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span data-i18n="accountSettings">Account settings</span></button>
+</nav>
+<div class="sidebar-bottom"><span class="preview-badge" data-i18n="previewShort">DEVELOPMENT PREVIEW</span><a href="/openapi.yaml" data-i18n="apiReference">API reference ↗</a><button id="logout" class="nav-item" type="button" data-i18n="logout">Log out</button></div>
+</aside>
+<div class="workspace">
+<header class="topbar"><span class="topbar-name">OpenGuardrail <span class="muted">/</span> <span data-i18n="console">Console</span></span><div class="language-picker"><label for="language" data-i18n="language">Language</label><select id="language"><option value="zh-CN">简体中文</option><option value="en">English</option></select></div></header>
+<div class="workspace-content">
+<div id="auth-intro">
+<p class="eyebrow" data-i18n="preview">OPENGUARDRAIL · DEVELOPMENT PREVIEW</p>
+<h1 data-i18n="title">Your release guardrail.</h1>
+</div>
+<p id="message" role="status" aria-live="polite" data-i18n="connecting">Connecting…</p>
+<section id="setup" hidden>
+<h2 data-i18n="setupTitle">Set up your administrator</h2>
+<p data-i18n="setupIntro">Choose your administrator account to start using OpenGuardrail.</p>
+<form id="setup-form">
+<div id="setup-token" hidden>
+<p data-i18n="remoteSetup">This deployment requires an initialization token. Read the private bootstrap.token file on the service host; startup logs show its path.</p>
+<label><span data-i18n="bootstrapToken">Initialization token</span><input id="bootstrap-token" name="bootstrapToken" type="password" autocomplete="off" disabled maxlength="128" spellcheck="false"></label>
+</div>
+<label><span data-i18n="username">Username</span><input name="username" autocomplete="username" required minlength="3" maxlength="64" pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{2,63}"></label>
+<p data-i18n="usernameHint">Use 3–64 ASCII letters, digits, underscores, dots or hyphens; start with a letter or digit.</p>
+<label><span data-i18n="password">Password</span><input id="setup-password" name="password" type="password" autocomplete="new-password" aria-describedby="setup-password-hint" required maxlength="128"></label>
+<p id="setup-password-hint" class="field-hint" data-i18n="passwordHint" aria-live="polite">At least 6 characters; at most 128 UTF-8 bytes. No uppercase, digit or symbol requirement.</p>
+<label><span data-i18n="confirmPassword">Confirm password</span><input id="setup-confirm" aria-describedby="setup-confirm-error" name="confirmPassword" type="password" autocomplete="new-password" required maxlength="128"></label>
+<p id="setup-confirm-error" class="field-hint" data-error="true" aria-live="polite" hidden></p>
+<p data-i18n="setupPassword">You will be signed in after creating your account.</p>
+<button type="submit" data-i18n="initialize">Create account and get started</button>
+</form>
+</section>
+<section id="login" hidden>
+<h2 data-i18n="loginTitle">Administrator login</h2>
+<form id="login-form">
+<label><span data-i18n="username">Username</span><input name="username" autocomplete="username" required maxlength="64"></label>
+<label><span data-i18n="password">Password</span><input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+<button type="submit" data-i18n="login">Log in</button>
+</form>
+</section>
+<section id="home" hidden>
+<div id="scenes">
+<div id="scene-page-heading" class="page-heading"><div><p class="eyebrow" data-i18n="policyWorkspace">POLICY WORKSPACE</p><h1 data-i18n="scenesTitle">Scenes and Specs</h1>
+<p data-i18n="scenesIntro">Configure the checks for a scenario. Draft edits do not change the active version.</p>
+</div><button id="new-scene" type="button" data-i18n="createScene">Create scene</button></div>
+<p id="spec-message" role="status" aria-live="polite"></p>
+<fieldset id="spec-controls">
+<div id="scene-list-view" class="surface">
+<div class="surface-heading"><h2 data-i18n="allScenes">All scenes</h2><button id="reload-scenes" class="secondary" type="button" data-i18n="reloadScenes">Reload scenes</button></div>
+<div id="scene-empty" class="empty-state" hidden><span class="empty-icon" aria-hidden="true">▦</span><h3 data-i18n="noScenesTitle">Your first scene starts here</h3><p data-i18n="noScenesHint">Create a scene, write its checks, then publish your Spec.</p><button id="empty-create" type="button" data-i18n="createScene">Create scene</button></div>
+<div id="scene-table-wrap" class="table-scroll"><table><thead><tr><th data-i18n="sceneName">Display name</th><th data-i18n="sceneKey">Scene key</th><th data-i18n="defaultPolicyLabel">Default Policy</th><th data-i18n="stateLabel">Status</th><th><span class="sr-only" data-i18n="editSpec">Edit Spec</span></th></tr></thead><tbody id="scene-rows"></tbody></table></div>
+<p class="table-note" data-i18n="sceneListHint">Each scene has an independent Spec. Draft changes do not affect the active version.</p>
+</div>
+<div id="scene-detail-view" hidden>
+<button id="back-scenes" class="text-button" type="button" data-i18n="backScenes">← All scenes</button>
+<div class="detail-heading"><div><h2 id="scene-detail-name"></h2><code id="scene-detail-key"></code></div><div class="active-indicator"><span data-i18n="activeSpec">Active version</span><strong id="spec-active"></strong></div></div>
+<div class="detail-switcher">
+<label for="scene-select" data-i18n="selectScene">Select scene</label>
+<select id="scene-select"></select>
+</div>
+<div id="spec-editor" hidden>
+<div class="tabs" role="tablist" aria-label="Spec"><button id="tab-draft" type="button" role="tab" aria-selected="true" aria-controls="draft-panel" data-i18n="draftTab">Draft</button><button id="tab-history" type="button" role="tab" aria-selected="false" aria-controls="history-panel" tabindex="-1" data-i18n="historyTab">Version history</button></div>
+<div id="draft-panel" role="tabpanel" aria-labelledby="tab-draft">
+<div class="editor-surface"><div class="editor-heading"><label for="spec-yaml" data-i18n="specDraft">Spec draft (YAML)</label><span class="file-format">YAML</span><button id="spec-example" class="text-button" type="button" data-i18n="insertSpecExample">Insert example</button></div>
+<div id="yaml-editor" class="yaml-editor">
+<pre id="yaml-lines" class="yaml-lines" aria-hidden="true"></pre>
+<div class="yaml-code"><pre id="yaml-highlight" aria-hidden="true"></pre><textarea id="spec-yaml" rows="16" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" aria-describedby="spec-draft-hint editor-error"></textarea></div>
+</div>
+<div class="editor-status"><span data-i18n="editorMode">YAML · UTF-8</span><span id="editor-position"></span></div>
+<p id="editor-error" role="alert" hidden></p>
+</div>
+<div class="editor-footer">
+<p id="spec-draft-hint" data-i18n="specDraftHint">Save incomplete drafts at any time. Publishing validates the saved draft and activates an immutable version.</p>
+<div class="actions"><button id="save-spec" class="secondary" type="button" data-i18n="saveSpec">Save draft</button>
+<button id="publish-spec" type="button" data-i18n="publishSpec">Publish and activate</button>
+</div></div></div>
+<div id="history-panel" class="surface history-panel" role="tabpanel" aria-labelledby="tab-history" hidden>
+<label for="revision-select" data-i18n="specHistory">Published versions (read-only)</label>
+<select id="revision-select"></select>
+<button id="revisions-previous" class="secondary" type="button" data-i18n="previousRevisions">Newer versions</button>
+<button id="revisions-next" class="secondary" type="button" data-i18n="nextRevisions">Older versions</button>
+<button id="activate-revision" class="secondary" type="button" data-i18n="activateRevision">Activate selected Revision</button>
+<p id="revision-meta" role="status" aria-live="polite"></p>
+<pre id="revision-yaml"></pre>
+</div>
+</div></div>
+</fieldset>
+</div>
+<div id="runs-view" hidden>
+<div id="run-list-view">
+<div class="page-heading"><div><p class="eyebrow" data-i18n="runWorkspace">RUN HISTORY</p><h1 data-i18n="runsTitle">Runs</h1><p data-i18n="runsIntro">Inspect immutable Guardrail evaluations and their decisions.</p></div><button id="reload-runs" class="secondary" type="button" data-i18n="reloadRuns">Reload Runs</button></div>
+<p id="run-message" role="status" aria-live="polite"></p>
+<div id="run-surface" class="surface" aria-busy="false">
+<div class="run-filters"><label><span data-i18n="sceneKey">Scene key</span><input id="run-scene-filter" maxlength="64" pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{0,63}" autocomplete="off" spellcheck="false"></label><label><span data-i18n="stateLabel">Status</span><select id="run-status-filter"><option value="" data-i18n="allStatuses">All statuses</option><option value="OPEN">OPEN</option><option value="FINISHED">FINISHED</option><option value="EXPIRED">EXPIRED</option></select></label><button id="apply-run-filters" type="button" data-i18n="applyFilters">Apply filters</button></div>
+<div id="run-empty" class="empty-state" hidden><span class="empty-icon" aria-hidden="true">≡</span><h3 data-i18n="noRunsTitle">No Runs found</h3><p data-i18n="noRunsHint">Create a Run through the runtime API, then reload this page.</p></div>
+<div id="run-table-wrap" class="table-scroll"><table><thead><tr><th data-i18n="runId">Run ID</th><th data-i18n="sceneKey">Scene key</th><th data-i18n="specVersion">Spec</th><th data-i18n="stateLabel">Status</th><th data-i18n="resultLabel">Result</th><th data-i18n="decisionLabel">Decision</th><th data-i18n="createdAt">Created</th><th><span class="sr-only" data-i18n="viewRun">View Run</span></th></tr></thead><tbody id="run-rows"></tbody></table></div>
+<div id="run-pagination" class="pagination"><button id="previous-runs" class="secondary" type="button" data-i18n="previousPage">Previous</button><button id="next-runs" class="secondary" type="button" data-i18n="nextPage">Next</button></div>
+</div>
+</div>
+<div id="run-detail-view" hidden>
+<div class="run-evidence-toolbar"><button id="back-runs" class="text-button" type="button" data-i18n="backRuns">← All Runs</button><button id="refresh-run" class="secondary" type="button" data-i18n="refreshRun">Refresh Run</button></div>
+<p id="run-detail-message" role="status" aria-live="polite"></p>
+<div id="run-detail-content" hidden>
+<div class="detail-heading run-heading"><h1 id="run-detail-scene"></h1><span id="run-detail-status" class="badge"></span></div>
+<div class="surface run-detail-grid">
+<div><dl class="run-result"><div><dt data-i18n="decisionLabel">Decision</dt><dd id="run-detail-decision"></dd></div><div><dt data-i18n="resultLabel">Result</dt><dd id="run-detail-result"></dd></div><div><dt data-i18n="terminalAt">Ended</dt><dd id="run-detail-terminal"></dd></div></dl><details class="run-validity"><summary data-i18n="decisionValidity">Decision validity</summary><p data-i18n="decisionValidityHint">Validity ending does not change a completed Run's historical result.</p><time id="run-decision-expires"></time></details></div>
+<section aria-labelledby="run-evidence-title"><div class="run-assessment-heading"><h2 id="run-evidence-title" data-i18n="evaluationEvidence">Submitted evidence</h2><details id="run-submission-history" hidden><summary data-i18n="submissionHistory">Submission history</summary><label for="run-submission-select" data-i18n="submissionLabel">Submission</label><select id="run-submission-select"></select><div class="run-evidence-toolbar"><button id="newer-submissions" class="text-button" type="button" data-i18n="previousPage">Previous</button><button id="older-submissions" class="text-button" type="button" data-i18n="nextPage">Next</button></div></details></div>
+<p id="run-submission-state" role="status" aria-live="polite"></p><button id="retry-run-submission" class="secondary" type="button" data-i18n="retryEvidence" hidden>Retry evidence</button>
+<div id="run-submission-content" hidden><p id="run-history-note" class="field-hint" data-i18n="viewingIntermediateSubmission" hidden>Viewing an intermediate assessment; the final decision above is unchanged.</p><div class="run-evidence-toolbar"><span><span data-i18n="submissionLabel">Submission</span> <code id="run-detail-submission"></code></span><span id="run-submission-verdict" class="badge"></span></div><p id="run-submission-summary"></p><p class="field-hint"><span data-i18n="submittedAt">Submitted</span> <time id="run-submission-created"></time></p><div id="run-checks"></div></div>
+</section>
+
+<details id="run-technical"><summary data-i18n="technicalDetails">Technical details</summary><dl><div><dt data-i18n="runId">Run ID</dt><dd id="run-detail-id"></dd></div><div><dt data-i18n="specVersion">Spec</dt><dd id="run-detail-spec"></dd></div><div><dt data-i18n="createdAt">Created</dt><dd id="run-detail-created"></dd></div><div><dt data-i18n="deadlineAt">Deadline</dt><dd id="run-detail-deadline"></dd></div></dl><h3 data-i18n="changeSetLabel">changeSet</h3><pre id="run-detail-change-set"></pre><h3 data-i18n="rawSubmission">Original Submission JSON</h3><pre id="run-submission-json"></pre><h3 data-i18n="specSnapshotLabel">Frozen Spec</h3><pre id="run-detail-spec-yaml"></pre></details>
+</div></div></div>
+</div>
+<div id="settings-view" hidden>
+<div class="page-heading"><div><p class="eyebrow" data-i18n="preferences">PREFERENCES</p><h1 data-i18n="accountSettings">Account settings</h1><p data-i18n="settingsIntro">Manage your administrator account and Agent access.</p></div></div>
+<div class="surface account-overview"><div class="surface-heading"><h2 data-i18n="serviceOverview">Account and service</h2><button id="refresh" class="secondary" type="button" data-i18n="refresh">Refresh status</button></div>
+<dl><div><dt data-i18n="administrator">Administrator</dt><dd id="username"></dd></div><div><dt data-i18n="project">Project</dt><dd id="project"></dd></div><div><dt data-i18n="readiness">Readiness</dt><dd id="status"></dd></div><div><dt data-i18n="version">Version</dt><dd id="version"></dd></div></dl></div>
+<div class="settings-grid"><div class="surface settings-card">
+<h3 data-i18n="agentKey">Agent machine key</h3>
+<p data-i18n="keyNotice">Create a key only when connecting an Agent. It is shown once and must be stored securely. Revocation and rotation are not available in this preview.</p>
+<button id="create-key" type="button" data-i18n="createKey">Create machine key</button>
+<div id="key-result" hidden>
+<label for="machine-key" data-i18n="keySecret">New machine key (shown once)</label>
+<textarea id="machine-key" readonly autocomplete="off" spellcheck="false" rows="3"></textarea>
+<button id="hide-key" type="button" data-i18n="hideKey">Saved securely — hide key</button>
+</div>
+</div><div class="surface settings-card"><h3 data-i18n="changePassword">Change password</h3>
+<p data-i18n="passwordNotice">Changing the password signs out every administrator session, including this one.</p>
+<form id="password-form">
+<label><span data-i18n="currentPassword">Current password</span><input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label>
+<label><span data-i18n="newPassword">New password</span><input id="change-password" name="newPassword" type="password" autocomplete="new-password" aria-describedby="change-password-hint" required maxlength="128"></label>
+<p id="change-password-hint" class="field-hint" data-i18n="passwordHint" aria-live="polite">At least 6 characters; at most 128 UTF-8 bytes. No uppercase, digit or symbol requirement.</p>
+<button type="submit" data-i18n="changeAndLogout">Change password and sign out</button>
+</form>
+</div></div></div>
+</section>
+<footer id="auth-footer"><a href="/openapi.yaml" data-i18n="openapi">View OpenAPI specification →</a></footer>
+</div></div>
+</main>
+<dialog id="create-scene-dialog" aria-labelledby="create-scene-title">
+<div class="dialog-heading"><h2 id="create-scene-title" data-i18n="createScene">Create scene</h2><button id="close-create" class="text-button" type="button" data-i18n="close">Close</button></div>
+<p data-i18n="createSceneHint">Give this operation a name and a stable identifier, such as recovery.</p>
+<p id="create-scene-message" role="alert"></p>
+<form id="scene-create-form">
+<label><span data-i18n="sceneName">Display name</span><input name="name" required maxlength="100" autofocus></label>
+<label><span data-i18n="sceneKey">Scene key</span><input name="key" required maxlength="64" pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{0,63}" placeholder="recovery" autocomplete="off" spellcheck="false"></label>
+<label><span data-i18n="defaultPolicyName">Default Policy name</span><input name="defaultPolicyName" required maxlength="100" autocomplete="off"></label>
+<label><span data-i18n="initialSpecYaml">Initial GuardrailSpec (YAML)</span><textarea name="yaml" rows="10" required spellcheck="false" aria-describedby="initial-spec-hint"></textarea></label>
+<p id="initial-spec-hint" class="field-hint" data-i18n="initialSpecHint">The initial Revision is published, activated, and bound as the Scene default in one action.</p>
+<p class="field-hint" data-i18n="sceneKeyHint">Use letters, numbers, dots, underscores or hyphens. This identifier cannot be changed.</p>
+<div class="dialog-actions"><button id="cancel-create" class="secondary" type="button" data-i18n="cancel">Cancel</button><button id="submit-scene" type="submit" data-i18n="createScene">Create scene</button></div>
+</form></dialog>
+</body>
+</html>

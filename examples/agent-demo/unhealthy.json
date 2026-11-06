@@ -1,0 +1,17 @@
+{
+  "caseId": "recovery-unhealthy",
+  "changeSet": {
+    "service": "sample-checkout",
+    "environment": "synthetic-local",
+    "candidate": "build-red"
+  },
+  "observations": {
+    "health": {
+      "httpStatus": 503,
+      "status": "unhealthy",
+      "readyReplicas": 1,
+      "desiredReplicas": 3,
+      "errorRatePercent": 12.7
+    }
+  }
+}

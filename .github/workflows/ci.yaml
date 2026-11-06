@@ -1,0 +1,78 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: guardrail_test
+          POSTGRES_USER: guardrail
+          POSTGRES_PASSWORD: disposable-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U guardrail -d guardrail_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://guardrail:disposable-ci-only@localhost:5432/guardrail_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: make test
+      - run: make build
+      - run: make smoke
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: make test-fuzz
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-regressions
+          path: |
+            internal/domain/spec/testdata/fuzz/
+            internal/domain/run/testdata/fuzz/
+          if-no-files-found: ignore
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: make smoke-release VERSION=0.1.0-alpha.0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: dist/*.tar.gz*
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: make smoke-docker

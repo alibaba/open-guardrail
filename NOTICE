@@ -1,0 +1,10 @@
+OpenGuardrail
+
+OpenGuardrail is licensed under the Apache License, Version 2.0.
+See LICENSE for the complete license text.
+
+Third-party components retain their own copyright notices and license terms.
+Their original license and attribution files are preserved in third_party/licenses.
+The module versions, source locations and notice-file checksums are recorded in
+third_party/notices.tsv. See third_party/README.md for the inventory's scope and
+the remaining distribution review requirements.
