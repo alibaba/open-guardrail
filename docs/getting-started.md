@@ -1,7 +1,7 @@
 # Getting started
 
-Try a local Recovery example using synthetic data. Run the self-check for a quick
-result, or follow the walkthrough to create a Run and inspect it in the browser.
+Run a guarded file cleanup task, or follow the walkthrough to publish a policy,
+create a Run and inspect its evidence in the browser.
 Neither option requires an AI model.
 
 ## Evaluation flow
@@ -17,7 +17,7 @@ For a source checkout:
 
 - The Go toolchain specified in `go.mod`.
 - Make for `make build`.
-- Python 3.12+ only if you run the isolated self-check below.
+- Python 3.9+ only if you run the local demo below.
 
 Run commands from the checkout root. Building the server and CLI does not require
 Node.js or Docker.
@@ -28,30 +28,50 @@ Run commands from its extraction root. Use `./open-guardrail` and
 `./guardrailctl` in place of the source build's `./bin/` paths; running the
 binaries needs no Go, Node.js or Python.
 
-## Option 1: try an isolated decision loop
+## Option 1: run a guarded cleanup task
 
-With Go and Python available, run:
+With Python 3.9+ available, run the following command from the source checkout
+or archive root. A source checkout also needs Go:
 
 ```sh
-python3 examples/agent-demo/smoke.py
+python3 examples/cleanup-demo/demo.py
 ```
 
+Choose a console password for the temporary `demo` administrator at the hidden prompts.
 The script builds the commands from source or uses the binaries in an archive.
-It starts a temporary local service, publishes the Recovery policy and checks
-decisions from synthetic assessments.
+It starts a temporary local service and a controlled file cleanup tool. Source builds can download Go
+dependencies on their first run. The demo needs Python 3.9+; release assembly
+and the maintainer verification scripts separately require Python 3.12+.
 
-The output has this shape; Run IDs vary:
+Open the printed **Demo** URL first. No login is required for the cleanup task
+or its Run details. Leave the default selection and click **Run cleanup task**:
 
-```text
-healthy: run_... server=ALLOW gate=ALLOW
-unhealthy: run_... server=DENY gate=DENY
-unknown: run_... server=DENY gate=DENY
-forged: run_... server=ALLOW gate=DENY
-```
+1. The runner requests deletion of all four sample files, including protected
+   orders and configuration. The service stores a `BLOCKED / DENY` Run.
+2. The runner narrows its request to the two temporary files and submits a new
+   assessment. The service stores a `PASS / ALLOW` Run.
+3. The deletion tool rereads the Run and accepted evidence, verifies their
+   identity and validity, and deletes only the approved temporary files.
+4. Inspect both Runs in the page. Restore the files, change the selection or
+   batch limit and rerun to compare the actual result.
 
-The last case shows why a caller must verify evidence even when the stored
-decision is `ALLOW`. The script removes its temporary service and data; follow
-the walkthrough below to keep and inspect a Run.
+The runner is predefined code without a model. Its service calls and file
+operations are real. The [demo guide](../examples/cleanup-demo/README.md)
+explains the execution checks and limits. To inspect the same records in the
+regular UI, open the printed **Console** URL, sign in as `demo` with the chosen
+password, and select **Runs**.
+
+Leave the terminal open while inspecting the records. Ctrl-C stops the service
+and removes its temporary data and credentials. The original Recovery contract
+self-check is available with `python3 examples/agent-demo/smoke.py`; it exits
+and cleans up immediately. Its `--keep-running` option preserves the records for
+browser inspection until Ctrl-C.
+Use the walkthrough below when you want persistent data or your own policy.
+
+For automation, `--password-stdin` reads a chosen password from standard input
+when starting the cleanup demo. Do not put passwords in command-line
+arguments or committed scripts. The source-only `make demo` target is equivalent
+to the interactive demo command above.
 
 ## Option 2: create and inspect your first Run
 
@@ -192,6 +212,22 @@ policy reference, evaluation context, submitted evidence and decision.
 A real integration must verify the authoritative Run, decision validity and
 observations it relies on. See [Runs and submissions](runs.md) and the
 [integration recipes](../integrations/README.md).
+
+## Troubleshooting
+
+| Symptom | Next step |
+| --- | --- |
+| Python version error | Check `python3 --version` and use Python 3.9+ for the demo. The native binaries and manual walkthrough do not require Python. |
+| Go is missing or the build fails | A source checkout needs the Go version in `go.mod` and access to its public dependencies. Run `make build` for compiler diagnostics, or use a native archive. |
+| Server exits or does not become ready | The cleanup demo reports a safe error category and the command's exit code when available. Run `./bin/open-guardrail serve` from source or `./open-guardrail serve` from an archive for detailed startup diagnostics. Check the data directory, native binaries and port. |
+| Demo address returns 403 | Open exactly the printed `http://127.0.0.1:<port>` address. The cleanup demo does not accept `localhost` or other hostnames. |
+| Recovery self-check exits before you can open Runs | Run `python3 examples/agent-demo/smoke.py --keep-running` and keep that terminal open. The default Recovery self-check deliberately removes its temporary records; the cleanup demo already stays running. |
+| Browser login fails | Use username `demo` and the password you chose for this invocation. The walkthrough's `admin` account and an existing service are separate. |
+| Hidden password prompt needs a terminal | Run interactively, or pass `--password-stdin` for automation. The Recovery self-check additionally needs `--keep-running` when you want to inspect its temporary records. |
+
+The demo never prints its password or captured credential-bearing command output.
+When reporting a problem, include the step, exit code, version and platform.
+Keep passwords, session files and machine credential files private.
 
 ## Clean up or keep exploring
 

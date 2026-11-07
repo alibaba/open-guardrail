@@ -163,7 +163,7 @@ func (s *server) handlePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch r.URL.Path {
-	case "/", "/index.html", "/app.js", "/i18n.js", "/specs.js", "/runs.js", "/console.js", "/editor.js", "/style.css", "/select-arrow.svg":
+	case "/", "/index.html", "/app.js", "/i18n.js", "/specs.js", "/runs.js", "/console.js", "/editor.js", "/style.css", "/select-arrow.svg", "/favicon.svg":
 		s.static.ServeHTTP(w, r)
 	case "/login", "/setup":
 		r.URL.Path = "/"

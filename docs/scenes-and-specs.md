@@ -38,6 +38,13 @@ as `PUBLISHED` with its audit record. Repeated saves update one `DRAFT` row; dra
 have no revision number or publication metadata. After publication, saving again
 creates a new Draft with a new business ID. Published content is immutable.
 
+When no Draft exists, the console shows the active policy read-only with a
+**No draft yet** notice. **Edit a copy of this version** opens an editable local
+copy; **Save draft** persists it without changing the active version. An existing
+Draft, including an intentionally empty one, opens directly for editing. If the
+active policy cannot be read, the console offers a reload action before allowing
+a copy to be edited.
+
 Invalid reviewed YAML fails validation with `422 SPEC_VALIDATION_FAILED` before
 the Draft-state comparison. For a valid new publication, a Draft replaced by
 another session returns `409 RESOURCE_STATE_CONFLICT` without creating or

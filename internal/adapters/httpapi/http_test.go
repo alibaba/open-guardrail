@@ -82,6 +82,7 @@ func TestHTTP(t *testing.T) {
 		{"/", nil, 200, "OpenGuardrail"},
 		{"/runs.js", nil, 200, "Run history"},
 		{"/select-arrow.svg", nil, 200, "stroke=\"#5b625e\""},
+		{"/favicon.svg", nil, 200, "fill=\"#16654d\""},
 		{"/openapi.yaml", nil, 200, "openapi: 3.0.3"},
 		{"/not-found", nil, 404, "NOT_FOUND"},
 	} {

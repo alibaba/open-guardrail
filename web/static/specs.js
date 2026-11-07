@@ -2,12 +2,13 @@
 (() => {
   const el = id => document.getElementById(id);
   let signedIn = false, generation = 0, scene = null, policy = null, draft = null, revisions = [], busy = false;
+  let editing = false, activeRevision = null, previewFailed = false;
   let revisionBefore = 0, revisionNext = null, revisionPrevious = [];
   const formatTime = value => new Intl.DateTimeFormat(
     document.documentElement.lang || undefined,
     {dateStyle: "medium", timeStyle: "medium"},
   ).format(new Date(value * 1000));
-  const dirty = () => !!policy && el("spec-yaml").value !== (draft?.yaml ?? "");
+  const dirty = () => !!policy && editing && (!draft || el("spec-yaml").value !== draft.yaml);
   const notice = key => {
     setText(el("spec-message"), key);
     window.ConsoleUI?.notice(key);
@@ -15,13 +16,30 @@
   };
   const path = suffix => "/api/v1alpha1/policies/" + encodeURIComponent(policy.id) + suffix;
 
+  function draftView() {
+    el("spec-draft-notice").hidden = editing;
+    el("spec-editor-surface").hidden = !editing && !activeRevision;
+    el("spec-editor-actions").hidden = !editing;
+    el("spec-example").hidden = !editing;
+    el("spec-yaml").readOnly = !editing;
+    setText(el("spec-editor-label"), editing ? "specDraft" : "activeSpecReadOnly");
+    setText(el("spec-preview-hint"), previewFailed ? "activeSpecLoadFailed" :
+      policy?.activeRevisionId ? "noDraftActiveHint" : "noDraftNoActiveHint");
+    setText(el("start-spec-draft"), policy?.activeRevisionId ? "editActiveSpec" : "createSpecDraft");
+    el("retry-spec-preview").hidden = !previewFailed;
+    el("spec-preview-retry").hidden = !previewFailed;
+    el("spec-preview-warning").hidden = !editing;
+    window.YamlEditor?.refresh();
+  }
   function buttons() {
     el("spec-controls").disabled = busy;
     el("revisions-next").disabled = busy || revisionNext === null;
     el("revisions-previous").disabled = busy || revisionPrevious.length === 0;
     window.ConsoleUI?.setBusy(busy);
     el("save-spec").disabled = !policy || busy || !dirty();
-    el("publish-spec").disabled = !policy || !draft || busy || !!dirty() || !draft.yaml.trim();
+    el("publish-spec").disabled = !policy || !editing || !draft || busy || !!dirty() || !draft.yaml.trim();
+    el("start-spec-draft").disabled = !policy || busy || (!!policy.activeRevisionId && !activeRevision);
+    el("retry-spec-preview").disabled = busy;
     const selected = revisions.find(item => String(item.revisionNumber) === el("revision-select").value);
     el("activate-revision").disabled = !policy || busy || !selected || selected.id === policy.activeRevisionId;
   }
@@ -64,7 +82,7 @@
     if (key) setText(item, key); else item.textContent = text;
     return item;
   }
-  async function renderRevision(current = generation) {
+  async function renderRevision(current = generation, loadedContent = null) {
     const revision = revisions.find(item => String(item.revisionNumber) === el("revision-select").value);
     el("revision-yaml").textContent = "";
     el("revision-meta").textContent = "";
@@ -74,7 +92,8 @@
     const isCurrent = () => current === generation && policy?.id === policyID && el("revision-select").value === String(revision.revisionNumber);
     setText(el("revision-meta"), "revisionLoading");
     try {
-      const content = await request("/api/v1alpha1/policy-revisions/" + encodeURIComponent(revision.id));
+      const content = loadedContent?.id === revision.id ? loadedContent :
+        await request("/api/v1alpha1/policy-revisions/" + encodeURIComponent(revision.id));
       if (!isCurrent()) return;
       el("revision-yaml").textContent = content.yaml;
       el("revision-meta").removeAttribute("data-i18n");
@@ -97,12 +116,21 @@
     revisionOptions();
     return true;
   }
+  async function loadActiveRevision(selected) {
+    const content = await request("/api/v1alpha1/policy-revisions/" + encodeURIComponent(selected.activeRevisionId));
+    if (content.id !== selected.activeRevisionId || content.policyId !== selected.id || typeof content.yaml !== "string") {
+      throw new Error("Active revision identity mismatch");
+    }
+    return content;
+  }
   async function openScene(key, current) {
     const base = "/api/v1alpha1/scenes/" + encodeURIComponent(key);
     const loaded = await request(base);
     if (current !== generation) return;
     if (!loaded.defaultPolicyId) {
       scene = loaded; policy = null; draft = null; revisions = [];
+      editing = false; activeRevision = null; previewFailed = false;
+      el("spec-yaml").value = ""; draftView();
       revisionBefore = 0; revisionNext = null; revisionPrevious = [];
       window.ConsoleUI?.updateScene(scene);
       el("scene-select").value = scene.key;
@@ -117,21 +145,37 @@
       request(policyBase + "/draft").catch(error => { if (error.status === 404) return null; throw error; }),
     ]);
     if (current !== generation) return;
+    let active = history.items.find(item => item.id === selected.activeRevisionId) || null;
+    let activeContent = null, failedPreview = false;
+    if (selected.activeRevisionId && (!currentDraft || !active)) {
+      try {
+        const content = await loadActiveRevision(selected);
+        active = content; activeContent = content;
+      } catch (error) {
+        if (error.status === 401) throw error;
+        failedPreview = true;
+      }
+    }
+    if (current !== generation) return;
     scene = loaded; policy = selected; draft = currentDraft; revisions = history.items;
+    editing = !!draft; activeRevision = activeContent; previewFailed = failedPreview;
     revisionBefore = 0; revisionNext = history.nextBefore ?? null; revisionPrevious = [];
     window.ConsoleUI?.updateScene(scene);
     el("scene-select").value = scene.key;
-    el("spec-yaml").value = draft?.yaml ?? "";
-    window.YamlEditor?.refresh();
-    const active = revisions.find(item => item.id === policy.activeRevisionId) || (policy.activeRevisionId
-      ? await request("/api/v1alpha1/policy-revisions/" + encodeURIComponent(policy.activeRevisionId)) : null);
-    if (current !== generation) return;
+    el("spec-yaml").value = draft?.yaml ?? activeRevision?.yaml ?? "";
+    draftView();
     if (active) {
       el("spec-active").removeAttribute("data-i18n");
       el("spec-active").textContent = "v" + active.revisionNumber;
-    } else setText(el("spec-active"), "noActiveSpec");
+    } else setText(el("spec-active"), policy.activeRevisionId ? "activeSpecUnavailable" : "noActiveSpec");
     revisionOptions();
-    await renderRevision(current);
+    try {
+      await renderRevision(current, activeContent);
+    } catch (error) {
+      // History content is independent of the draft editor. Authentication
+      // failures still end the session; other failures stay in the history view.
+      if (error.status === 401) throw error;
+    }
     if (current !== generation) return;
     el("spec-editor").hidden = false;
   }
@@ -165,9 +209,10 @@
       signedIn = value; generation++; busy = false;
       revisionBefore = 0; revisionNext = null; revisionPrevious = [];
       scene = null; policy = null; draft = null; revisions = [];
+      editing = false; activeRevision = null; previewFailed = false;
       el("spec-yaml").value = ""; el("revision-yaml").textContent = ""; el("revision-meta").textContent = "";
       el("revision-meta").removeAttribute("data-i18n");
-      window.YamlEditor?.refresh();
+      draftView();
       el("scene-select").replaceChildren(); el("revision-select").replaceChildren();
       el("spec-editor").hidden = true; el("spec-message").textContent = "";
       el("spec-message").removeAttribute("data-i18n");
@@ -204,13 +249,39 @@
     });
   });
   el("spec-yaml").addEventListener("input", () => { buttons(); notice("specUnsaved"); });
+  el("start-spec-draft").addEventListener("click", () => {
+    if (!signedIn || busy || editing || !policy || (policy.activeRevisionId && !activeRevision)) return;
+    editing = true;
+    el("spec-yaml").value = activeRevision?.yaml ?? "";
+    draftView(); buttons(); notice("specUnsaved");
+    el("spec-yaml").focus();
+  });
+  el("retry-spec-preview").addEventListener("click", () => action(async current => {
+    if (!scene || !policy?.activeRevisionId) return;
+    const selected = policy;
+    try {
+      const content = await loadActiveRevision(selected);
+      if (current !== generation || policy?.id !== selected.id || policy.activeRevisionId !== content.id) return;
+      activeRevision = content; previewFailed = false;
+      if (!editing) el("spec-yaml").value = content.yaml;
+      el("spec-active").removeAttribute("data-i18n");
+      el("spec-active").textContent = "v" + content.revisionNumber;
+      draftView();
+      notice(dirty() ? "specUnsaved" : "specLoaded");
+    } catch (error) {
+      if (current !== generation) return;
+      if (error.status === 401) throw error;
+      previewFailed = true; draftView();
+    }
+  }));
   el("spec-example").addEventListener("click", () => {
-    if (!scene || !mayDiscard()) return;
+    if (!scene || !editing || !mayDiscard()) return;
     el("spec-yaml").value = "apiVersion: guardrail.open/v1alpha1\nkind: GuardrailSpec\nmetadata:\n  name: recovery-gate\nspec:\n  description: Check whether recovery can safely continue\n  instructions: Inspect the current state and submit a verdict with evidence\n  validForSeconds: 900\n  checks:\n    - id: recovery-readiness\n      displayName: Recovery readiness\n      description: Verify that the cause of the interruption is resolved\n      instructions: Inspect current logs and metrics and provide reproducible evidence\n      criteria:\n        pass: The interruption cause is resolved and health is stable\n        block: A confirmed failure makes recovery unsafe\n        unknown: Current evidence is insufficient to decide\n      evidenceRequirements:\n        - id: recovery-evidence\n          description: Record the observation source and current health\n          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]\n";
     window.YamlEditor?.refresh();
     buttons(); notice("specUnsaved");
   });
   el("save-spec").addEventListener("click", () => action(async current => {
+    if (!editing) return;
     const yaml = el("spec-yaml").value;
     if (new TextEncoder().encode(yaml).length > 65536) { notice("specTooLarge"); return; }
     const saved = await request(path("/draft"), "PUT", {yaml});
@@ -219,7 +290,7 @@
     notice("specSaved");
   }));
   el("publish-spec").addEventListener("click", () => {
-    if (!draft) return;
+    if (!editing || !draft) return;
     if (dirty()) { notice("saveSpecFirst"); return; }
     if (!window.confirm(t("confirmSpecPublish"))) return;
     return action(async current => {

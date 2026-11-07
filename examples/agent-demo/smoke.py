@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Live service/CLI/Jenkins gate smoke for outcomes and forged Evidence (no model)."""
 
+import argparse
+import getpass
 import json
 from datetime import datetime, timezone
 import os
 from pathlib import Path
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
@@ -17,13 +20,17 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = Path(__file__).resolve().parent
+READINESS_TIMEOUT_SECONDS = 40
 
 
-def run(*args, env=None, input_text=None):
+def run(*args, env=None, input_text=None, timeout=120):
     result = subprocess.run(args, cwd=ROOT, env=env, input=input_text, text=True,
-                            capture_output=True, timeout=120)
+                            capture_output=True, timeout=timeout)
     if result.returncode:
-        raise RuntimeError(f"{Path(args[0]).name} {args[1]} failed (exit {result.returncode})")
+        hint = (" Check the Go version in go.mod and run make build for compiler diagnostics."
+                if args[1] == "build" else
+                " See docs/getting-started.md#troubleshooting; captured credentials are not printed.")
+        raise RuntimeError(f"{Path(args[0]).name} {args[1]} failed (exit {result.returncode})." + hint)
     return result.stdout
 
 
@@ -39,17 +46,94 @@ def read_json(url, token=None):
         return json.load(response)
 
 
-def main():
+def options(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Run four synthetic Recovery cases against a temporary local service.")
+    parser.add_argument("--keep-running", action="store_true",
+                        help="keep the service and Runs available in the browser until Ctrl-C")
+    parser.add_argument("--password-stdin", action="store_true",
+                        help="read the temporary demo administrator password from stdin")
+    args = parser.parse_args(argv)
+    if sys.version_info < (3, 9):
+        parser.error("Python 3.9+ is required. Use a newer Python, or run the native "
+                     "binaries with the manual walkthrough in docs/getting-started.md.")
+    if args.password_stdin and not args.keep_running:
+        parser.error("--password-stdin requires --keep-running")
+    return args
+
+
+def administrator_password(args):
+    if not args.keep_running:
+        return secrets.token_urlsafe(24)
+    if args.password_stdin:
+        password = sys.stdin.readline().rstrip("\r\n")
+    else:
+        if not sys.stdin.isatty():
+            raise ValueError("--keep-running needs a terminal for the hidden password prompt; "
+                             "use --password-stdin for automation")
+        password = getpass.getpass("Choose a password for the temporary demo administrator: ")
+        if password != getpass.getpass("Confirm password: "):
+            raise ValueError("passwords do not match")
+    if len(password) < 6 or len(password.encode("utf-8")) > 128:
+        raise ValueError("password must contain at least 6 characters and at most 128 UTF-8 bytes")
+    return password
+
+
+def wait_for_service(service, origin):
+    deadline = time.monotonic() + READINESS_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        if service.poll() is not None:
+            raise RuntimeError(f"local server exited before readiness (exit {service.returncode}). "
+                               "Try starting open-guardrail serve in a terminal; "
+                               "see docs/getting-started.md#troubleshooting.")
+        try:
+            with urlopen(origin + "/readyz", timeout=0.2) as response:
+                if response.status == 200:
+                    return
+        except (HTTPError, URLError, TimeoutError):
+            time.sleep(0.1)
+    raise RuntimeError("local server did not become ready within "
+                       f"{READINESS_TIMEOUT_SECONDS}s. Try starting open-guardrail serve "
+                       "in a terminal to inspect its startup diagnostics.")
+
+
+def inspect_in_browser(service, origin):
+    print(f"Open {origin} and sign in as demo with the password you chose.", flush=True)
+    print("Select Runs to inspect the four synthetic assessments and their evidence.", flush=True)
+    print("Press Ctrl-C to stop the service and remove its temporary data and credentials.",
+          flush=True)
+    try:
+        while service.poll() is None:
+            time.sleep(0.2)
+    except KeyboardInterrupt:
+        return
+    raise RuntimeError(f"local server stopped while waiting for inspection (exit {service.returncode})")
+
+
+def main(argv=None):
+    args = options(argv)
+    password = administrator_password(args)
+    started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="open-guardrail-demo-") as temporary:
         work = Path(temporary)
         if (ROOT / "go.mod").is_file():
+            go = os.environ.get("GO", "go")
+            if shutil.which(go) is None:
+                raise RuntimeError("source demo needs Go from go.mod. Install Go, or use a "
+                                   "native release archive; see docs/getting-started.md.")
+            print("Building server and CLI from source; the first build may download Go dependencies.",
+                  flush=True)
             server_bin, cli_bin = work / "open-guardrail", work / "guardrailctl"
-            run("go", "build", "-o", str(server_bin), "./cmd/open-guardrail")
-            run("go", "build", "-o", str(cli_bin), "./cmd/guardrailctl")
+            build_environment = {**os.environ, "GOWORK": "off", "CGO_ENABLED": "0"}
+            run(go, "build", "-o", str(server_bin), "./cmd/open-guardrail",
+                env=build_environment, timeout=300)
+            run(go, "build", "-o", str(cli_bin), "./cmd/guardrailctl",
+                env=build_environment, timeout=300)
         else:
             server_bin, cli_bin = ROOT / "open-guardrail", ROOT / "guardrailctl"
             if not server_bin.is_file() or not cli_bin.is_file():
                 raise RuntimeError("release archive must contain both server and CLI binaries")
+        print("Starting an isolated loopback service with temporary SQLite data.", flush=True)
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             port = listener.getsockname()[1]
@@ -64,17 +148,7 @@ def main():
                                         "--data-dir", str(work / "data")), cwd=work, env=environment,
                                        stdout=subprocess.DEVNULL, stderr=server_log)
         try:
-            for _ in range(100):
-                if service.poll() is not None:
-                    raise RuntimeError("local server exited before readiness")
-                try:
-                    with urlopen(origin + "/readyz", timeout=0.2) as response:
-                        if response.status == 200:
-                            break
-                except (HTTPError, URLError, TimeoutError):
-                    time.sleep(0.1)
-            else:
-                raise RuntimeError("local server did not become ready")
+            wait_for_service(service, origin)
 
             try:
                 read_json(origin + "/runtime/v1alpha1/runs")
@@ -90,7 +164,6 @@ def main():
             def cli(*args, input_text=None):
                 return run(str(cli_bin), *args, env=environment, input_text=input_text)
 
-            password = secrets.token_urlsafe(24)
             cli("bootstrap", "init", "--username", "demo", "--password-stdin",
                 input_text=password + "\n")
             cli("auth", "login", "--username", "demo", "--password-stdin",
@@ -178,7 +251,8 @@ def main():
                 detail = read_json(origin + "/api/v1alpha1/runs/" + run_id, admin_token)
                 if detail["decision"] != decision:
                     raise AssertionError(f"{case}: management detail disagrees")
-                print(f"{case}: {run_id} server={decision} gate={'ALLOW' if decision == 'ALLOW' and case != 'forged' else 'DENY'}")
+                print(f"{case}: {run_id} server={decision} gate={'ALLOW' if decision == 'ALLOW' and case != 'forged' else 'DENY'}",
+                      flush=True)
             logs = server_log_path.read_text(encoding="utf-8")
             records = [json.loads(line) for line in logs.splitlines()]
             if not any(record.get("trace_id") == trace_id and record.get("status") == 401
@@ -186,6 +260,13 @@ def main():
                 raise AssertionError("CLI failure cannot be found in standard server access logs")
             if any(value in logs for value in private_values):
                 raise AssertionError("server access logs exposed a password or credential")
+            print(f"All four synthetic cases passed in {time.monotonic() - started:.1f}s.",
+                  flush=True)
+            if args.keep_running:
+                inspect_in_browser(service, origin)
+            else:
+                print("Temporary service and Runs are removed on exit. "
+                      "Add --keep-running to inspect them in the browser.", flush=True)
         finally:
             service.terminate()
             try:
@@ -198,6 +279,9 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        print("Demo interrupted; temporary service and data cleaned up.", file=sys.stderr)
+        sys.exit(130)
     except (AssertionError, RuntimeError, OSError, KeyError, ValueError,
             subprocess.TimeoutExpired) as error:
         print(f"agent demo smoke failed: {error}", file=sys.stderr)

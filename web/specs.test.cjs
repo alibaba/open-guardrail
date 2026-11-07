@@ -11,6 +11,7 @@ function page() {
   function element(id = "") {
     return {id, value: "", hidden: false, disabled: false, dataset: {}, handlers: {}, textContent: "", children: [],
       addEventListener(event, fn) { this.handlers[event] = fn; },
+      focus() { this.focused = true; },
       removeAttribute(name) { if (name === "data-i18n") delete this.dataset.i18n; },
       replaceChildren(...items) { this.children = items; this.value = items[0]?.value || ""; },
       reset() { this.values = {}; },
@@ -36,7 +37,7 @@ function page() {
     AbortSignal, TextEncoder, Date, crypto: {randomUUID: () => "operation-1"},
     fetch: async (url, opts) => {
       calls.push({url, ...opts});
-      if (state.pending) return state.pending;
+      if (state.pending && (!state.pendingUrl || state.pendingUrl === url)) return state.pending;
       let status = 200, data;
       if (url === "/api/v1alpha1/scenes") data = [scene];
       else if (url === "/api/v1alpha1/scenes/recovery") data = scene;
@@ -47,7 +48,10 @@ function page() {
         const items = eligible.slice(0, 20).map(({yaml, ...summary}) => summary);
         data = {items, ...(eligible.length > 20 ? {nextBefore: items.at(-1).revisionNumber} : {})};
       }
-      else if (url.includes("/policy-revisions/")) data = state.history.find(item => url.endsWith("/" + item.id));
+      else if (url.includes("/policy-revisions/")) {
+        if (state.revisionFailure) { status = state.revisionFailureStatus || 503; data = {message: "unavailable"}; }
+        else data = state.history.find(item => url.endsWith("/" + item.id));
+      }
       else if (url.endsWith("/draft") && opts.method === "GET") {
         if (!state.draft) {status = 404; data = {message: "Draft not found"};} else data = state.draft;
       }
@@ -83,10 +87,188 @@ test("draft edits disable publication; save and publish preserve history", async
   await p.elements.get("publish-spec").handlers.click();
   assert.equal(p.elements.get("spec-active").textContent, "v1");
   assert.equal(p.elements.get("revision-yaml").textContent, "edited yaml");
+  assert.equal(input.readOnly, true);
+  assert.equal(input.value, "edited yaml");
+  assert.equal(p.elements.get("spec-draft-notice").hidden, false);
+  p.elements.get("start-spec-draft").handlers.click();
   const request = p.calls.find(c => c.url.endsWith("/active-revision"));
   assert.equal(JSON.parse(request.body).policyRevisionId, "rev_draft");
   input.value = "next edit"; input.handlers.input();
   assert.equal(p.elements.get("revision-yaml").textContent, "edited yaml");
+});
+
+function published(number, yaml = "active yaml") {
+  return {id: "rev_" + number, policyId: "pol_1", status: "PUBLISHED", revisionNumber: number,
+    yaml, digest: "abc", publishedAt: 1, publishedBy: "admin"};
+}
+
+test("no draft shows the actual active version read-only even outside the history page", async () => {
+  const p = page();
+  p.state.draft = null;
+  p.state.history = Array.from({length: 25}, (_, i) => published(25 - i, "yaml-" + (25 - i)));
+  p.state.policy.activeRevisionId = "rev_1";
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  assert.equal(p.elements.get("spec-yaml").value, "yaml-1");
+  assert.equal(p.elements.get("spec-yaml").readOnly, true);
+  assert.equal(p.elements.get("spec-editor-label").textContent, "activeSpecReadOnly");
+  assert.equal(p.elements.get("spec-draft-notice").hidden, false);
+  assert.equal(p.elements.get("spec-editor-surface").hidden, false);
+  assert.equal(p.elements.get("spec-editor-actions").hidden, true);
+  assert.equal(p.elements.get("spec-example").hidden, true);
+  assert.equal(p.elements.get("start-spec-draft").disabled, false);
+  assert.equal(p.elements.get("spec-active").textContent, "v1");
+  assert.equal(p.elements.get("revision-yaml").textContent, "yaml-25");
+  assert.ok(p.calls.every(c => c.method === "GET"));
+  await p.elements.get("save-spec").handlers.click();
+  assert.equal(p.state.draft, null);
+  assert.ok(p.calls.every(c => c.method === "GET"));
+});
+
+test("editing the active version is local until an explicit save and does not activate it", async () => {
+  const p = page(), revision = published(2, "# Preserve comments\nchecks: []\n");
+  p.state.draft = null; p.state.history = [revision]; p.state.policy.activeRevisionId = revision.id;
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  p.elements.get("start-spec-draft").handlers.click();
+  assert.equal(p.elements.get("spec-yaml").value, revision.yaml);
+  assert.equal(p.elements.get("spec-yaml").readOnly, false);
+  assert.equal(p.elements.get("spec-yaml").focused, true);
+  assert.equal(p.elements.get("spec-draft-notice").hidden, true);
+  assert.equal(p.elements.get("spec-editor-actions").hidden, false);
+  assert.equal(p.elements.get("save-spec").disabled, false);
+  assert.equal(p.elements.get("publish-spec").disabled, true);
+  assert.equal(p.state.draft, null);
+  assert.ok(p.calls.every(c => c.method === "GET"));
+  await p.elements.get("save-spec").handlers.click();
+  assert.equal(p.state.draft.yaml, revision.yaml);
+  assert.equal(p.state.policy.activeRevisionId, "rev_2");
+  assert.equal(p.elements.get("publish-spec").disabled, false);
+  assert.equal(p.calls.filter(c => c.method === "PUT").length, 1);
+  assert.equal(p.calls.some(c => c.method === "POST" || c.url.endsWith("/active-revision")), false);
+});
+
+test("an existing draft, including empty content, opens without the active preview", async () => {
+  for (const yaml of ["saved custom draft", ""]) {
+    const p = page(); p.state.draft.yaml = yaml;
+    p.state.history = [published(1)]; p.state.policy.activeRevisionId = "rev_1";
+    p.ctx.window.SpecUI.setSignedIn(true); await settle();
+    assert.equal(p.elements.get("spec-yaml").value, yaml);
+    assert.equal(p.elements.get("spec-yaml").readOnly, false);
+    assert.equal(p.elements.get("spec-draft-notice").hidden, true);
+    assert.equal(p.elements.get("spec-editor-actions").hidden, false);
+    assert.equal(p.elements.get("save-spec").disabled, true);
+    assert.equal(p.elements.get("publish-spec").disabled, yaml === "");
+  }
+});
+
+test("an unavailable active version cannot block a draft or overwrite unsaved edits on retry", async () => {
+  const p = page();
+  p.state.history = Array.from({length: 25}, (_, i) => published(25 - i));
+  p.state.policy.activeRevisionId = "rev_1";
+  p.state.revisionFailure = true;
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  const input = p.elements.get("spec-yaml");
+  assert.equal(p.elements.get("spec-editor").hidden, false);
+  assert.equal(input.value, "saved yaml");
+  assert.equal(input.readOnly, false);
+  assert.equal(p.elements.get("spec-active").textContent, "activeSpecUnavailable");
+  assert.equal(p.elements.get("spec-preview-retry").hidden, false);
+  assert.equal(p.elements.get("spec-preview-warning").hidden, false);
+  input.value = "unsaved local draft"; input.handlers.input();
+  p.state.revisionFailure = false;
+  await p.elements.get("retry-spec-preview").handlers.click();
+  assert.equal(input.value, "unsaved local draft");
+  assert.equal(p.state.draft.yaml, "saved yaml");
+  assert.equal(p.elements.get("save-spec").disabled, false);
+  assert.equal(p.elements.get("publish-spec").disabled, true);
+  assert.equal(p.elements.get("spec-active").textContent, "v1");
+  assert.equal(p.elements.get("spec-preview-retry").hidden, true);
+  assert.ok(p.calls.every(c => c.method === "GET"));
+});
+
+test("a history content failure does not block editing an available draft", async () => {
+  const p = page();
+  p.state.history = [published(1)]; p.state.policy.activeRevisionId = "rev_1";
+  p.state.revisionFailure = true;
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  assert.equal(p.elements.get("spec-editor").hidden, false);
+  assert.equal(p.elements.get("spec-yaml").value, "saved yaml");
+  assert.equal(p.elements.get("spec-yaml").readOnly, false);
+  assert.equal(p.elements.get("revision-meta").textContent, "revisionLoadFailed");
+  assert.notEqual(p.elements.get("spec-message").textContent, "specRequestFailed");
+});
+
+test("unauthorized active-version reads still end the session when a draft exists", async () => {
+  const p = page();
+  p.state.history = Array.from({length: 25}, (_, i) => published(25 - i));
+  p.state.policy.activeRevisionId = "rev_1";
+  p.state.revisionFailure = true; p.state.revisionFailureStatus = 401;
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  assert.equal(p.elements.get("spec-editor").hidden, true);
+  assert.equal(p.elements.get("spec-yaml").value, "");
+});
+
+test("without an active version the empty state offers explicit draft creation", async () => {
+  const p = page(); p.state.draft = null;
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  assert.equal(p.elements.get("spec-preview-hint").textContent, "noDraftNoActiveHint");
+  assert.equal(p.elements.get("start-spec-draft").textContent, "createSpecDraft");
+  assert.equal(p.elements.get("spec-editor-surface").hidden, true);
+  p.elements.get("start-spec-draft").handlers.click();
+  assert.equal(p.elements.get("spec-yaml").readOnly, false);
+  assert.equal(p.elements.get("spec-editor-surface").hidden, false);
+  assert.equal(p.elements.get("spec-yaml").value, "");
+  assert.equal(p.state.draft, null);
+});
+
+test("a failed active read offers retry and never opens an empty copy for editing", async () => {
+  const p = page(); p.state.draft = null;
+  p.state.history = [published(1)]; p.state.policy.activeRevisionId = "rev_1";
+  p.state.revisionFailure = true;
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  assert.equal(p.elements.get("spec-editor").hidden, false);
+  assert.equal(p.elements.get("spec-draft-notice").hidden, false);
+  assert.equal(p.elements.get("spec-preview-hint").textContent, "activeSpecLoadFailed");
+  assert.equal(p.elements.get("retry-spec-preview").hidden, false);
+  assert.equal(p.elements.get("start-spec-draft").disabled, true);
+  p.elements.get("start-spec-draft").handlers.click();
+  assert.equal(p.elements.get("spec-yaml").readOnly, true);
+  assert.equal(p.elements.get("spec-editor-actions").hidden, true);
+  p.state.revisionFailure = false;
+  await p.elements.get("retry-spec-preview").handlers.click();
+  assert.equal(p.elements.get("spec-yaml").value, "active yaml");
+  assert.equal(p.elements.get("start-spec-draft").disabled, false);
+  assert.equal(p.elements.get("retry-spec-preview").hidden, true);
+  assert.ok(p.calls.every(c => c.method === "GET"));
+});
+
+test("an active preview arriving after logout cannot restore policy text", async () => {
+  const p = page(); p.state.draft = null;
+  p.state.history = [published(1, "private policy")]; p.state.policy.activeRevisionId = "rev_1";
+  let resolve;
+  p.state.pendingUrl = "/api/v1alpha1/policy-revisions/rev_1";
+  p.state.pending = new Promise(done => {resolve = done;});
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  p.ctx.window.SpecUI.setSignedIn(false);
+  resolve({ok: true, status: 200, json: async () => published(1, "private policy")}); await settle();
+  assert.equal(p.elements.get("spec-yaml").value, "");
+  assert.equal(p.elements.get("spec-editor").hidden, true);
+  assert.equal(p.elements.get("start-spec-draft").disabled, true);
+});
+test("a preview retry arriving after logout cannot restore a draft or version", async () => {
+  const p = page();
+  p.state.history = Array.from({length: 25}, (_, i) => published(25 - i));
+  p.state.policy.activeRevisionId = "rev_1"; p.state.revisionFailure = true;
+  p.ctx.window.SpecUI.setSignedIn(true); await settle();
+  let resolve;
+  p.state.pendingUrl = "/api/v1alpha1/policy-revisions/rev_1";
+  p.state.pending = new Promise(done => {resolve = done;});
+  const retry = p.elements.get("retry-spec-preview").handlers.click();
+  p.ctx.window.SpecUI.setSignedIn(false);
+  resolve({ok: true, status: 200, json: async () => published(1, "private policy")});
+  await retry;
+  assert.equal(p.elements.get("spec-yaml").value, "");
+  assert.equal(p.elements.get("spec-editor").hidden, true);
+  assert.equal(p.elements.get("spec-preview-retry").hidden, true);
 });
 test("conflicts retain the editor content and require an explicit reload", async () => {
   const p = page(); p.ctx.window.SpecUI.setSignedIn(true); await settle();

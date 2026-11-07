@@ -52,19 +52,38 @@ technical self-check without touching your existing service.
 
 ## Isolated technical self-check
 
+For a guided local trial that keeps all four synthetic Runs available in the
+browser, use:
+
+```sh
+python3 examples/agent-demo/smoke.py --keep-running
+```
+
+Choose the temporary administrator password at the hidden prompts. After the
+checks pass, open the printed URL, sign in as `demo` and select **Runs**.
+Ctrl-C stops the service and removes its temporary data and credentials.
+The source-only `make demo` target starts the separate
+[file cleanup example](../cleanup-demo/README.md). See
+[troubleshooting](../../docs/getting-started.md#troubleshooting) for dependency,
+startup and login issues.
+
 From either the source checkout or an extracted native release, run:
 
 ```sh
 python3 examples/agent-demo/smoke.py
 ```
 
-Python 3.12+ is needed for this optional self-check. In a source checkout it builds
+Python 3.9+ is needed for this optional self-check. In a source checkout it builds
 the server and CLI with Go; in a release it uses the two packaged binaries and
 needs no Go or Node.js. It starts its own loopback service, uses a temporary data
 and credential directory, and leaves an existing service untouched. It verifies
 healthy ALLOW, unhealthy DENY, unknown DENY, and a stored ALLOW whose forged
 Evidence must still be blocked by the delivery gate. These are deterministic
 contract checks and do not measure an Agent's reasoning quality.
+
+The optional `--password-stdin` flag reads the temporary administrator password
+from stdin for automated `--keep-running` trials. No password is accepted as a
+command-line argument.
 
 Release maintainers use `make smoke-release VERSION=...` to run this from the
 actual archive with an empty executable search path. See

@@ -1,5 +1,21 @@
 # Release notes
 
+## Unreleased
+
+- The first-use demo now runs a file cleanup task against a real local service
+  and a controlled file tool. Its browser page shows actual Runs, accepted
+  evidence and file effects. The predefined runner needs no model account.
+  Requests and batch limits can be changed and rerun; the original Recovery
+  contract self-check remains available separately.
+- The optional Recovery demo can keep its temporary service and four synthetic
+  Runs available for browser inspection with `--keep-running`. Choose the
+  temporary administrator password through hidden prompts or `--password-stdin`;
+  Ctrl-C stops the service and removes its temporary data and credentials.
+- First-use instructions now connect demo results to the Runs page, and the demo
+  reports Python/Go requirements, build progress and startup exit codes.
+- The optional local demo supports Python 3.9+, including the default Python on
+  older macOS installations. Maintainer release scripts still need Python 3.12+.
+
 ## Development preview
 
 This page describes the current preview. For versioned releases, see
@@ -39,7 +55,7 @@ The native packaging matrix contains both `open-guardrail` and `guardrailctl`:
 | macOS | amd64, arm64 | `darwin-amd64`, `darwin-arm64` |
 
 These binaries require no Go, Node.js or Python runtime. The optional synthetic
-self-check requires Python 3.12+. The repository also includes a Docker Compose
+self-check requires Python 3.9+. The repository also includes a Docker Compose
 example behind HTTPS; an official container registry is not defined yet.
 There is no Windows archive in the current packaging matrix.
 
