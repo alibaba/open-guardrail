@@ -1,10 +1,19 @@
 # OpenGuardrail
 
-**General-purpose, evidence-based guardrails for any scenario.**
+English | [简体中文](docs/i18n/README.zh-CN.md)
 
-OpenGuardrail is a standalone service for defining policy-based checks, recording
-assessments and evidence, and returning an `ALLOW` or `DENY` decision.
-Applications, services, scripts and agents integrate through HTTP or the
+**Evidence-based action guardrails for AI agents.**
+
+OpenGuardrail is a standalone guardrail service for AI agents that operate real
+systems.
+
+Developers define the checks required before an action. The agent follows the
+policy, performs the checks and submits results and evidence. OpenGuardrail
+validates the submission, records the assessment and returns `ALLOW` or `DENY`.
+The execution tool verifies the decision and its validity before acting.
+
+Each assessment links the policy revision, check results, evidence and decision
+for verification and audit. Agents and tools use the HTTP API or the
 `guardrailctl` CLI.
 
 **Status: development preview.** The API is `v1alpha1`. See
@@ -17,56 +26,60 @@ Applications, services, scripts and agents integrate through HTTP or the
 
 ## Why OpenGuardrail?
 
-When a system needs a decision backed by explicit criteria and evidence, it needs
-answers to concrete questions: Which policy applies? What is being assessed?
-What evidence supports the assessment? Is the decision still valid?
+When an agent has permission to operate real systems, required checks need to
+be enforced at execution time. Prompts can tell the agent to check first, but
+execution tools still need a verifiable basis for allowing an action. Audits
+also need a clear record of the policy, check results and evidence used at the
+time.
 
-OpenGuardrail records these inputs together so a caller can inspect the policy
-revision, evaluation context, submitted evidence and final decision for one Run.
-The caller defines its scenario and controls how the decision is used.
+If that information lives only in agent conversations and tool logs, each
+execution tool must extract and correlate it before deciding whether to proceed.
+OpenGuardrail organizes it into a consistent assessment record for tools to
+verify before acting and for later audits.
 
 ## Scenarios
 
-Define a Scene and its policies around your own use case. Domain-specific
-observations and assessment logic come from your evaluators and integrations.
-The core policy, evidence and decision contracts are shared across scenarios.
+Each business operation defines its own requirements. For example:
 
-Production delivery and recovery are the project's first reference scenarios.
-The current demos use synthetic data to show a delivery system consuming a
-decision. Other scenarios can use the same API and CLI with their own policies,
-evaluation context and evidence.
+| Operation | Example checks |
+| --- | --- |
+| Release an application | Required tests pass; the release target matches the request |
+| Change configuration | The change scope meets the policy; required approvals are recorded in an existing system |
+| Modify data | Target resources and expected impact are within allowed bounds |
 
-## Target architecture
+These policy examples depend on external observation and execution integrations.
+The agent uses connected tools to perform checks and collect evidence. The
+execution tool enforces the decision at the point of action.
 
-The target architecture below uses CD delivery as an example of the shared
-guardrail model. An agent follows a Scene's checks and submits evidence;
-OpenGuardrail validates the submission and records a decision; the calling system
-verifies that decision before acting. Blue components belong to OpenGuardrail;
-gray components represent the agent and external systems.
-
-[![OpenGuardrail target architecture: an agent uses a Skill and guardrailctl to submit checks and evidence; the CLI and console share the OpenAPI service; policy, Run, evidence, decision and audit components share storage, while CD systems control deployment.](docs/images/target-architecture.png)](docs/images/target-architecture.svg)
-
-*Open the diagram for the full-size SVG. Execution Claims and receipts,
-replaceable providers, and some CD integrations remain planned. The server
-validates evidence structure and completeness; the calling system verifies the
-observations. See [current capabilities and limits](#current-capabilities-and-limits)
-and [reference integrations](#reference-integrations) for what works today.*
+A **Scene** groups the policies for a use case. Scenes share the same policy,
+evidence and decision model, so new scenarios can be added without changing the
+service's core API.
 
 ## How it works
 
-The [evaluation flow](docs/getting-started.md#evaluation-flow) in the getting-started
-guide illustrates the current policy-to-decision lifecycle.
+```text
+Policy checks defined per operation
+                       |
+The agent performs checks with its tools
+and submits check results and evidence
+                       |
+OpenGuardrail validates the submission, records the assessment
+and returns ALLOW / DENY
+                       |
+The execution tool verifies the decision and evidence before acting
+```
 
 1. **Publish a policy.** Define checks and evidence requirements in a GuardrailSpec
    and publish an immutable revision, then activate it for the Scene.
-2. **Create a Run.** A caller records the evaluation context and freezes the selected
-   policy revision and evaluation deadline.
-3. **Submit findings.** An evaluator submits complete check results and
-   evidence. Intermediate snapshots can precede a final submission.
+2. **Start an assessment.** Create a Run to record the operation's context and freeze
+   the selected policy revision and evaluation deadline.
+3. **Check and submit.** The agent reads the Run's policy requirements, performs
+   the checks with its tools, and submits complete results and evidence.
+   Intermediate snapshots can precede a final submission.
 4. **Read the decision.** Query the authoritative Run for its stored decision and
    validity, then read its referenced Submission to inspect the evidence.
-5. **Use the decision.** The calling system verifies the evidence and validity,
-   then applies its own scenario-specific rules.
+5. **Verify before acting.** The execution tool checks the authoritative decision,
+   its validity and the evidence, then applies business rules before acting.
 
 For a completed Run, the check results aggregate as follows:
 
@@ -82,35 +95,46 @@ validity. See [Runs and submissions](docs/runs.md).
 
 ## Quickstart
 
-Get started with the [source repository](https://github.com/alibaba/open-guardrail).
-For official binary releases, see [GitHub Releases](https://github.com/alibaba/open-guardrail/releases).
+Run a file cleanup task and watch a guarded tool act on real files in a disposable
+directory. This trial needs no model account, Jenkins, Docker or separate database.
 
-The included local trial uses the Recovery scene. For a complete example, install
-Git, the Go version specified in `go.mod` and Python 3.12+, then run:
+### Run a guarded task
+
+If you have a native archive from [GitHub Releases](https://github.com/alibaba/open-guardrail/releases),
+follow [archive verification](docs/releases.md#check-and-try-a-downloaded-archive),
+extract it and run the demo command below from its extraction root. The demo
+needs Python 3.9+; the packaged binaries need no Go or Node.js.
+
+From source, install Git, the Go version specified in `go.mod` and Python 3.9+:
 
 ```sh
 git clone https://github.com/alibaba/open-guardrail.git
 cd open-guardrail
-python3 examples/agent-demo/smoke.py
+python3 examples/cleanup-demo/demo.py
 ```
 
-The script builds both commands, starts a temporary local service, publishes the
-example policy, creates Runs and verifies their decisions. It uses synthetic data
-and deterministic checks; no model, external service or deployment platform is
-required.
+Choose a console password at the hidden prompts. The script builds both commands
+from source or uses the archive's binaries, then prints a **Demo** URL and a
+**Console** URL. Open the Demo first; it needs no login.
 
-Each case prints a real Run ID. The expected outcomes are:
+Click **Run cleanup task**. The initial request includes temporary files, orders
+and configuration. A predefined runner submits the observed file state and gets
+a real `DENY`. It narrows the request, creates another Run and gets `ALLOW`.
+The controlled tool verifies that Run and its evidence before deleting only the
+temporary files. Orders and configuration remain on disk.
 
-| Case | Server decision | Delivery gate |
-| --- | --- | --- |
-| Healthy observation | `ALLOW` | `ALLOW` |
-| Unhealthy observation | `DENY` | `DENY` |
-| Probe timeout (`unknown`) | `DENY` | `DENY` |
-| Submitted evidence disagrees with the gate's observation | `ALLOW` | `DENY` |
+Change the selected files, disable automatic revision or lower the batch limit,
+then run again. Expand a Run to inspect its frozen policy and accepted evidence.
+The runner uses no model; the service calls and file operations are real.
+See the [demo guide](examples/cleanup-demo/README.md) for the workflow and limits.
 
-The last case demonstrates the integration's evidence check. A stored `ALLOW`
-does not establish that submitted observations are true. The temporary service
-and its data are removed when the trial finishes.
+Keep the terminal open. Ctrl-C stops both services and removes their temporary
+data and credentials. The separate Console uses username `demo` and the password
+chosen at startup; its **Runs** page contains the same Run IDs. For the original
+four-case Recovery contract self-check, run
+`python3 examples/agent-demo/smoke.py`.
+
+### Start a persistent service
 
 To keep a service running and inspect your own Runs in the browser, use Go and
 Make from the checkout root:
@@ -123,9 +147,29 @@ make build
 Open <http://127.0.0.1:8080> and create the first administrator. There is no default
 password. SQLite stores data in `./data`; no separate database service is needed.
 
-Follow [Getting started](docs/getting-started.md) to publish a policy, submit a
-synthetic assessment and inspect a decision in the UI. To let an agent assess
-the sample observations, follow the [Recovery Agent demo](examples/agent-demo/README.md).
+### Next steps
+
+| Goal | Guide |
+| --- | --- |
+| Understand how a policy affects a decision | [Getting started](docs/getting-started.md): publish a policy, submit an assessment and inspect its evidence |
+| Have an agent perform the checks | [Agent demo](examples/agent-demo/README.md): let an agent assess the sample observations and submit its findings |
+| Protect an operation in my own tool | [Integration guide](integrations/README.md) and [API and CLI](docs/api.md): define the checks, connect observation sources and verify the decision in your execution tool |
+
+## Target architecture
+
+The target architecture below uses CD delivery as one example of the shared
+guardrail model. An agent follows a Scene's checks and submits evidence;
+OpenGuardrail validates the submission and records a decision; the execution tool
+verifies the decision and evidence before acting. Blue components belong to
+OpenGuardrail; gray components represent the agent and external systems.
+
+[![OpenGuardrail target architecture: an agent uses a Skill and guardrailctl to submit checks and evidence; the CLI and console share the OpenAPI service; policy, Run, evidence, decision and audit components share storage, while CD systems control deployment.](docs/images/target-architecture.png)](docs/images/target-architecture.svg)
+
+*Open the diagram for the full-size SVG. Execution Claims and receipts,
+replaceable providers, and some CD integrations remain planned. The server
+validates evidence structure and completeness; the calling system verifies the
+observations. See [current capabilities and limits](#current-capabilities-and-limits)
+and [reference integrations](#reference-integrations) for what works today.*
 
 ## Current capabilities and limits
 
@@ -143,8 +187,9 @@ The preview includes:
 
 The current boundaries are:
 
-- Evaluators run outside the service. Evaluator registration and attestation are
-  not implemented; submitted evidence is not independently verified by the server.
+- Checks run outside the service, in your agent or integration. The server does
+  not independently verify submitted observations. Registration and attestation
+  of external evaluators are not implemented.
 - Applying a decision and controlling actions belong to the calling system.
   Execution Claims and ActionResults remain planned.
 - Multi-instance operation and replaceable identity/provider APIs are not yet
@@ -157,12 +202,12 @@ and [security policy](SECURITY.md) for details.
 ## Reference integrations
 
 Use the versioned [HTTP/OpenAPI contract](api/openapi/openapi.yaml) or the
-[shared CLI](cmd/guardrailctl/README.md) to connect your application, service,
-script or agent. The examples below focus on the first production-delivery and
-recovery scenarios.
+[shared CLI](cmd/guardrailctl/README.md) to connect an application, service,
+script or agent. The examples cover local file operations and delivery workflows.
 
 | Integration | Current status |
 | --- | --- |
+| [Live file cleanup demo](examples/cleanup-demo/README.md) | Real Runs and guarded deletion in a disposable directory; predefined runner without a model |
 | [Local Recovery Agent demo](examples/agent-demo/README.md) | Synthetic observations; agent-driven assessment and a deterministic self-check |
 | [Jenkins](integrations/jenkins/README.md) | Synthetic pipeline demo with an outside agent and delivery-side evidence verification |
 | [Argo Rollouts](integrations/argo/README.md) | Synthetic Analysis Job demo |

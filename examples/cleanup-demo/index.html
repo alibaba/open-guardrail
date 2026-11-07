@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OpenGuardrail · Live cleanup demo</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316654d'/%3E%3Ctext x='8' y='24' fill='white' font-size='24'%3EG%3C/text%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7f5;
+        --paper: #fff;
+        --ink: #20352c;
+        --muted: #56695f;
+        --line: #d7e2da;
+        --green: #16654d;
+        --green-soft: #edf6f0;
+        --red: #a32e32;
+        --red-soft: #fff3f1;
+        --amber: #79570d;
+        --radius: 10px;
+        --panel-space: 20px;
+        font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      body, h1, h2, h3, p, ul, ol { margin: 0; }
+      button, input, select { font: inherit; }
+      button, summary { cursor: pointer; }
+      a { color: var(--green); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      :where(button, a, input, select, summary):focus-visible {
+        outline: 3px solid #72af96;
+        outline-offset: 3px;
+      }
+      button {
+        min-height: 44px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 10px 16px;
+        background: var(--green);
+        color: white;
+        font-weight: 650;
+      }
+      button:hover:not(:disabled) { background: #104d3b; }
+      button:disabled { opacity: .55; cursor: not-allowed; }
+      .quiet { background: var(--paper); border-color: var(--line); color: var(--ink); }
+      .quiet:hover:not(:disabled) { background: var(--bg); }
+      select {
+        min-height: 44px;
+        padding: 8px 12px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--ink);
+      }
+      input[type="checkbox"] {
+        accent-color: var(--green);
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        flex-shrink: 0;
+      }
+      code, pre, .filename {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        overflow-wrap: anywhere;
+      }
+      code, pre { font-size: 12px; line-height: 1.7; }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px;
+        max-height: 320px;
+        overflow: auto;
+        margin: 8px 0 0;
+      }
+      small, .count, .hint, .file-meta, .file-label { font-size: 12px; color: var(--muted); }
+      .shell { max-width: 1160px; margin: auto; padding: 0 28px 28px; }
+      .topbar {
+        min-height: 76px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 750; color: var(--ink); }
+      .mark {
+        display: grid;
+        place-items: center;
+        background: var(--green);
+        color: white;
+        width: 28px;
+        height: 32px;
+        border-radius: 7px 7px 11px 11px;
+        flex-shrink: 0;
+      }
+      .top-actions { display: flex; align-items: center; gap: 12px; }
+      .live { font-size: 12px; color: var(--green); }
+      .intro { padding: 24px 0; }
+      h1 { font-size: 28px; line-height: 1.35; letter-spacing: -.4px; }
+      .intro p { margin-top: 8px; max-width: 780px; color: var(--muted); }
+      .runner-note { font-size: 12px; }
+      .connection { padding: 12px 16px; border: 1px solid #edd6ae; border-radius: 6px; background: #fff9ec; margin-bottom: 20px; color: var(--amber); }
+      .connection.error { color: var(--red); background: var(--red-soft); border-color: #edccca; }
+      .workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: stretch; gap: 20px; }
+      .card { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+      .card-head { min-height: 68px; padding: 12px var(--panel-space); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      h2 { font-size: 17px; line-height: 26px; }
+      h3 { font-size: 14px; line-height: 22px; }
+      .panel-body { padding: var(--panel-space); }
+      .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+      .selection { display: grid; border-top: 1px solid var(--line); }
+      .target { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; align-items: center; gap: 12px; min-height: 60px; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+      .target:has(input:focus-visible) { background: var(--green-soft); }
+      .file-content { min-width: 0; }
+      .filename { display: block; font-size: 13px; line-height: 22px; font-weight: 600; }
+      .file-meta { display: block; }
+      .file-label { text-align: right; }
+      .target.risk .file-label { color: var(--red); }
+      .folder-foot { margin-top: 8px; color: var(--muted); font-size: 12px; }
+      .folder-foot summary, .evidence > summary { min-height: 44px; align-content: center; }
+      .folder-foot code { display: block; padding-bottom: 8px; }
+      .rule { margin-top: 16px; padding: 0; border: 0; min-width: 0; }
+      .rule legend { padding: 0; font-weight: 650; }
+      .rule ul { padding-left: 18px; margin: 8px 0 12px; color: var(--muted); font-size: 13px; }
+      .limit { display: grid; grid-template-columns: minmax(0,1fr) 108px; align-items: center; gap: 16px; }
+      .repair { display: grid; grid-template-columns: minmax(0,1fr) 36px; align-items: center; gap: 16px; min-height: 44px; margin-top: 16px; cursor: pointer; }
+      .repair-text strong { display: block; font-size: 14px; font-weight: 500; }
+      .repair-text small { display: block; margin-top: 2px; }
+      .repair input { appearance: none; width: 36px; height: 22px; border: 1px solid #7c8e82; border-radius: 12px; background: #7c8e82; position: relative; }
+      .repair input:checked { background: var(--green); border-color: var(--green); }
+      .repair input:before { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: white; border-radius: 50%; }
+      .repair input:checked:before { left: 16px; }
+      .run-button { white-space: nowrap; }
+      .hint { margin-top: 8px; }
+      .outcome { display: flex; flex-direction: column; }
+      .outcome-body { display: flex; flex-direction: column; flex: 1; }
+      .result-summary { padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+      .result-summary h3 { font-size: 22px; line-height: 1.4; }
+      .result-summary p { margin-top: 8px; color: var(--muted); }
+      .result-summary.denied h3, .result-summary.error h3 { color: var(--red); }
+      .result-summary.completed h3 { color: var(--green); }
+      .outcome-body.is-empty .result-summary { border: 0; padding: 24px 0; margin: auto 0; }
+      .outcome-body.is-empty .result-summary p { max-width: 30em; }
+      .decision-list { list-style: none; padding: 0; }
+      .decision { padding: 16px 0; border-bottom: 1px solid var(--line); }
+      .record-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .badge { display: inline-flex; align-items: center; min-height: 24px; font-size: 12px; font-weight: 650; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+      .badge.deny { background: #ffe5e0; color: var(--red); }
+      .badge.allow { background: #dcefe2; color: var(--green); }
+      .decision-targets { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 8px; }
+      .check { font-size: 13px; margin-top: 6px; }
+      .check.fail { color: var(--red); }
+      .check.pass { color: var(--green); }
+      .file-effects { margin-top: 20px; }
+      .effects-list { list-style: none; padding: 0; margin-top: 8px; }
+      .effects-list li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; padding: 8px 0; align-items: baseline; }
+      .effect-label { font-size: 13px; color: var(--muted); }
+      .effect-label.deleted { color: var(--green); font-weight: 600; }
+      .end-note { margin-top: 12px; font-size: 13px; color: var(--muted); }
+      a.end-note { color: var(--green); min-height: 44px; align-content: center; }
+      .trace { margin-top: 20px; }
+      .trace-body { padding: 0 var(--panel-space); }
+      .empty { padding: 20px 0; color: var(--muted); }
+      .job { border-bottom: 1px solid var(--line); }
+      .job:last-child { border-bottom: 0; }
+      .job > summary { min-height: 60px; padding: 16px 0; }
+      .job-title { font-weight: 600; }
+      .job-meta { color: var(--muted); font-size: 12px; margin-left: 12px; }
+      .job-content { padding: 0 0 20px; }
+      .timeline { list-style: none; padding: 0; margin-bottom: 16px; }
+      .timeline li { position: relative; border-left: 1px solid var(--line); padding: 8px 0 8px 20px; margin-left: 4px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+      .timeline li:before { content: ""; position: absolute; width: 7px; height: 7px; border-radius: 50%; left: -4px; top: 16px; background: #93b6a3; }
+      .timeline li.deny { color: var(--red); }
+      .timeline li.deny:before { background: var(--red); }
+      .record { padding: 16px 0; border-top: 1px solid var(--line); }
+      .run-id { display: block; margin: 8px 0; color: var(--muted); }
+      .evidence { margin-top: 8px; font-size: 12px; }
+      .evidence > summary { color: var(--green); }
+      .evidence label { display: block; margin-top: 12px; font-weight: 650; }
+      .console-note, .boundary, footer { font-size: 12px; color: var(--muted); }
+      .console-note { margin-top: 16px; }
+      .boundary { margin-top: 12px; }
+      footer { display: flex; justify-content: space-between; gap: 16px; padding-top: 16px; }
+      @media (max-width: 800px) {
+        :root { --panel-space: 16px; }
+        .workspace { grid-template-columns: 1fr; gap: 16px; }
+        .shell { max-width: 660px; padding: 0 16px 24px; }
+        .intro { padding: 20px 0; }
+        h1 { font-size: 24px; }
+        .outcome-body.is-empty .result-summary { padding: 12px 0; }
+        footer { flex-direction: column; gap: 8px; }
+      }
+      @media (max-width: 560px) {
+        .topbar { min-height: 68px; }
+        .brand { font-size: 17px; gap: 8px; }
+        .top-actions { gap: 8px; }
+        .live { display: none; }
+        #language { max-width: 112px; padding: 8px; font-size: 12px; }
+        .intro p { font-size: 13px; }
+        .intro .runner-note { font-size: 12px; }
+        .run-button { padding: 8px 12px; font-size: 12px; }
+        .target { min-height: 56px; gap: 10px; padding: 8px 0; }
+        .file-meta .file-type { display: none; }
+        .quiet { min-height: 44px; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+        .result-summary h3 { font-size: 20px; }
+        .job-meta { display: block; margin: 4px 0 0 16px; }
+      }
+      @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a
+          class="brand"
+          href="https://github.com/alibaba/open-guardrail"
+          target="_blank"
+          rel="noopener noreferrer"
+          ><span class="mark" aria-hidden="true">G</span>OpenGuardrail</a
+        >
+        <div class="top-actions">
+          <span class="live" data-i="live">真实服务</span
+          ><select id="language" aria-label="Language">
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option></select>
+        </div>
+      </header>
+      <main>
+        <section class="intro">
+          <h1 data-i="title">清理临时文件</h1>
+          <p data-i="intro">订单和配置必须保留。选择删除目标，观察护栏的决策和实际文件变化。</p>
+          <p class="runner-note" data-i="runner">本地真实服务与文件；预设执行程序，未接入模型。</p>
+        </section>
+        <p id="connection" class="connection" role="status">正在连接本地演示服务…</p>
+        <section class="workspace" aria-label="Cleanup workspace">
+          <form class="card task" id="task-form" aria-labelledby="task-title">
+            <div class="card-head">
+              <h2 id="task-title" data-i="taskTitle">清理任务</h2>
+              <button class="run-button" id="run" type="submit" disabled data-i="run">运行清理任务</button>
+            </div>
+            <div class="panel-body">
+              <div class="section-head">
+                <h3 id="targets-title" data-i="targets">初始删除请求</h3>
+                <span class="count" id="file-count"></span>
+              </div>
+              <div id="targets" class="selection" role="group" aria-labelledby="targets-title"></div>
+              <details class="folder-foot">
+                <summary data-i="directory">查看本地目录</summary>
+                <code id="directory"></code>
+              </details>
+              <fieldset class="rule">
+                <legend data-i="rules">执行前的规则</legend>
+                <ul>
+                  <li data-i="rule1">仅允许删除本目录中的 .tmp 文件。</li>
+                  <li data-i="rule2">订单和配置始终保留。</li>
+                </ul>
+                <label class="limit"><span data-i="limit">每次最多删除</span><select id="limit">
+                  <option value="2">2 个文件</option>
+                  <option value="1">1 个文件</option>
+                </select></label>
+              </fieldset>
+              <label class="repair">
+                <span class="repair-text"><strong data-i="repair">被拦截后自动缩小范围</strong><small data-i="repairNote">仅保留规则允许的文件，再检查一次。</small></span>
+                <input type="checkbox" id="repair" role="switch" aria-label="被拦截后自动缩小范围" checked />
+              </label>
+              <p class="hint" data-i="hint">默认请求包含受保护文件，可以观察它如何被拦截。</p>
+            </div>
+          </form>
+          <section class="card outcome" aria-labelledby="result-title">
+            <div class="card-head">
+              <h2 id="result-title" data-i="result">本次结果</h2>
+              <button id="reset" type="button" class="quiet" disabled data-i="reset">恢复示例文件</button>
+            </div>
+            <div class="panel-body outcome-body is-empty" id="outcome-body">
+              <div id="result-summary" class="result-summary" role="status" aria-live="polite" aria-atomic="true">
+                <h3 data-i="waiting">等待运行</h3>
+                <p data-i="waitingNote">运行任务后，这里会显示拦截原因、调整后的请求和实际删除的文件。</p>
+              </div>
+              <ol id="decisions" class="decision-list" aria-label="Decisions"></ol>
+              <section id="file-effects" class="file-effects" aria-labelledby="effects-title" hidden>
+                <h3 id="effects-title" data-i="effects">文件变化</h3>
+                <ul id="effects-list" class="effects-list"></ul>
+              </section>
+              <p id="result-note" class="end-note" hidden></p>
+              <a id="result-history" class="end-note" href="#trace-title" data-i="resultHistory" hidden>在历史记录中查看 Run 和证据</a>
+            </div>
+          </section>
+        </section>
+        <section class="card trace" aria-labelledby="trace-title">
+          <div class="card-head">
+            <h2 id="trace-title" data-i="trace">历史记录与证据</h2>
+            <span class="count" id="task-count"></span>
+          </div>
+          <div class="trace-body" id="trace">
+            <p class="empty" data-i="empty">运行任务后，可以在这里查看每次检查的 Run 和原始证据。</p>
+          </div>
+        </section>
+        <p class="console-note">
+          <a
+            id="console"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-i="console"
+            >打开 OpenGuardrail 控制台 →</a
+          ><span data-i="consoleNote">
+            用户名 demo，密码为启动时设置的密码。上面的 Run
+            详情无需另行登录。</span
+          >
+        </p>
+        <p class="boundary" data-i="boundary">
+          OpenGuardrail
+          校验提交并保存决策。示例程序负责读取文件和检查规则；删除工具执行前核验
+          Run、证据、有效期及文件状态。此示例不提供操作系统级沙箱，也不代表模型能力测试。
+        </p>
+      </main>
+      <footer>
+        <span data-i="footer"
+          >文件与记录保留到终端进程结束。Ctrl-C 停止服务并清理临时数据。</span
+        ><a
+          href="https://github.com/alibaba/open-guardrail/blob/main/integrations/README.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i="integration"
+          >接入自己的工具 →</a
+        >
+      </footer>
+    </div>
+    <script>
+      "use strict";
+      const words = {
+        "zh-CN": {
+          live: "真实服务",
+          reset: "恢复示例文件",
+          eyebrow: "一次任务，观察检查、决策和实际执行",
+          title: "清理临时文件",
+          intro:
+            "订单和配置必须保留。选择删除目标，观察护栏的决策和实际文件变化。",
+          connecting: "正在连接本地演示服务…",
+          folder: "实际文件",
+          directory: "查看本地目录",
+          taskTitle: "清理任务",
+          runner:
+            "本地真实服务与文件；预设执行程序，未接入模型。",
+          task: "清理临时文件，保留订单数据和配置。",
+          targets: "初始删除请求",
+          rules: "执行前的规则",
+          rule1: "仅允许删除本目录中的 .tmp 文件。",
+          rule2: "订单和配置始终保留。",
+          limit: "每次最多删除",
+          repair: "被拦截后自动缩小范围",
+          repairNote: "仅保留规则允许的文件，再检查一次。",
+          run: "运行清理任务",
+          hint: "默认请求包含受保护文件，可以观察它如何被拦截。",
+          trace: "历史记录与证据",
+          empty: "运行任务后，可以在这里查看每次检查的 Run 和原始证据。",
+          result: "本次结果",
+          resultHistory: "在历史记录中查看 Run 和证据",
+          waiting: "等待运行",
+          waitingNote: "运行任务后，这里会显示拦截原因、调整后的请求和实际删除的文件。",
+          effects: "文件变化",
+          deleted: "已删除",
+          kept: "仍在目录中",
+          missing: "当前目录中不存在",
+          requested: "请求删除：",
+          resultChecks: "本次检查",
+          canDelete: "允许清理",
+          policyYaml: "策略（YAML）",
+          policyRevision: "策略版本（JSON）",
+          acceptedSubmission: "已接受的提交与证据（JSON）",
+          resetTitle: "示例文件已恢复",
+          resetNote: "当前是新的示例目录。重新运行任务可查看新的结果，恢复前的任务保留在下方历史记录中。",
+          runningNote: "正在读取文件、提交检查并等待决策；删除工具会在执行前再次核验。",
+          deniedNote: "请求未满足规则，删除工具没有执行。",
+          completedTitle: (n) => `已删除 ${n} 个临时文件`,
+          completedNote: "删除工具已重新核验决策和文件状态。具体文件变化如下。",
+          historyMeta: (n, limit) => `${n} 次检查 · 每次最多 ${limit} 个文件`,
+          console: "打开 OpenGuardrail 控制台 →",
+          consoleNote:
+            " 用户名 demo，密码为启动时设置的密码。上面的 Run 详情无需另行登录。",
+          boundary:
+            "OpenGuardrail 校验提交并保存决策。示例程序负责读取文件和检查规则；删除工具执行前核验 Run、证据、有效期及文件状态。此示例不提供操作系统级沙箱，也不代表模型能力测试。",
+          footer:
+            "文件与记录保留到终端进程结束。Ctrl-C 停止服务并清理临时数据。",
+          integration: "接入自己的工具 →",
+          temporary: "临时文件",
+          protected: "受保护的业务文件",
+          onDisk: "磁盘中存在",
+          retained: "必须保留",
+          files: (n) => `${n} 个文件`,
+          tasks: (n) => `${n} 次任务`,
+          limitOption: (n) => `${n} 个文件`,
+          running: "正在执行…",
+          offline: "无法连接演示服务。请保持启动终端运行，再刷新页面。",
+          requestError: "任务未确认。正在读取服务状态，请勿重复提交。",
+          noFiles: "当前目录没有示例文件。",
+          removed: (n) => `本次实际删除 ${n} 个临时文件；订单和配置仍在。`,
+          created: "Run 已创建",
+          started: "执行程序收到请求",
+          checking: "读取实际文件，提交检查结果",
+          decision: "OpenGuardrail 返回",
+          revised: "收到拒绝后，执行程序缩小请求范围",
+          executed: "删除工具重新核验后，完成实际删除",
+          error:
+            "执行已停止。服务调用或执行核验未完成；请在控制台核对已有 Run，停止演示后重新启动。",
+          failureStages: {prepare: "准备任务", publish: "发布策略", check: "执行检查", execute: "执行工具"},
+          failureReasons: {
+            go_unavailable: "缺少 Go，请安装 go.mod 中指定的版本，或使用原生归档。",
+            service_unavailable: "本地 OpenGuardrail 服务未能就绪。",
+            command_failed: "服务命令执行失败。",
+            command_timeout: "服务命令超时。",
+            port_in_use: "本地端口已被占用。",
+            file_missing: "缺少必要的文件或可执行程序。",
+            access_denied: "无法访问必要的本地文件或可执行程序。",
+            file_operation_failed: "本地文件操作失败，可能已有部分文件完成处理。",
+            decision_mismatch: "权威 Run 或已接受的证据与当前请求不符。",
+            execution_conditions_changed: "文件状态、检查结果或决策有效期在执行前发生变化。",
+            decision_expired: "删除过程中决策过期，可能已有部分文件完成处理。",
+            policy_mismatch: "Run 冻结的策略与本次选择的策略不符。",
+            assessment_mismatch: "服务保存的评估与提交内容不符。",
+            invalid_data: "必要的数据无法核验。",
+            unexpected_error: "任务意外停止。",
+          },
+          failureExit: (code) => `退出码 ${code}`,
+          failureHelp: "请核对文件变化和历史记录；已有 Run 可在控制台查看。",
+          status: {
+            running: "执行中",
+            completed: "已执行",
+            denied: "已拦截，未删除文件",
+            error: "执行中止",
+          },
+          attempt: (n) => `第 ${n} 次检查`,
+          details: "查看真实 Run、策略与提交证据",
+          safety: {
+            PASS: "文件范围通过：所有目标都是可删除的临时文件。",
+            BLOCKED: "文件范围不通过：请求包含订单或配置文件。",
+            UNKNOWN: "文件范围无法确认：目标为空或文件不存在。",
+          },
+          batch: (verdict, n) =>
+            verdict === "PASS"
+              ? `数量通过：未超过每次 ${n} 个文件。`
+              : verdict === "BLOCKED"
+                ? `数量不通过：超过每次 ${n} 个文件。`
+                : "数量无法确认：没有删除目标。",
+          completed: "工具实际删除：",
+          notExecuted: "此 Run 未执行删除。",
+          expired: "历史决策已过有效期。",
+          restored: "示例文件已在新目录中恢复，历史记录仍可查看。",
+          remaining: (n) => `仍有 ${n} 个临时文件，可再次运行清理任务。`,
+          noTargets: "请至少选择一个文件。",
+        },
+        en: {
+          live: "Live service",
+          reset: "Restore sample files",
+          eyebrow: "One task: checks, a decision, and an actual operation",
+          title: "Clean up temporary files",
+          intro:
+            "Orders and configuration must remain. Choose files to delete, then inspect the decisions and actual file changes.",
+          connecting: "Connecting to the local demo…",
+          folder: "Files on disk",
+          directory: "Show local directory",
+          taskTitle: "Cleanup task",
+          runner:
+            "Real local files and service. A predefined runner, without a model.",
+          task: "Clear temporary files. Keep order data and configuration.",
+          targets: "Initial deletion request",
+          rules: "Rules before execution",
+          rule1: "Only .tmp files in this directory may be deleted.",
+          rule2: "Always retain orders and configuration.",
+          limit: "Maximum files per request",
+          repair: "Narrow the request after a denial",
+          repairNote: "Keep permitted targets and check once more.",
+          run: "Run cleanup task",
+          hint: "The default request includes protected files, so you can observe a denial.",
+          trace: "History and evidence",
+          empty:
+            "After running a task, inspect each check's Run and original evidence here.",
+          result: "Task result",
+          resultHistory: "Inspect Runs and evidence in the history",
+          waiting: "Ready to run",
+          waitingNote: "Run the task to see denial reasons, the revised request and files actually deleted.",
+          effects: "File changes",
+          deleted: "Deleted",
+          kept: "Still on disk",
+          missing: "Not in the current directory",
+          requested: "Requested deletion: ",
+          resultChecks: "Checks for this task",
+          canDelete: "Cleanup permitted",
+          policyYaml: "Policy (YAML)",
+          policyRevision: "Policy revision (JSON)",
+          acceptedSubmission: "Accepted submission and evidence (JSON)",
+          resetTitle: "Sample files restored",
+          resetNote: "This is a new sample directory. Run a new task to inspect its result. Earlier tasks remain in the history below.",
+          runningNote: "Reading files, submitting checks and awaiting a decision. The tool verifies again before deletion.",
+          deniedNote: "The request did not satisfy the rules. The deletion tool did not run.",
+          completedTitle: (n) => `Deleted ${n} temporary ${n === 1 ? "file" : "files"}`,
+          completedNote: "The tool verified the decision and current files again. Actual file changes are listed below.",
+          historyMeta: (n, limit) => `${n} ${n === 1 ? "check" : "checks"} · limit: ${limit} ${limit === 1 ? "file" : "files"}`,
+          console: "Open the OpenGuardrail console →",
+          consoleNote:
+            " Username: demo. Use the password chosen at startup. Run details above need no additional login.",
+          boundary:
+            "OpenGuardrail validates submissions and stores decisions. This example reads files and evaluates rules; the deletion tool verifies the Run, evidence, expiry and current files before acting. This is not an OS sandbox or a model benchmark.",
+          footer:
+            "Files and records remain until the terminal process ends. Ctrl-C stops the services and removes temporary data.",
+          integration: "Connect a tool →",
+          temporary: "Temporary file",
+          protected: "Protected business file",
+          onDisk: "Present on disk",
+          retained: "Must be retained",
+          files: (n) => `${n} ${n === 1 ? "file" : "files"}`,
+          tasks: (n) => `${n} ${n === 1 ? "task" : "tasks"}`,
+          limitOption: (n) => `${n} ${n === 1 ? "file" : "files"}`,
+          running: "Running…",
+          offline:
+            "Cannot reach the demo. Keep the startup terminal running, then refresh this page.",
+          requestError:
+            "Task not confirmed. Reading server state; do not submit again.",
+          noFiles: "No sample files remain in this directory.",
+          removed: (n) =>
+            `Actually deleted ${n} temporary ${n === 1 ? "file" : "files"}. Orders and configuration remain.`,
+          created: "Run created",
+          started: "Runner received the request",
+          checking: "Read actual files and submit check results",
+          decision: "OpenGuardrail returned",
+          revised: "After the denial, the runner narrowed the request",
+          executed: "Tool verified the decision again and deleted the files",
+          error:
+            "Execution stopped. A service call or execution verification did not complete. Inspect existing Runs in the console, then stop and restart the demo.",
+          failureStages: {prepare: "Task preparation", publish: "Policy publication", check: "Checks", execute: "Execution tool"},
+          failureReasons: {
+            go_unavailable: "Install the Go version from go.mod, or use a native archive.",
+            service_unavailable: "The local OpenGuardrail service did not become ready.",
+            command_failed: "A service command failed.",
+            command_timeout: "A service command timed out.",
+            port_in_use: "The local port is already in use.",
+            file_missing: "A required file or executable is missing.",
+            access_denied: "A required file or executable could not be accessed.",
+            file_operation_failed: "A local file operation failed. Some file changes may have completed.",
+            decision_mismatch: "The authoritative Run or accepted evidence does not match this request.",
+            execution_conditions_changed: "The files, checks or decision validity changed before execution.",
+            decision_expired: "The decision expired during deletion. Some file changes may have completed.",
+            policy_mismatch: "The Run's frozen policy does not match the selected policy.",
+            assessment_mismatch: "The stored assessment does not match the submission.",
+            invalid_data: "Required data could not be verified.",
+            unexpected_error: "The task stopped unexpectedly.",
+          },
+          failureExit: (code) => `exit ${code}`,
+          failureHelp: "Inspect file changes and history. Existing Runs are also available in the console.",
+          status: {
+            running: "Running",
+            completed: "Executed",
+            denied: "Blocked; no files deleted",
+            error: "Stopped",
+          },
+          attempt: (n) => `Check ${n}`,
+          details: "Inspect the actual Run, policy and accepted evidence",
+          safety: {
+            PASS: "File scope passed: all targets are removable temporary files.",
+            BLOCKED:
+              "File scope failed: the request includes orders or configuration.",
+            UNKNOWN:
+              "File scope unverified: no targets, or a target is missing.",
+          },
+          batch: (verdict, n) =>
+            verdict === "PASS"
+              ? `Count passed: within the ${n}-file limit.`
+              : verdict === "BLOCKED"
+                ? `Count failed: exceeds the ${n}-file limit.`
+                : "Count unverified: no targets supplied.",
+          completed: "Tool actually deleted: ",
+          notExecuted: "No deletion was performed for this Run.",
+          expired: "This historical decision has expired.",
+          restored:
+            "Sample files restored in a new directory. Earlier records are retained.",
+          remaining: (n) =>
+            `${n} temporary files remain; run the cleanup task again.`,
+          noTargets: "Select at least one file.",
+        },
+      };
+      let locale = "zh-CN",
+        state = null,
+        connected = false,
+        pending = false,
+        lastTrace = "",
+        selected = new Set([
+          "cache.tmp",
+          "download.tmp",
+          "orders.csv",
+          "config.yaml",
+        ]);
+      const $ = (id) => document.getElementById(id),
+        t = () => words[locale];
+      function el(tag, text, cls) {
+        const n = document.createElement(tag);
+        if (text !== undefined) n.textContent = text;
+        if (cls) n.className = cls;
+        return n;
+      }
+      function message(text, error = false) {
+        $("connection").hidden = !text;
+        $("connection").textContent = text;
+        $("connection").className = "connection" + (error ? " error" : "");
+      }
+      function controls() {
+        const busy = pending || !connected || !!state?.busy;
+        $("run").disabled = busy;
+        $("reset").disabled = busy;
+        $("run").textContent = state?.busy ? t().running : t().run;
+        document
+          .querySelectorAll("#targets input,#limit,#repair")
+          .forEach((x) => (x.disabled = busy));
+      }
+      function failureText(detail) {
+        if (!detail) return t().error;
+        const stage = t().failureStages[detail.stage] || t().failureStages.execute;
+        const reason = t().failureReasons[detail.code] || t().failureReasons.unexpected_error;
+        const exit = Number.isInteger(detail.exitCode) ? ` (${t().failureExit(detail.exitCode)})` : "";
+        return `${stage}: ${reason}${exit} ${t().failureHelp}`;
+      }
+      function renderFiles() {
+        const files = $("targets");
+        files.replaceChildren();
+        $("file-count").textContent = t().files(state.files.length);
+        $("directory").textContent = state.workspace;
+        for (const f of state.files) {
+          const label = el(
+            "label",
+            undefined,
+            "target" + (f.temporary ? "" : " risk"),
+          ), input = el("input");
+          input.type = "checkbox";
+          input.value = f.name;
+          input.setAttribute("aria-label", f.name);
+          input.checked = selected.has(f.name);
+          input.addEventListener("change", () => {
+            input.checked ? selected.add(f.name) : selected.delete(f.name);
+          });
+          const content = el("div", undefined, "file-content");
+          const meta = el("small", `${f.bytes} B`, "file-meta");
+          meta.append(el("span", ` · ${t()[f.temporary ? "temporary" : "protected"]}`, "file-type"));
+          content.append(
+            el("strong", f.name, "filename"), meta,
+          );
+          label.append(
+            input,
+            content,
+            el("span", t()[f.temporary ? "canDelete" : "retained"], "file-label"),
+          );
+          files.append(label);
+        }
+        if (!state.files.length) files.append(el("p", t().noFiles, "empty"));
+      }
+      function renderOutcome() {
+        const job = state.jobs.at(-1), record = job?.records.at(-1);
+        const workspace = job?.workspaceId || record?.changeSet.workspaceId;
+        const restored = workspace && workspace !== state.workspaceId;
+        const summary = $("result-summary"), decisions = $("decisions"), effects = $("effects-list");
+        summary.replaceChildren();
+        decisions.replaceChildren();
+        effects.replaceChildren();
+        $("decisions").setAttribute("aria-label", t().resultChecks);
+        $("file-effects").hidden = true;
+        $("result-note").hidden = true;
+        $("result-history").hidden = !job?.records.length || !!restored;
+        $("outcome-body").classList.toggle("is-empty", !job || !!restored);
+        summary.className = "result-summary" + (job && !restored ? " " + job.status : "");
+        if (!job || restored) {
+          summary.append(el("h3", restored ? t().resetTitle : t().waiting),
+                         el("p", restored ? t().resetNote : t().waitingNote));
+          return;
+        }
+        const title = job.status === "completed" ? t().completedTitle(job.removed.length) : t().status[job.status];
+        const note = job.status === "running" ? t().runningNote : job.status === "completed" ? t().completedNote : job.status === "denied" ? t().deniedNote : failureText(job.error);
+        summary.append(el("h3", title), el("p", note));
+        job.records.forEach((r, i) => {
+          const item = el("li", undefined, "decision"), head = el("div", undefined, "record-head");
+          head.append(el("h3", t().attempt(i + 1)), el("span", r.decision, "badge " + r.decision.toLowerCase()));
+          item.append(head, el("p", t().requested + r.changeSet.targets.join(", "), "decision-targets"));
+          for (const check of r.checks)
+            item.append(el("p", check.checkId === "temporary-only" ? t().safety[check.verdict] : t().batch(check.verdict, job.maxFiles), "check " + (check.verdict === "PASS" ? "pass" : "fail")));
+          decisions.append(item);
+        });
+        // Use the observed inventory and current directory, not ALLOW, as proof of effects.
+        if (record) {
+          $("file-effects").hidden = false;
+          const current = new Set(state.files.map(f => f.name));
+          for (const f of record.observation.files) {
+            const removed = job.removed.includes(f.name), exists = current.has(f.name);
+            const row = el("li");
+            row.append(el("span", f.name, "filename"), el("span", removed ? t().deleted : exists ? t().kept : t().missing, "effect-label" + (removed ? " deleted" : "")));
+            effects.append(row);
+          }
+          const remaining = state.files.filter(f => f.temporary).length;
+          if (job.status === "completed" && remaining) {
+            $("result-note").hidden = false;
+            $("result-note").textContent = t().remaining(remaining);
+          }
+        }
+      }
+      function renderTrace(force = false) {
+        const key =
+          locale +
+          JSON.stringify([state.jobs, state.files, state.workspaceId]) +
+          state.jobs
+            .flatMap((j) =>
+              j.records.map((r) => r.decisionExpiresAt * 1000 < Date.now()),
+            )
+            .join();
+        if (!force && key === lastTrace) return;
+        lastTrace = key;
+        renderOutcome();
+        const open = new Set(
+          [...document.querySelectorAll("#trace details[open]")].map(x => x.id),
+        );
+        const root = $("trace");
+        root.replaceChildren();
+        $("task-count").textContent = t().tasks(state.jobs.length);
+        if (!state.jobs.length) {
+          root.append(el("p", t().empty, "empty"));
+          return;
+        }
+        for (const job of [...state.jobs].reverse()) {
+          const d = el("details", undefined, "job");
+          d.id = "job-" + job.id;
+          d.open = open.has(d.id);
+          const summary = el("summary");
+          summary.append(el("span", t().status[job.status], "job-title"),
+                         el("span", " " + t().historyMeta(job.records.length, job.maxFiles), "job-meta"));
+          d.append(summary);
+          const body = el("div", undefined, "job-content"),
+            events = el("ol", undefined, "timeline");
+          for (const e of job.events) {
+            const line = e.kind === "error" ? failureText(e.error) : t()[e.kind] || e.kind;
+            events.append(
+              el(
+                "li",
+                line +
+                  (e.kind === "created" ? ` — ${e.runId}` : "") +
+                  (e.decision ? ` ${e.decision}` : "") +
+                  (e.targets?.length ? ` — ${e.targets.join(", ")}` : ""),
+                e.decision === "DENY" ? "deny" : e.kind,
+              ),
+            );
+          }
+          body.append(events);
+          job.records.forEach((record, i) => {
+            const r = el("article", undefined, "record"),
+              head = el("div", undefined, "record-head");
+            head.append(
+              el("h3", t().attempt(i + 1)),
+              el(
+                "span",
+                record.decision,
+                "badge " + record.decision.toLowerCase(),
+              ),
+            );
+            r.append(head, el("code", record.runId, "run-id"));
+            for (const check of record.checks) {
+              r.append(
+                el(
+                  "p",
+                  check.checkId === "temporary-only"
+                    ? t().safety[check.verdict]
+                    : t().batch(check.verdict, job.maxFiles),
+                  "check " + (check.verdict === "PASS" ? "pass" : "fail"),
+                ),
+              );
+            }
+            r.append(
+              el(
+                "p",
+                record.removed.length
+                  ? t().completed + record.removed.join(", ")
+                  : t().notExecuted,
+                "hint",
+              ),
+            );
+            if (record.decisionExpiresAt * 1000 < Date.now())
+              r.append(el("p", t().expired, "hint"));
+            const detail = el("details", undefined, "evidence");
+            detail.id = "record-" + record.runId;
+            detail.open = open.has(detail.id);
+            detail.append(el("summary", t().details));
+            detail.append(el("label", t().policyYaml), el("pre", record.revision.yaml));
+            for (const [name, value] of [
+              ["Run", record.run],
+              [t().policyRevision, record.revision],
+              [t().acceptedSubmission, record.storedSubmission],
+            ]) {
+              detail.append(
+                el("label", name),
+                el("pre", JSON.stringify(value, null, 2)),
+              );
+            }
+            r.append(detail);
+            body.append(r);
+          });
+          if (job.status === "completed") {
+            const n = state.files.filter((f) => f.temporary).length;
+            body.append(
+              el(
+                "p",
+                t().removed(job.removed.length) +
+                  (job.records.at(-1).changeSet.workspaceId ===
+                    state.workspaceId && n
+                    ? " " + t().remaining(n)
+                    : ""),
+                "end-note",
+              ),
+            );
+          }
+          d.append(body);
+          root.append(d);
+        }
+      }
+      function render() {
+        document.documentElement.lang = locale;
+        document.querySelectorAll("[data-i]").forEach((n) => {
+          n.textContent = t()[n.dataset.i];
+        });
+        for (const o of $("limit").options)
+          o.textContent = t().limitOption(+o.value);
+        $("repair").setAttribute("aria-label", t().repair);
+        if (state) {
+          renderFiles();
+          renderTrace(true);
+          $("console").href = state.consoleUrl;
+        }
+        controls();
+      }
+      async function refresh() {
+        try {
+          const response = await fetch("/api/state", { cache: "no-store" });
+          if (!response.ok) throw Error();
+          const next = await response.json();
+          const changed =
+            !state ||
+            JSON.stringify(state.files) !== JSON.stringify(next.files) ||
+            state.workspaceId !== next.workspaceId;
+          state = next;
+          if (!connected) message("");
+          connected = true;
+          if (changed) renderFiles();
+          renderTrace(changed);
+          $("console").href = state.consoleUrl;
+          controls();
+          return true;
+        } catch {
+          connected = false;
+          message(t().offline, true);
+          controls();
+          return false;
+        }
+      }
+      async function post(path, data) {
+        if (pending || !connected) return;
+        pending = true;
+        controls();
+        try {
+          const response = await fetch(path, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Demo-Token": state.csrfToken,
+            },
+            body: JSON.stringify(data),
+          });
+          if (!response.ok) throw Error();
+          if (path === "/api/reset") {
+            selected = new Set([
+              "cache.tmp",
+              "download.tmp",
+              "orders.csv",
+              "config.yaml",
+            ]);
+            message(t().restored);
+          } else message("");
+        } catch {
+          message(t().requestError, true);
+        } finally {
+          await refresh();
+          pending = false;
+          controls();
+        }
+      }
+      $("task-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const targets = state.files
+          .map((f) => f.name)
+          .filter((x) => selected.has(x));
+        if (!targets.length) {
+          message(t().noTargets, true);
+          return;
+        }
+        post("/api/tasks", {
+          targets,
+          maxFiles: +$("limit").value,
+          repair: $("repair").checked,
+        });
+      });
+      $("reset").addEventListener("click", () => post("/api/reset", {}));
+      $("language").addEventListener("change", (event) => {
+        locale = event.target.value;
+        render();
+        message(connected ? "" : t().offline, !connected);
+      });
+      render();
+      refresh();
+      setInterval(refresh, 1000);
+    </script>
+  </body>
+</html>

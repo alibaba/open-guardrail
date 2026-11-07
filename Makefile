@@ -8,7 +8,7 @@ export GOWORK := off
 COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
 LDFLAGS := -X github.com/alibaba/open-guardrail/internal/buildinfo.Version=$(VERSION) -X github.com/alibaba/open-guardrail/internal/buildinfo.Commit=$(COMMIT)
 
-.PHONY: build check-dependency-licenses check-dependency-notices check-generated check-public-release generate test test-go test-fuzz test-web test-python test-scripts smoke smoke-docker smoke-release preview-release release public-release
+.PHONY: build check-dependency-licenses check-dependency-notices check-generated check-public-release generate test test-go test-fuzz test-web test-python test-scripts demo smoke smoke-docker smoke-release preview-release release public-release
 build:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/open-guardrail ./cmd/open-guardrail
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/guardrailctl ./cmd/guardrailctl
@@ -44,6 +44,8 @@ test-web:
 
 test-python:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s integrations -t . -p 'test_*.py'
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/agent-demo -p 'test_*.py'
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/cleanup-demo -p 'test_*.py'
 
 test-scripts:
 	sh scripts/check-generated.test.sh
@@ -56,6 +58,9 @@ test-scripts:
 
 smoke:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) examples/agent-demo/smoke.py
+
+demo:
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) examples/cleanup-demo/demo.py
 
 smoke-docker:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/smoke_docker.py

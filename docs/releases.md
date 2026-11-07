@@ -6,7 +6,7 @@ CD integration recipes and `.agents/skills/open-guardrail-demo`. Archives also r
 the Apache-2.0 LICENSE, project NOTICE and original third-party legal files and their
 version/checksum inventory. The service and
 CLI require no Go, Node.js or Python runtime. The optional self-check below needs
-Python 3.12+.
+Python 3.9+.
 
 See [release notes](release-notes.md) for the capabilities, compatibility and
 limitations of a release. For official binary releases, see
@@ -31,7 +31,20 @@ Obtain the archive and checksum from the same official release. A matching
 checksum checks file integrity; publisher authentication additionally requires
 verification of the release's signatures or provenance.
 
-For an isolated technical trial from the extraction root:
+For an interactive trial from the extraction root:
+
+```sh
+python3 examples/cleanup-demo/demo.py
+```
+
+Choose a console password, then open the printed Demo URL. The predefined runner
+uses the packaged service and CLI to create real Runs, while the controlled tool
+acts on files in an isolated temporary directory. The demo page needs no login;
+the separate Console uses username `demo` and the chosen password. Keep the
+terminal open; Ctrl-C stops both services and removes temporary state. See the
+[cleanup guide](../examples/cleanup-demo/README.md) for checks and limits.
+
+For the original isolated Recovery contract self-check:
 
 ```sh
 python3 examples/agent-demo/smoke.py
@@ -44,6 +57,19 @@ Evidence and verifies the management queries. It checks healthy ALLOW, unhealthy
 DENY, unknown DENY and delivery-side rejection of forged Evidence even when
 the service reports ALLOW. It cleans up its process and temporary files.
 An existing service is not used or modified.
+
+To inspect those Runs in the browser before cleanup, use:
+
+```sh
+python3 examples/agent-demo/smoke.py --keep-running
+```
+
+Choose a password at the hidden prompts, then open the printed URL and sign in
+as `demo`. Select **Runs** to inspect the four records. Keep the terminal open;
+Ctrl-C stops the temporary service and removes its data and credentials.
+Use Python 3.9+ for the demo. Release assembly still requires Python 3.12+. See
+[troubleshooting](getting-started.md#troubleshooting) for dependency and startup
+problems.
 
 The test uses the packaged binaries and fixtures. It does not invoke a model,
 Jenkins Controller or age encryption. The Agent demo skill is available for a

@@ -33,6 +33,7 @@ jobs:
           python-version: '3.12'
       - run: make test
       - run: make build
+      - run: CLEANUP_DEMO_BINARIES="$PWD/bin" python3 -m unittest discover -s examples/cleanup-demo -p 'test_*.py' -v
       - run: make smoke
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
   fuzz:
@@ -53,6 +54,20 @@ jobs:
             internal/domain/spec/testdata/fuzz/
             internal/domain/run/testdata/fuzz/
           if-no-files-found: ignore
+  demo-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - run: make test-python
+      - run: make build
+      - run: CLEANUP_DEMO_BINARIES="$PWD/bin" python3 -m unittest discover -s examples/cleanup-demo -p 'test_*.py' -v
+      - run: make smoke
   package:
     runs-on: ubuntu-latest
     steps:

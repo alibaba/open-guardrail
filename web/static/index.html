@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OpenGuardrail</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="stylesheet" href="/style.css">
 <script src="/i18n.js" defer></script>
 <script src="/console.js" defer></script>
@@ -81,7 +82,12 @@
 <div id="spec-editor" hidden>
 <div class="tabs" role="tablist" aria-label="Spec"><button id="tab-draft" type="button" role="tab" aria-selected="true" aria-controls="draft-panel" data-i18n="draftTab">Draft</button><button id="tab-history" type="button" role="tab" aria-selected="false" aria-controls="history-panel" tabindex="-1" data-i18n="historyTab">Version history</button></div>
 <div id="draft-panel" role="tabpanel" aria-labelledby="tab-draft">
-<div class="editor-surface"><div class="editor-heading"><label for="spec-yaml" data-i18n="specDraft">Spec draft (YAML)</label><span class="file-format">YAML</span><button id="spec-example" class="text-button" type="button" data-i18n="insertSpecExample">Insert example</button></div>
+<div id="spec-draft-notice" class="draft-notice" hidden>
+<div><h3 data-i18n="noDraftTitle">No draft yet</h3><p id="spec-preview-hint" data-i18n="noDraftActiveHint">The active version is shown below, read-only. Start editing a copy to prepare the next draft.</p></div>
+<div class="draft-notice-actions"><button id="start-spec-draft" type="button" data-i18n="editActiveSpec">Edit a copy of this version</button></div>
+</div>
+<div id="spec-preview-retry" class="preview-retry" hidden><p id="spec-preview-warning" role="status" data-i18n="activeSpecPreviewFailed">The active version could not be loaded. Reloading its preview will preserve draft edits.</p><button id="retry-spec-preview" class="secondary" type="button" data-i18n="retrySpecPreview" hidden>Reload policy</button></div>
+<div id="spec-editor-surface" class="editor-surface"><div class="editor-heading"><label id="spec-editor-label" for="spec-yaml" data-i18n="specDraft">Spec draft (YAML)</label><span class="file-format">YAML</span><button id="spec-example" class="text-button" type="button" data-i18n="insertSpecExample">Insert example</button></div>
 <div id="yaml-editor" class="yaml-editor">
 <pre id="yaml-lines" class="yaml-lines" aria-hidden="true"></pre>
 <div class="yaml-code"><pre id="yaml-highlight" aria-hidden="true"></pre><textarea id="spec-yaml" rows="16" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" aria-describedby="spec-draft-hint editor-error"></textarea></div>
@@ -89,7 +95,7 @@
 <div class="editor-status"><span data-i18n="editorMode">YAML · UTF-8</span><span id="editor-position"></span></div>
 <p id="editor-error" role="alert" hidden></p>
 </div>
-<div class="editor-footer">
+<div id="spec-editor-actions" class="editor-footer">
 <p id="spec-draft-hint" data-i18n="specDraftHint">Save incomplete drafts at any time. Publishing validates the saved draft and activates an immutable version.</p>
 <div class="actions"><button id="save-spec" class="secondary" type="button" data-i18n="saveSpec">Save draft</button>
 <button id="publish-spec" type="button" data-i18n="publishSpec">Publish and activate</button>

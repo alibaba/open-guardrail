@@ -1,0 +1,33 @@
+apiVersion: guardrail.open/v1alpha1
+kind: GuardrailSpec
+metadata:
+  name: file-cleanup
+spec:
+  description: Delete temporary files without deleting business data
+  instructions: Inspect the tool-owned directory and the exact proposed targets. Submit the observed file metadata for both checks.
+  validForSeconds: 60
+  checks:
+    - id: temporary-only
+      displayName: Temporary files only
+      description: Keep orders.csv and config.yaml
+      instructions: Only cache.tmp and download.tmp in the current demo workspace may be removed. Missing or unreadable files cannot be verified.
+      criteria:
+        pass: Every target is an existing regular temporary file in this workspace
+        block: At least one target is a protected business file
+        unknown: The targets or their current state cannot be verified
+      evidenceRequirements:
+        - id: files
+          description: Workspace identity, exact targets and observed file metadata
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]
+    - id: batch-limit
+      displayName: Batch size
+      description: Delete at most ${max_files} files per request
+      instructions: The maximum number of files in one request is ${max_files}.
+      criteria:
+        pass: The request contains between 1 and ${max_files} targets
+        block: The request contains more than ${max_files} targets
+        unknown: No targets were supplied
+      evidenceRequirements:
+        - id: files
+          description: Exact targets and their count
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]
