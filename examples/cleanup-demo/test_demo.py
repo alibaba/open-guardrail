@@ -124,7 +124,7 @@ class FileToolTests(unittest.TestCase):
         self.assertEqual(detail["code"], "command_failed")
         self.assertEqual(detail["exitCode"], 7)
         self.assertIn("exit 7", detail["message"])
-        self.assertEqual(demo.public_error(ValueError("Install Go from go.mod, or use a native release archive"), "startup")["code"], "go_unavailable")
+        self.assertEqual(demo.public_error(ValueError("Install the Go version specified in go.mod to run from source"), "startup")["code"], "go_unavailable")
 
     def test_command_failure_exposes_exit_code_without_arguments_or_output(self):
         from unittest.mock import patch

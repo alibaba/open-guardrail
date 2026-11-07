@@ -100,12 +100,7 @@ directory. This trial needs no model account, Jenkins, Docker or separate databa
 
 ### Run a guarded task
 
-If you have a native archive from [GitHub Releases](https://github.com/alibaba/open-guardrail/releases),
-follow [archive verification](docs/releases.md#check-and-try-a-downloaded-archive),
-extract it and run the demo command below from its extraction root. The demo
-needs Python 3.9+; the packaged binaries need no Go or Node.js.
-
-From source, install Git, the Go version specified in `go.mod` and Python 3.9+:
+Install Git, the Go version specified in `go.mod` and Python 3.9+:
 
 ```sh
 git clone https://github.com/alibaba/open-guardrail.git
@@ -114,8 +109,8 @@ python3 examples/cleanup-demo/demo.py
 ```
 
 Choose a console password at the hidden prompts. The script builds both commands
-from source or uses the archive's binaries, then prints a **Demo** URL and a
-**Console** URL. Open the Demo first; it needs no login.
+from source, then prints a **Demo** URL and a **Console** URL. Open the Demo first;
+it needs no login.
 
 Click **Run cleanup task**. The initial request includes temporary files, orders
 and configuration. A predefined runner submits the observed file state and gets
