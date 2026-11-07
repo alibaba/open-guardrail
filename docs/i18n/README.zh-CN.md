@@ -88,12 +88,7 @@ Run 完成后，检查结果按以下规则汇总：
 
 ### 运行一个受护栏约束的任务
 
-如果已经从 [GitHub Releases](https://github.com/alibaba/open-guardrail/releases)
-下载原生归档，请先按照[归档校验说明](../releases.md#check-and-try-a-downloaded-archive)
-完成检查，解压后在归档根目录运行下方的 Demo 命令。
-Demo 需要 Python 3.9+；归档中的二进制程序不需要 Go 或 Node.js。
-
-从源码启动时，请先安装 Git、`go.mod` 中指定版本的 Go，以及 Python 3.9+：
+请先安装 Git、`go.mod` 中指定版本的 Go，以及 Python 3.9+：
 
 ```sh
 git clone https://github.com/alibaba/open-guardrail.git
@@ -102,7 +97,7 @@ python3 examples/cleanup-demo/demo.py
 ```
 
 按照终端中的隐藏输入提示设置控制台密码。脚本会从源码构建两个命令行程序，
-或使用归档中已有的二进制程序，然后打印 **Demo** 和 **Console** 两个地址。
+然后打印 **Demo** 和 **Console** 两个地址。
 先打开 Demo 地址，无需登录。
 
 点击**运行清理任务**。初始请求包含临时文件、订单和配置。

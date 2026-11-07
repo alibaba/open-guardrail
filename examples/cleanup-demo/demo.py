@@ -71,7 +71,7 @@ class CommandFailed(RuntimeError):
 def public_error(error, stage):
     """Return bounded diagnostics without exception arguments, paths or output."""
     known = {
-        "Install Go from go.mod, or use a native release archive": ("go_unavailable", "Install the Go version from go.mod, or use a native release archive."),
+        "Install the Go version specified in go.mod to run from source": ("go_unavailable", "Install the Go version specified in go.mod, then rerun the demo."),
         "The isolated OpenGuardrail service did not become ready": ("service_unavailable", "The local OpenGuardrail service did not become ready. Check its startup and loopback port."),
         "Execution stopped: Run identity, decision or evidence mismatch": ("decision_mismatch", "The authoritative Run or accepted evidence does not match this request."),
         "Execution stopped: files changed, checks failed or decision expired": ("execution_conditions_changed", "The files, check results or decision validity changed before execution."),
@@ -436,7 +436,7 @@ def binaries(directory, supplied=None):
     if not (ROOT / "go.mod").is_file():
         return ROOT / "open-guardrail", ROOT / "guardrailctl"
     if shutil.which(os.environ.get("GO", "go")) is None:
-        raise ValueError("Install Go from go.mod, or use a native release archive")
+        raise ValueError("Install the Go version specified in go.mod to run from source")
     print("Building OpenGuardrail and guardrailctl…", flush=True)
     results = []
     for name in ("open-guardrail", "guardrailctl"):
