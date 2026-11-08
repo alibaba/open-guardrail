@@ -8,7 +8,8 @@ Start with [Getting started](getting-started.md) for a local example or
 | Goal | Guide |
 | --- | --- |
 | Configure storage and remote access | [Configuration](configuration.md), [Docker](docker.md), [administrator and credentials](local-administrator.md) |
-| Publish a policy and evaluate a Run | [Scenes and Specs](scenes-and-specs.md), [Runs and submissions](runs.md) |
+| Write and publish a GuardrailSpec | [GuardrailSpec YAML reference](guardrailspec-reference.md), [Scenes and Specs](scenes-and-specs.md) |
+| Evaluate a Run | [Runs and submissions](runs.md) |
 | Integrate an application or Agent | [API](api.md), [OpenAPI contract](../api/openapi/openapi.yaml), [CLI](../cmd/guardrailctl/README.md), [integration examples](../integrations/README.md) |
 | Try an Agent workflow | [Recovery Agent demo](../examples/agent-demo/README.md) |
 
