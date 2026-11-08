@@ -1,5 +1,8 @@
 # Scenes, Policies and GuardrailSpecs
 
+A field-by-field YAML guide, complete example and common validation mistakes are
+in the [GuardrailSpec YAML reference](guardrailspec-reference.md).
+
 A Scene has a stable key, a configurable Run TTL and an optional default Policy.
 A Scene can contain multiple Policies. Each Policy has at most one mutable Draft
 Revision, immutable published Revisions and one active Revision. Revisions are identified across

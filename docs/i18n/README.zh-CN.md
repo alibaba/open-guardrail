@@ -197,7 +197,7 @@ OpenGuardrail 校验提交内容并记录决策，执行工具在操作前核验
 | 运行本地示例并查看决策 | [入门指南](../getting-started.md) |
 | 配置存储或远程服务 | [配置与存储](../configuration.md)、[Docker 部署](../docker.md) |
 | 管理管理员账号与凭据 | [管理员指南](../local-administrator.md) |
-| 编写并发布策略 | [场景与 Spec](../scenes-and-specs.md) |
+| 编写并发布策略 | [GuardrailSpec YAML 字段手册](guardrailspec-reference.zh-CN.md)、[场景与 Spec](../scenes-and-specs.md) |
 | 创建 Run 并提交证据 | [Run 与提交](../runs.md) |
 | 调用 API 或使用 CLI 自动化 | [API 概览](../api.md)、[CLI 指南](../../cmd/guardrailctl/README.md) |
 | 理解实现方式或扩展计划 | [架构](../architecture.md)、[扩展边界](../extensions.md) |

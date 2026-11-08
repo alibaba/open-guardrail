@@ -222,7 +222,7 @@ Start with the [documentation index](docs/README.md) for reading paths, or read
 | Run a local example and inspect a decision | [Getting started](docs/getting-started.md) |
 | Configure storage or a remote service | [Configuration and storage](docs/configuration.md), [Docker deployment](docs/docker.md) |
 | Manage administrators and credentials | [Administrator guide](docs/local-administrator.md) |
-| Author and publish a policy | [Scenes and Specs](docs/scenes-and-specs.md) |
+| Write and publish a GuardrailSpec | [GuardrailSpec YAML reference](docs/guardrailspec-reference.md), [Scenes and Specs](docs/scenes-and-specs.md) |
 | Create Runs and submit evidence | [Runs and submissions](docs/runs.md) |
 | Call the API or automate with the CLI | [API overview](docs/api.md), [CLI guide](cmd/guardrailctl/README.md) |
 | Understand the implementation or extension plans | [Architecture](docs/architecture.md), [extension boundaries](docs/extensions.md) |
