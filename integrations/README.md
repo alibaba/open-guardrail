@@ -28,6 +28,7 @@ public dependencies and synthetic data so every adopter can reproduce the same f
 
 | Platform | Directory | Integration status |
 | --- | --- | --- |
+| pi / DeepSeek Harness | [agent-plugins](agent-plugins/README.md) | Internal preview: native tools and Skill over the isolated real-file cleanup example |
 | Jenkins | [jenkins](jenkins/README.md) | Synthetic Jenkinsfile, build-context adapter and outer-Agent client using encrypted handoff |
 | GitHub Actions | [github-actions](github-actions/README.md) | Planned deployment workflow calling the shared CLI or API |
 | Argo Rollouts | [argo](argo/README.md) | Inline Analysis Job, encrypted handoff, layered failure diagnostics and repeatable eight-case acceptance |
