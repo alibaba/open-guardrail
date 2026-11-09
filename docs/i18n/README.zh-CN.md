@@ -16,10 +16,28 @@ Agent 和工具可以通过 HTTP API 或 `guardrailctl` CLI 接入。
 **当前状态：开发预览版。** API 版本为 `v1alpha1`，具体能力与边界见
 [当前能力与限制](#当前能力与限制)。
 
+[![Go 1.27+](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)](../../go.mod)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](../../LICENSE)
+
+[![OpenGuardrail 概览：AI Agent 提交检查结果与证据；OpenGuardrail 记录带有效期和审计链路的 ALLOW 或 DENY 决策；执行工具在操作前核验决策。](../images/readme-hero.zh-CN.png)](../images/readme-hero.zh-CN.svg)
+
+*Agent 提出请求，门禁做出决策。OpenGuardrail 校验证据的结构与完整性；
+调用方核验观测结果并执行决策。*
+
 [源代码](https://github.com/alibaba/open-guardrail) · [问题反馈](https://github.com/alibaba/open-guardrail/issues) ·
 [入门指南](../getting-started.md) · [文档](../README.md) · [API 与 CLI](../api.md) ·
 [部署](../configuration.md) · [参与贡献](../../CONTRIBUTING.md) ·
 [Apache-2.0](../../LICENSE)
+
+## 看看实际效果
+
+预设的 Python 执行程序请求删除四个文件：两个临时文件，以及 `orders.csv` 和
+`config.yaml`。由于请求包含受保护文件并超过批量上限，第一次检查被拦截。
+执行程序随后缩小请求范围，第二次 Run 通过，执行工具只删除两个临时文件。
+
+[![OpenGuardrail 清理 Demo：第一次检查因请求包含订单和配置而返回 DENY；执行程序缩小范围后，第二次检查返回 ALLOW。](../images/cleanup-demo.zh-CN.png)](../../examples/cleanup-demo/README.md)
+
+*预设执行程序、真实服务与文件；此 Demo 不使用 AI 模型。运行 `python3 examples/cleanup-demo/demo.py` 即可体验。*
 
 ## 为什么需要 OpenGuardrail？
 
@@ -30,35 +48,24 @@ Agent 获得真实系统的操作权限后，检查要求就需要落实到执�
 如果这些信息只留在 Agent 的对话和工具日志中，执行方就需要自行提取、关联并判断。
 OpenGuardrail 将它们组织成统一的评估记录，供工具在操作前核验，也便于事后追溯。
 
-## 适用场景
+### 适用边界
 
-不同业务操作可以定义各自的检查要求，例如：
+**适用场景：** Agent 或自动化程序会触发删除数据、发布应用、修改配置等有实际影响的操作，
+团队需要留存每次决策依据的策略、检查结果和证据，以便执行前核验和事后追溯。
 
-| 操作 | 检查示例 |
-| --- | --- |
-| 发布应用 | 必需的测试已通过；发布目标与请求一致 |
-| 修改配置 | 变更范围符合策略；所需审批已在现有系统中留存 |
-| 修改数据 | 目标资源和预期影响处于允许范围内 |
+**接入条件：** Agent 或集成程序执行检查并提交结果和证据。真正执行操作的工具在操作前
+读取权威 Run，核验决策有效期、所依赖的证据，并在需要时核对当前目标状态。
 
-这些策略示例需要外部观测与执行集成。Agent 使用已接入的工具执行检查并收集证据，
-执行工具在实际操作时落实决策约束。
-
-**Scene（场景）**用于组织某类业务操作的策略。不同场景共用同一套策略、证据和决策模型，
-因此可以扩展新场景，而无需修改服务的核心 API。
+**能力边界：** OpenGuardrail 校验提交是否符合策略并记录 `ALLOW` 或 `DENY`，但不独立
+证明观测结果真实。记录了 `ALLOW` 不等于授予业务操作权限；绕过受控工具的操作不受这套
+核验约束，OpenGuardrail 也不提供进程或网络隔离。
 
 ## 工作流程
 
-```text
-为业务操作定义策略检查项
-                       |
-Agent 使用工具执行检查
-并提交检查结果和证据
-                       |
-OpenGuardrail 校验提交内容、保存评估记录
-并返回 ALLOW / DENY
-                       |
-执行工具在操作前核验决策和证据
-```
+**Scene（场景）**用于组织某类操作的策略。不同场景共用策略、证据和决策模型。
+一次评估包含五个步骤：
+
+[![OpenGuardrail 评估流程：发布并启用策略、创建 Run、提交完整评估、读取 Run 与最终 Submission，并在调用方执行决策。](../images/overview.zh-CN.png)](../images/overview.zh-CN.svg)
 
 1. **发布策略。** 在 GuardrailSpec 中定义检查项和证据要求，发布不可变的策略版本，
    再将其设为场景的生效版本。
@@ -83,7 +90,7 @@ Run 完成后，检查结果按以下规则汇总：
 
 ## 快速开始
 
-运行一次文件清理任务，观察受护栏约束的工具如何操作临时目录中的真实文件。
+在本地运行同一个流程，观察受护栏约束的工具如何操作临时目录中的真实文件。
 这次体验不需要模型账号、Jenkins、Docker 或独立数据库。
 
 ### 运行一个受护栏约束的任务
