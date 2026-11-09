@@ -35,6 +35,7 @@ guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.
   --operation-id create-123 \
   --submission-credential-file "$guardrail_credentials_dir/run-credential.json"
 guardrailctl run get --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
+guardrailctl run wait --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
 guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
   --scene recovery --status FINISHED --limit 20
 ```
@@ -42,6 +43,17 @@ guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.js
 Run lists contain bounded summaries with `changeSetDigest`, not the potentially
 large `changeSet`. Use `run get` or `GET /runtime/v1alpha1/runs/{runId}` to read
 the full immutable ChangeSet for one Run.
+
+`run wait` polls `GET /runtime/v1alpha1/runs/{runId}` until the Run is terminal and
+prints the final document. It exits 0 only for `FINISHED`; an `EXPIRED` Run exits
+nonzero because no final Submission arrived before the deadline, and a timeout is
+also a nonzero exit.
+Transient transport, `5xx` and `429` failures are retried until the deadline, while
+authentication and other client errors fail immediately. Until the Run deadline is
+known, connection retries are capped at 30 seconds. A `429` `Retry-After` value
+longer than `--interval` is honored within the remaining wait. Waiting does not
+replace the calling system's verification of the Decision, its validity and its
+evidence.
 
 ## Run retry and credential recovery
 

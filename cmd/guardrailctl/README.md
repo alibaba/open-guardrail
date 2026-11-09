@@ -11,17 +11,18 @@ Current commands cover `status`, `capabilities`,
 `version`, `bootstrap init`, `auth login`, `logout`, `whoami`, `create-key`,
 `list-keys`, `rotate-key` and `revoke-key`,
 and `scene apply`.
-It also implements `run create`, `run get`, `run revision`, `run submission`,
-`run list`, `run rotate-credential` and `run submit`. `run get` reports
-frozen deadlines, lazy expiry and Decision validity. Waiting and Claims remain
-planned; there is no checkpoint model.
+It also implements `run create`, `run get`, `run wait`, `run revision`,
+`run submission`, `run list`, `run rotate-credential` and `run submit`.
+`run get` reports frozen deadlines, lazy expiry and Decision validity; `run wait`
+blocks until the Run is `FINISHED` or `EXPIRED`. Execution Claims remain planned;
+there is no checkpoint model.
 
 | Command group | Credential |
 | --- | --- |
 | `status`, `version`, `capabilities` | Public diagnostics; no credential required |
 | `bootstrap init` | First-administrator setup; a private bootstrap token is required for remote mode |
 | `auth` and `scene apply` | Administrator session (`auth login` creates it) |
-| `run create/get/list/revision/submission/rotate-credential` | Project key with the endpoint's effective scopes |
+| `run create/get/wait/list/revision/submission/rotate-credential` | Project key with the endpoint's effective scopes |
 | `run submit` | The Submission Credential bound to that Run |
 
 ## Scenes and administrator sessions
@@ -92,6 +93,7 @@ guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.
   --operation-id pipeline-123 \
   --submission-credential-file "$guardrail_credentials_dir/run-credential.json"
 guardrailctl run get --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
+guardrailctl run wait --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
 guardrailctl run revision --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
 guardrailctl run submission --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
   --submission-id sub_EXAMPLE run_EXAMPLE
@@ -100,6 +102,18 @@ guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.js
 guardrailctl run submit --submission-credential-file "$guardrail_credentials_dir/run-credential.json" \
   --submission ./submission.json --operation-id submit-123 run_EXAMPLE
 ```
+
+`run wait` polls the authoritative Run until it is `FINISHED` or `EXPIRED`, then
+prints the final Run document. By default it waits until the Run's own deadline;
+`--timeout` sets an earlier limit and `--interval` sets the polling period.
+Exit code 0 means `FINISHED`; an `EXPIRED` Run prints its state and exits nonzero
+because no final Submission arrived before the deadline. Transport errors, `5xx`
+and `429` are retried until the deadline, while authentication and other client
+errors return immediately. Until the Run deadline is known, connection retries are
+capped at 30 seconds; a `429` `Retry-After` value longer than `--interval` is
+honored, bounded by the deadline.
+Waiting only observes the Run. The caller still verifies the Decision, its
+validity and the evidence before performing the guarded operation.
 
 Only the Run Submission Credential can submit to its bound Run. If it is lost,
 use the Project key to replace it while the Run is `OPEN`:

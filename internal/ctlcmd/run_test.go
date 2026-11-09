@@ -3,6 +3,7 @@ package ctlcmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRunListRejectsInvalidLocalFilters(t *testing.T) {
@@ -223,6 +225,289 @@ func TestRunMutationsUseGeneratedContract(t *testing.T) {
 			t.Fatalf("saved credential=%+v err=%v", saved, err)
 		}
 	})
+}
+
+const testCapabilitiesResponse = `{"apiVersions":["v1alpha1"],"cli":{"minimumVersion":"0.1.0-alpha.0","maximumVersionExclusive":"0.2.0"},"features":[],"storage":{"supportLevel":"official-local","multiInstance":false}}`
+
+func writeTestProjectKey(t *testing.T, serverURL string) string {
+	t.Helper()
+	keyPath := filepath.Join(t.TempDir(), "project-key.json")
+	keyData, _ := json.Marshal(credentialFile{Server: serverURL, Token: "ogk_synthetic"})
+	if err := os.WriteFile(keyPath, keyData, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return keyPath
+}
+
+func writeTestRun(w http.ResponseWriter, status string) {
+	_, _ = fmt.Fprintf(w, `{"id":"run_1","status":%q,"deadlineAt":%d,"result":"PASS","decision":"ALLOW"}`,
+		status, time.Now().Add(time.Hour).Unix())
+}
+
+func TestRunWaitStopsAtFinished(t *testing.T) {
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		calls++
+		if calls == 1 {
+			writeTestRun(w, "OPEN")
+			return
+		}
+		writeTestRun(w, "FINISHED")
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--interval", "1ms", "run_1"}, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Fatalf("Run lookups=%d want 2", calls)
+	}
+	if !strings.Contains(out.String(), `"status":"FINISHED"`) {
+		t.Fatalf("output=%s", out.String())
+	}
+}
+
+func TestRunWaitReportsExpired(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		writeTestRun(w, "EXPIRED")
+	}))
+	defer server.Close()
+
+	var out bytes.Buffer
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--interval", "1ms", "run_1"}, &out)
+	if err == nil || commandExitCode(err) != exitGeneral || !strings.Contains(err.Error(), "expired") {
+		t.Fatalf("err=%v", err)
+	}
+	if !strings.Contains(out.String(), `"status":"EXPIRED"`) {
+		t.Fatalf("output=%s", out.String())
+	}
+}
+
+func TestRunWaitTimesOut(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		writeTestRun(w, "OPEN")
+	}))
+	defer server.Close()
+
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--timeout", "20ms", "--interval", "5ms", "run_1"}, &bytes.Buffer{})
+	if err == nil || commandExitCode(err) != exitGeneral || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRunWaitDoesNotRetryAuthenticationFailure(t *testing.T) {
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		calls++
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = fmt.Fprint(w, `{"code":"UNAUTHENTICATED","traceId":"trace_1"}`)
+	}))
+	defer server.Close()
+
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--interval", "1ms", "run_1"}, &bytes.Buffer{})
+	if err == nil || commandExitCode(err) != exitAuthentication {
+		t.Fatalf("err=%v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("Run lookups=%d want 1", calls)
+	}
+}
+
+func TestRunWaitRetriesTransientServerError(t *testing.T) {
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		calls++
+		if calls == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = fmt.Fprint(w, `{"code":"UNAVAILABLE","traceId":"trace_1"}`)
+			return
+		}
+		writeTestRun(w, "FINISHED")
+	}))
+	defer server.Close()
+
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--interval", "1ms", "run_1"}, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Fatalf("Run lookups=%d want 2", calls)
+	}
+}
+
+func TestRunWaitRejectsInvalidFlags(t *testing.T) {
+	for _, args := range [][]string{
+		{"run", "wait", "--key-file", "unused", "--timeout", "-1s", "run_1"},
+		{"run", "wait", "--key-file", "unused", "--interval", "0s", "run_1"},
+		{"run", "wait", "--key-file", "unused"},
+	} {
+		if err := run(args, &bytes.Buffer{}); err == nil || commandExitCode(err) != exitUsage {
+			t.Fatalf("args=%v err=%v", args, err)
+		}
+	}
+}
+
+func TestRunWaitStopsAtRunDeadlineEvenWithLongerTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		// A stale OPEN response whose deadline already passed and whose later
+		// reads fail must not keep the client waiting for the longer --timeout.
+		_, _ = fmt.Fprintf(w, `{"id":"run_1","status":"OPEN","deadlineAt":%d}`, time.Now().Add(-time.Minute).Unix())
+	}))
+	defer server.Close()
+
+	started := time.Now()
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--timeout", "10s", "--interval", "1ms", "run_1"}, &bytes.Buffer{})
+	if err == nil || commandExitCode(err) != exitGeneral || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("err=%v", err)
+	}
+	if elapsed := time.Since(started); elapsed > 2*time.Second {
+		t.Fatalf("waited %s past the Run deadline", elapsed)
+	}
+}
+
+func TestRunWaitStopsAfterContactTimeout(t *testing.T) {
+	previous := waitContactTimeout
+	waitContactTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { waitContactTimeout = previous })
+
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		calls++
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = fmt.Fprint(w, `{"code":"UNAVAILABLE","traceId":"trace_1"}`)
+	}))
+	defer server.Close()
+
+	started := time.Now()
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--interval", "1ms", "run_1"}, &bytes.Buffer{})
+	if err == nil || commandExitCode(err) != exitServerRejected {
+		t.Fatalf("err=%v", err)
+	}
+	if calls < 2 {
+		t.Fatalf("Run lookups=%d want retries before giving up", calls)
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("contact retries took %s", elapsed)
+	}
+}
+
+func TestRunWaitRetriesTooManyRequests(t *testing.T) {
+	var calls int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		calls++
+		if calls == 1 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = fmt.Fprint(w, `{"code":"RATE_LIMITED","traceId":"trace_1"}`)
+			return
+		}
+		writeTestRun(w, "FINISHED")
+	}))
+	defer server.Close()
+
+	if err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"--interval", "1ms", "run_1"}, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Fatalf("Run lookups=%d want 2", calls)
+	}
+}
+
+func TestRetryAfter(t *testing.T) {
+	tests := []struct {
+		header string
+		want   time.Duration
+	}{
+		{header: "", want: 0},
+		{header: "5", want: 5 * time.Second},
+		{header: " 2 ", want: 2 * time.Second},
+		{header: "0", want: 0},
+		{header: "-1", want: 0},
+		{header: "invalid", want: 0},
+		{header: "Wed, 21 Oct 2015 07:28:00 GMT", want: 0},
+	}
+	for _, tc := range tests {
+		response := &http.Response{Header: http.Header{}}
+		response.Header.Set("Retry-After", tc.header)
+		if got := retryAfter(response); got != tc.want {
+			t.Fatalf("Retry-After %q=%s want=%s", tc.header, got, tc.want)
+		}
+	}
+	if got := retryAfter(nil); got != 0 {
+		t.Fatalf("nil response=%s want=0", got)
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
+
+func TestRunWaitPropagatesExpiredOutputError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
+			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
+			return
+		}
+		writeTestRun(w, "EXPIRED")
+	}))
+	defer server.Close()
+
+	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+		"run_1"}, failingWriter{})
+	if err == nil || err.Error() != "write failed" {
+		t.Fatalf("err=%v", err)
+	}
 }
 
 const cliSpec = `apiVersion: guardrail.open/v1alpha1
