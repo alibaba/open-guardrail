@@ -151,6 +151,7 @@ class Smoke:
         self.proxy.available = True
         self.proxy.run_read_delay = 0
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.load_cert_chain(cert, key)
         self.proxy.socket = context.wrap_socket(self.proxy.socket, server_side=True)
         threading.Thread(target=self.proxy.serve_forever, daemon=True).start()
