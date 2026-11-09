@@ -46,6 +46,14 @@ test-python:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s integrations -t . -p 'test_*.py'
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/agent-demo -p 'test_*.py'
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/cleanup-demo -p 'test_*.py'
+	$(MAKE) test-agent-plugins
+
+# Default plugin gate builds native binaries and checks isolated service/file effects.
+# External pi/DSH SDK tests additionally require OPEN_GUARDRAIL_HOST_MODULES.
+.PHONY: test-agent-plugins
+test-agent-plugins: build
+	OPEN_GUARDRAIL_BINARIES="$(CURDIR)/bin" $(PYTHON) -B -m unittest discover -s integrations/agent-plugins -p 'test_*.py' -v
+	OPEN_GUARDRAIL_BINARIES="$(CURDIR)/bin" $(NODE) --test integrations/agent-plugins/test/*.test.mjs
 
 test-scripts:
 	sh scripts/check-generated.test.sh
