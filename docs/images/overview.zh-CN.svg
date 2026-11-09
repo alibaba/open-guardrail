@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-labelledby="overview-title overview-description">
+  <title id="overview-title">OpenGuardrail 概览</title>
+  <desc id="overview-description">A scenario policy is published and activated in OpenGuardrail. A calling application, service, script or agent creates a Run with its own evaluation context; the service freezes the policy revision reference and deadline. An evaluator submits complete intermediate or final Snapshots of checks and evidence. The caller reads the authoritative Run for its ALLOW or DENY decision and validity, reads the final Submission for accepted evidence, and applies scenario-specific rules. The server does not independently attest to submitted observations.</desc>
+  <defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+      .heading { fill: #0f172a; font-size: 30px; font-weight: 700; }
+      .subtitle { fill: #475569; font-size: 17px; }
+      .actor { fill: #0f172a; font-size: 23px; font-weight: 700; }
+      .actor-detail { fill: #475569; font-size: 14px; }
+      .step { fill: #0f172a; font-size: 18px; font-weight: 600; }
+      .detail { fill: #475569; font-size: 14px; }
+      .number { fill: #ffffff; font-size: 14px; font-weight: 700; text-anchor: middle; }
+      .note { fill: #115e59; font-size: 14px; font-weight: 500; text-anchor: middle; }
+      .decision { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 17px; font-weight: 700; text-anchor: middle; }
+      .lane { fill: none; stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 5 7; }
+    </style>
+    <marker id="caller-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1 1 L 9 5 L 1 9 Z" fill="#475569"/>
+    </marker>
+    <marker id="evaluator-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1 1 L 9 5 L 1 9 Z" fill="#6d28d9"/>
+    </marker>
+    <marker id="decision-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 1 1 L 9 5 L 1 9 Z" fill="#0f766e"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="748" rx="22" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="56" y="55" class="heading">OpenGuardrail 概览</text>
+  <text x="56" y="84" class="subtitle">面向任意业务场景的策略、证据与决策。</text>
+  <rect x="944" y="30" width="200" height="32" rx="16" fill="#f1f5f9"/>
+  <text x="1044" y="51" text-anchor="middle" fill="#475569" font-size="14" font-weight="500">HTTP / guardrailctl</text>
+
+  <!-- Participants -->
+  <g>
+    <rect x="56" y="120" width="300" height="92" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <rect x="76" y="140" width="4" height="50" rx="2" fill="#475569"/>
+    <text x="96" y="159" class="actor">调用方</text>
+    <text x="96" y="185" class="actor-detail">应用、服务与脚本</text>
+  </g>
+  <g>
+    <rect x="450" y="120" width="300" height="92" rx="12" fill="#f0fdfa" stroke="#99d5cb"/>
+    <rect x="470" y="140" width="4" height="50" rx="2" fill="#0f766e"/>
+    <text x="490" y="159" class="actor">OpenGuardrail</text>
+    <text x="490" y="185" class="actor-detail">策略、Run 与决策</text>
+  </g>
+  <g>
+    <rect x="844" y="120" width="300" height="92" rx="12" fill="#faf8ff" stroke="#ddd6fe"/>
+    <rect x="864" y="140" width="4" height="50" rx="2" fill="#6d28d9"/>
+    <text x="884" y="159" class="actor">检查执行方</text>
+    <text x="884" y="185" class="actor-detail">Agent、服务或人员</text>
+  </g>
+
+  <path class="lane" d="M 206 212 V 586"/>
+  <path class="lane" d="M 600 212 V 586"/>
+  <path class="lane" d="M 994 212 V 443"/>
+
+  <!-- 1: A published policy is a prerequisite for Run creation. -->
+  <rect x="485" y="232" width="230" height="36" rx="18" fill="#e6f5f1" stroke="#b8ddd4"/>
+  <circle cx="507" cy="250" r="11" fill="#0f766e"/>
+  <text x="507" y="255" class="number" font-size="12">1</text>
+  <text x="605" y="255" class="note">发布并启用策略</text>
+
+  <!-- 2: A caller creates the evaluation Run. -->
+  <circle cx="241" cy="294" r="13" fill="#475569"/>
+  <text x="241" y="299" class="number">2</text>
+  <text x="267" y="300" class="step">创建 Run</text>
+  <text x="267" y="322" class="detail">业务场景上下文</text>
+  <path d="M 206 335 H 589" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#caller-arrow)"/>
+  <circle cx="206" cy="335" r="4" fill="#475569"/>
+  <rect x="476" y="350" width="248" height="34" rx="8" fill="#f0fdfa"/>
+  <text x="600" y="372" class="note">冻结策略版本与截止时间</text>
+
+  <!-- 3: An external evaluator submits its assessment. -->
+  <circle cx="662" cy="402" r="13" fill="#6d28d9"/>
+  <text x="662" y="407" class="number">3</text>
+  <text x="688" y="408" class="step">提交检查结果与证据</text>
+  <text x="688" y="430" class="detail">提交完整的中间或最终快照</text>
+  <path d="M 994 443 H 611" fill="none" stroke="#6d28d9" stroke-width="2.5" marker-end="url(#evaluator-arrow)"/>
+  <circle cx="994" cy="443" r="4" fill="#6d28d9"/>
+  <rect x="459" y="458" width="282" height="34" rx="8" fill="#f0fdfa"/>
+  <text x="600" y="480" class="note">校验并汇总检查结果</text>
+
+  <!-- 4: The decision is read from the authoritative Run. -->
+  <circle cx="241" cy="523" r="13" fill="#0f766e"/>
+  <text x="241" y="528" class="number">4</text>
+  <text x="267" y="529" class="step">读取 Run 与最终 Submission</text>
+  <text x="267" y="551" class="detail">决策、证据与有效期</text>
+  <path d="M 600 565 H 217" fill="none" stroke="#0f766e" stroke-width="2.5" marker-end="url(#decision-arrow)"/>
+  <circle cx="600" cy="565" r="4" fill="#0f766e"/>
+
+  <!-- 5: The caller decides how to use the decision. -->
+  <rect x="56" y="586" width="300" height="96" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <circle cx="81" cy="611" r="12" fill="#475569"/>
+  <text x="81" y="616" class="number">5</text>
+  <text x="104" y="617" class="step" font-size="17">执行决策</text>
+  <text x="76" y="642" class="detail">核验证据与有效期。</text>
+  <text x="76" y="663" class="detail">应用业务场景规则。</text>
+
+  <rect x="450" y="586" width="300" height="96" rx="12" fill="#f0fdfa" stroke="#99d5cb"/>
+  <text x="600" y="612" text-anchor="middle" fill="#115e59" font-size="14" font-weight="600">已保存决策</text>
+  <rect x="476" y="628" width="106" height="32" rx="8" fill="#dcfce7" stroke="#bbdfc5"/>
+  <text x="529" y="650" class="decision" fill="#166534">ALLOW</text>
+  <rect x="596" y="628" width="128" height="32" rx="8" fill="#fee2e2" stroke="#f3c5c5"/>
+  <text x="660" y="650" class="decision" fill="#991b1b">DENY</text>
+
+  <path d="M 56 704 H 1144" fill="none" stroke="#e2e8f0"/>
+  <text x="56" y="728" fill="#475569" font-size="14">调用方执行决策；服务端不独立证明提交的观测结果。</text>
+</svg>

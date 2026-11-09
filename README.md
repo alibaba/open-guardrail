@@ -19,10 +19,31 @@ for verification and audit. Agents and tools use the HTTP API or the
 **Status: development preview.** The API is `v1alpha1`. See
 [current capabilities and limits](#current-capabilities-and-limits) for details.
 
+[![Go 1.27+](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)](go.mod)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+[![OpenGuardrail overview: an AI agent submits checks and evidence; OpenGuardrail records an ALLOW or DENY decision with a validity window and audit trail; the execution tool verifies the decision before acting.](docs/images/readme-hero.png)](docs/images/readme-hero.svg)
+
+*The agent proposes; the gate decides. OpenGuardrail validates the structure and
+completeness of evidence; the calling system verifies observations and applies the
+decision.*
+
 [Source](https://github.com/alibaba/open-guardrail) · [Issues](https://github.com/alibaba/open-guardrail/issues) ·
 [Get started](docs/getting-started.md) · [Documentation](docs/README.md) · [API and CLI](docs/api.md) ·
 [Deployment](docs/configuration.md) · [Contributing](CONTRIBUTING.md) ·
 [Apache-2.0](LICENSE)
+
+## See it in action
+
+A predefined Python runner asks to delete four files: two temporary files, plus
+`orders.csv` and `config.yaml`. The broad request is blocked because it includes
+protected files and exceeds the batch limit. The runner narrows the request; the
+second Run passes and the execution tool deletes only the two temporary files.
+
+[![OpenGuardrail live cleanup demo: the first check is DENY because the request includes orders and configuration; the second check is ALLOW after the runner narrows it to two temporary files.](docs/images/cleanup-demo.png)](examples/cleanup-demo/README.md)
+
+*Predefined runner, real service and files; this demo does not use an AI model. Start it with
+`python3 examples/cleanup-demo/demo.py`.*
 
 ## Why OpenGuardrail?
 
@@ -37,37 +58,29 @@ execution tool must extract and correlate it before deciding whether to proceed.
 OpenGuardrail organizes it into a consistent assessment record for tools to
 verify before acting and for later audits.
 
-## Scenarios
+### Where it fits
 
-Each business operation defines its own requirements. For example:
+**Use it when:** An agent or automation may delete data, deploy an application,
+or change configuration, and the team needs a traceable record of the policy,
+checks and evidence behind each decision.
 
-| Operation | Example checks |
-| --- | --- |
-| Release an application | Required tests pass; the release target matches the request |
-| Change configuration | The change scope meets the policy; required approvals are recorded in an existing system |
-| Modify data | Target resources and expected impact are within allowed bounds |
+**Integration requirement:** An agent or integration performs the checks and
+submits results and evidence. The tool that actually performs the operation
+reads the authoritative Run before acting and verifies the decision's validity,
+the evidence it relies on and, where relevant, the current target state.
 
-These policy examples depend on external observation and execution integrations.
-The agent uses connected tools to perform checks and collect evidence. The
-execution tool enforces the decision at the point of action.
-
-A **Scene** groups the policies for a use case. Scenes share the same policy,
-evidence and decision model, so new scenarios can be added without changing the
-service's core API.
+**Limits:** OpenGuardrail validates the submission against the policy and records
+`ALLOW` or `DENY`; it does not independently verify the observations. A recorded
+`ALLOW` does not grant permission for the business operation. Actions that
+bypass the integrated tool are outside this check, and OpenGuardrail does not
+isolate processes or networks.
 
 ## How it works
 
-```text
-Policy checks defined per operation
-                       |
-The agent performs checks with its tools
-and submits check results and evidence
-                       |
-OpenGuardrail validates the submission, records the assessment
-and returns ALLOW / DENY
-                       |
-The execution tool verifies the decision and evidence before acting
-```
+A **Scene** groups policies for one type of operation. Scenes share the same
+policy, evidence and decision model. An assessment moves through five steps:
+
+[![OpenGuardrail evaluation flow: publish and activate a policy, create a Run, submit a complete assessment, read the Run and final Submission, and apply the decision in the calling system.](docs/images/overview.png)](docs/images/overview.svg)
 
 1. **Publish a policy.** Define checks and evidence requirements in a GuardrailSpec
    and publish an immutable revision, then activate it for the Scene.
@@ -95,8 +108,9 @@ validity. See [Runs and submissions](docs/runs.md).
 
 ## Quickstart
 
-Run a file cleanup task and watch a guarded tool act on real files in a disposable
-directory. This trial needs no model account, Jenkins, Docker or separate database.
+Run the same workflow locally and watch a guarded tool act on real files in a
+disposable directory. This trial needs no model account, Jenkins, Docker or
+separate database.
 
 ### Run a guarded task
 
