@@ -125,7 +125,7 @@ framework. Required audit writes remain part of core command correctness.
 Applications, services, scripts and agents can integrate through the HTTP API and
 shared `guardrailctl` CLI without a compiled provider. The
 [CLI directory](../cmd/guardrailctl/README.md) contains
-implemented diagnostic, identity and Run create/get/revision/submission/list/rotate-credential/submit commands.
+implemented diagnostic, identity and Run create/get/wait/revision/submission/list/rotate-credential/submit commands.
 Keep Jenkins, GitHub Actions and Argo Pipeline/YAML recipes in `integrations`,
 separate from Go context adapters. Deployment and batch/traffic control remain with
 the CD system. This project's own build/test workflows stay in `.github/workflows`.

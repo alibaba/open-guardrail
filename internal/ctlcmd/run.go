@@ -12,7 +12,9 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	contract "github.com/alibaba/open-guardrail/api/openapi"
 	"github.com/alibaba/open-guardrail/internal/adapters/security"
@@ -27,16 +29,18 @@ var validRunResourceID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$
 type runOptions struct {
 	server, keyFile, tokenFile, scene, status, cursor, changeSetFile, submissionFile, operationID, runID, submissionID string
 	limit                                                                                                              int
+	waitTimeout                                                                                                        time.Duration
+	waitInterval                                                                                                       time.Duration
 }
 
 func runRun(args []string, out io.Writer) error {
 	if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
-		fmt.Fprintln(out, "Usage: guardrailctl run create|get|revision|submission|list|submit|rotate-credential [flags]")
-		fmt.Fprintln(out, "\nCommands:\n  create             Create an immutable Run and save its Submission Credential\n  get                Get one Run by ID\n  revision           Read the immutable Revision selected by a Run\n  submission         Read a persisted Submission within a Run\n  list               List Runs in stable descending creation order\n  submit             Submit a complete Snapshot with a Run Submission Credential\n  rotate-credential  Replace and save the Submission Credential for an OPEN Run")
+		fmt.Fprintln(out, "Usage: guardrailctl run create|get|wait|revision|submission|list|submit|rotate-credential [flags]")
+		fmt.Fprintln(out, "\nCommands:\n  create             Create an immutable Run and save its Submission Credential\n  get                Get one Run by ID\n  wait               Wait for one Run to reach FINISHED or EXPIRED\n  revision           Read the immutable Revision selected by a Run\n  submission         Read a persisted Submission within a Run\n  list               List Runs in stable descending creation order\n  submit             Submit a complete Snapshot with a Run Submission Credential\n  rotate-credential  Replace and save the Submission Credential for an OPEN Run")
 		return nil
 	}
-	if len(args) < 2 || (args[1] != "create" && args[1] != "get" && args[1] != "revision" && args[1] != "submission" && args[1] != "list" && args[1] != "submit" && args[1] != "rotate-credential") {
-		return usageError("usage: guardrailctl run create|get|revision|submission|list|submit|rotate-credential [flags]")
+	if len(args) < 2 || (args[1] != "create" && args[1] != "get" && args[1] != "wait" && args[1] != "revision" && args[1] != "submission" && args[1] != "list" && args[1] != "submit" && args[1] != "rotate-credential") {
+		return usageError("usage: guardrailctl run create|get|wait|revision|submission|list|submit|rotate-credential [flags]")
 	}
 	command := args[1]
 	opts, err := parseRunOptions(command, args[2:], out)
@@ -101,6 +105,9 @@ func runRun(args []string, out io.Writer) error {
 		_, err = out.Write(result.Body)
 		return err
 	}
+	if command == "wait" {
+		return waitRun(opts, client, out)
+	}
 	if command == "list" {
 		return listRuns(opts, client, out)
 	}
@@ -132,6 +139,9 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 		flags.StringVar(&opts.operationID, "operation-id", "", "stable retry identifier; generated when omitted")
 	} else if command == "rotate-credential" {
 		flags.StringVar(&opts.tokenFile, "submission-credential-file", "", "new private file for the replacement Run Submission Credential")
+	} else if command == "wait" {
+		flags.DurationVar(&opts.waitTimeout, "timeout", 0, "optional earlier limit; 0 waits until the Run deadline")
+		flags.DurationVar(&opts.waitInterval, "interval", time.Second, "polling interval")
 	} else if command == "list" {
 		flags.StringVar(&opts.scene, "scene", "", "optional exact Scene key")
 		flags.StringVar(&opts.status, "status", "", "optional Run status: OPEN, FINISHED or EXPIRED")
@@ -144,7 +154,7 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	if err := flags.Parse(args); err != nil {
 		return opts, err
 	}
-	if command == "get" || command == "revision" || command == "submission" || command == "submit" || command == "rotate-credential" {
+	if command == "get" || command == "wait" || command == "revision" || command == "submission" || command == "submit" || command == "rotate-credential" {
 		if flags.NArg() != 1 {
 			return opts, usageError("run " + command + " requires exactly one Run ID")
 		}
@@ -174,6 +184,14 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	}
 	if command == "rotate-credential" && opts.tokenFile == "" {
 		return opts, usageError("--submission-credential-file is required")
+	}
+	if command == "wait" {
+		if opts.waitTimeout < 0 {
+			return opts, usageError("--timeout must not be negative")
+		}
+		if opts.waitInterval <= 0 {
+			return opts, usageError("--interval must be positive")
+		}
 	}
 	if command == "list" {
 		if opts.limit < 1 || opts.limit > runapp.MaxListLimit {
@@ -213,6 +231,109 @@ func listRuns(opts runOptions, client *apiClient, out io.Writer) error {
 	}
 	_, err = out.Write(result.Body)
 	return err
+}
+
+const (
+	// waitDeadlineGrace lets a Run that expires exactly at its deadline be read once more.
+	waitDeadlineGrace = 5 * time.Second
+)
+
+// waitContactTimeout bounds retries until the Run deadline is known.
+var waitContactTimeout = 30 * time.Second
+
+func waitRun(opts runOptions, client *apiClient, out io.Writer) error {
+	var deadline time.Time
+	if opts.waitTimeout > 0 {
+		deadline = time.Now().Add(opts.waitTimeout)
+	}
+	started := time.Now()
+	var lastErr error
+	var nextWait time.Duration
+	for {
+		ctx, cancel := waitRequestContext(deadline, started)
+		result, err := client.generated.GetPolicyRunWithResponse(ctx, opts.runID)
+		cancel()
+		contextExpired := err != nil && errors.Is(err, context.DeadlineExceeded)
+		if err != nil {
+			lastErr = transportError(err, false)
+		} else if responseErr := validateResponse(result, runResponseLimit, "Run lookup", false); responseErr != nil {
+			if result.StatusCode() == 0 || result.StatusCode() >= http.StatusInternalServerError ||
+				result.StatusCode() == http.StatusTooManyRequests {
+				lastErr = responseErr
+				if result.StatusCode() == http.StatusTooManyRequests {
+					nextWait = retryAfter(result.HTTPResponse)
+				}
+			} else {
+				return responseErr
+			}
+		} else {
+			if result.JSON200 == nil || result.JSON200.Id != opts.runID {
+				return internalError("invalid Run response")
+			}
+			run := result.JSON200
+			runDeadline := time.Unix(run.DeadlineAt, 0).Add(waitDeadlineGrace)
+			if deadline.IsZero() || runDeadline.Before(deadline) {
+				deadline = runDeadline
+			}
+			switch run.Status {
+			case contract.PolicyRunStatusFINISHED:
+				_, err = out.Write(result.Body)
+				return err
+			case contract.PolicyRunStatusEXPIRED:
+				if _, err = out.Write(result.Body); err != nil {
+					return err
+				}
+				return internalError("Run expired without a final Submission")
+			}
+			lastErr = nil
+		}
+		if !deadline.IsZero() && !time.Now().Before(deadline) {
+			if lastErr != nil && !contextExpired {
+				return lastErr
+			}
+			return internalError("timed out waiting for Run to reach a terminal state")
+		}
+		if deadline.IsZero() && lastErr != nil && time.Since(started) >= waitContactTimeout {
+			return lastErr
+		}
+		wait := opts.waitInterval
+		if nextWait > wait {
+			wait = nextWait
+		}
+		nextWait = 0
+		if !deadline.IsZero() {
+			if remaining := time.Until(deadline); remaining < wait {
+				wait = remaining
+			}
+		} else if remaining := waitContactTimeout - time.Since(started); remaining < wait {
+			wait = remaining
+		}
+		if wait > 0 {
+			time.Sleep(wait)
+		}
+	}
+}
+
+func waitRequestContext(deadline time.Time, started time.Time) (context.Context, context.CancelFunc) {
+	if !deadline.IsZero() {
+		return context.WithDeadline(context.Background(), deadline)
+	}
+	remaining := waitContactTimeout - time.Since(started)
+	if remaining <= 0 {
+		remaining = time.Millisecond
+	}
+	return context.WithTimeout(context.Background(), remaining)
+}
+
+func retryAfter(response *http.Response) time.Duration {
+	if response == nil {
+		return 0
+	}
+	seconds, err := strconv.Atoi(strings.TrimSpace(response.Header.Get("Retry-After")))
+	if err != nil || seconds <= 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 func submitRun(opts runOptions, client *apiClient, out io.Writer) error {

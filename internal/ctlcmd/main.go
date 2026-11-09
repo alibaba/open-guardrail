@@ -33,7 +33,7 @@ func run(args []string, out io.Writer) error {
 	flags := flag.NewFlagSet("guardrailctl", flag.ContinueOnError)
 	flags.SetOutput(out)
 	flags.Usage = func() {
-		fmt.Fprintln(out, "Usage: guardrailctl [--server URL] status|version|capabilities\n       guardrailctl bootstrap init --help\n       guardrailctl auth login|logout|whoami|create-key|list-keys|rotate-key|revoke-key --help\n       guardrailctl scene apply --help\n       guardrailctl run create|get|revision|submission|list|submit|rotate-credential --help")
+		fmt.Fprintln(out, "Usage: guardrailctl [--server URL] status|version|capabilities\n       guardrailctl bootstrap init --help\n       guardrailctl auth login|logout|whoami|create-key|list-keys|rotate-key|revoke-key --help\n       guardrailctl scene apply --help\n       guardrailctl run create|get|wait|revision|submission|list|submit|rotate-credential --help")
 		flags.PrintDefaults()
 	}
 	server := flags.String("server", defaultServerURL(), "OpenGuardrail service URL")
