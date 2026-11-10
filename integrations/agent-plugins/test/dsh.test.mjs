@@ -65,7 +65,13 @@ test('DSH still registers tools when the bundled Skill lacks a description', { s
   let root;
   try {
     const source = await readFile(new URL('../dsh.mjs', import.meta.url), 'utf8');
-    await writeFile(join(directory, 'dsh.mjs'), source.replace("'./bridge.mjs'", JSON.stringify(new URL('../bridge.mjs', import.meta.url).href)));
+    await writeFile(join(directory, 'dsh.mjs'), source
+      .replace("'./bridge.mjs'", JSON.stringify(new URL('../bridge.mjs', import.meta.url).href)));
+    await writeFile(join(directory, 'scenarios.mjs'),
+      `import { scenarios as source } from ${JSON.stringify(new URL('../scenarios.mjs', import.meta.url).href)};
+export const scenarios = source.map(scenario => ({ ...scenario, skill: { ...scenario.skill,
+  url: new URL('./skills/guardrail-cleanup/SKILL.md', import.meta.url) } }));
+`);
     await mkdir(join(directory, 'skills/guardrail-cleanup'), { recursive: true });
     const skill = await readFile(new URL('../skills/guardrail-cleanup/SKILL.md', import.meta.url), 'utf8');
     await writeFile(join(directory, 'skills/guardrail-cleanup/SKILL.md'), skill.replace(/^description:.*\n/m, ''));

@@ -28,13 +28,16 @@ public dependencies and synthetic data so every adopter can reproduce the same f
 
 | Platform | Directory | Integration status |
 | --- | --- | --- |
-| pi / DeepSeek Harness | [agent-plugins](agent-plugins/README.md) | Internal preview: native tools and Skill over the isolated real-file cleanup example |
+| pi / DeepSeek Harness | [agent-plugins](agent-plugins/README.md) | Internal preview: native tools and Skill for the isolated file-cleanup scenario |
 | Jenkins | [jenkins](jenkins/README.md) | Synthetic Jenkinsfile, build-context adapter and outer-Agent client using encrypted handoff |
 | GitHub Actions | [github-actions](github-actions/README.md) | Planned deployment workflow calling the shared CLI or API |
 | Argo Rollouts | [argo](argo/README.md) | Inline Analysis Job, encrypted handoff, layered failure diagnostics and repeatable eight-case acceptance |
 | Argo CD | [argo](argo/README.md) | Sync hooks remain planned |
 
 The shared CLI lives in [cmd/guardrailctl](../cmd/guardrailctl/README.md).
+Scenario source and its installable status are listed in
+[scenarios](../scenarios/README.md). The pi adapter is a single host entrypoint;
+new scenarios are registered through that package.
 For planned server-side context contracts and reusable provider implementations,
 see [core and adapter responsibilities](../docs/extensions.md#core-and-adapter-responsibilities).
 Their source-checkout design notes live under `extension/delivery/` and

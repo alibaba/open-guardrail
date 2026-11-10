@@ -15,6 +15,7 @@ import tempfile
 PUBLIC_PATHS = (
     "README.md", "CONTRIBUTING.md", "LICENSE*", "NOTICE*", "SECURITY.md",
     "CODE_OF_CONDUCT.md", "MAINTAINERS.md", "third_party", "docs", "examples", "integrations",
+    "scenarios",
     ".agents/skills/open-guardrail-demo", "cmd/guardrailctl/README.md",
     "api/openapi/openapi.yaml", "deploy/config.example.yaml",
 )

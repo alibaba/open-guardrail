@@ -6,7 +6,8 @@ import time
 import unittest
 from unittest.mock import patch
 
-spec = importlib.util.spec_from_file_location("cleanup_worker", Path(__file__).with_name("worker.py"))
+spec = importlib.util.spec_from_file_location("cleanup_worker",
+    Path(__file__).resolve().parents[2] / "scenarios" / "file-cleanup" / "worker.py")
 worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
 
@@ -28,33 +29,33 @@ class CleanupTests(unittest.TestCase):
         return {f["name"] for f in self.app.tool.inventory()}
 
     def test_denial_then_new_run_narrowing_has_actual_effect(self):
-        denied = self.prepare(list(worker.demo.SEEDS), "broad")
+        denied = self.prepare(list(worker.runtime.SEEDS), "broad")
         final = self.app.submit(denied["runId"], self.checks("BLOCKED"))
         self.assertEqual(final["run"]["decision"], "DENY")
         with self.assertRaises(ValueError):
             self.app.execute(denied["runId"], denied["targets"])
-        self.assertEqual(self.names(), set(worker.demo.SEEDS))
+        self.assertEqual(self.names(), set(worker.runtime.SEEDS))
         allowed = self.prepare(request="narrow")
         final = self.app.submit(allowed["runId"], self.checks())
         self.assertEqual(final["run"]["decision"], "ALLOW")
         effect = self.app.execute(allowed["runId"], allowed["targets"])
-        self.assertEqual(set(effect["removed"]), set(worker.demo.TEMPORARY))
+        self.assertEqual(set(effect["removed"]), set(worker.runtime.TEMPORARY))
         self.assertEqual(self.names(), {"orders.csv", "config.yaml"})
         self.assertNotEqual(denied["runId"], allowed["runId"])
         self.assertEqual(len(self.app.status()["runs"]), 2)
         history = self.app.status(denied["runId"])["runs"][0]
         self.assertNotIn("acceptedSubmission", self.app.status()["runs"][0])
-        self.assertLess(len(worker.demo.identity(self.app.status())), 8000)
+        self.assertLess(len(worker.runtime.identity(self.app.status())), 8000)
         self.assertEqual(history["acceptedSubmission"]["snapshot"]["verdict"], "BLOCKED")
         self.assertEqual(history["acceptedSubmission"]["runId"], denied["runId"])
 
     def test_forged_pass_is_not_authority_to_delete_business_files(self):
-        prepared = self.prepare(list(worker.demo.SEEDS))
+        prepared = self.prepare(list(worker.runtime.SEEDS))
         final = self.app.submit(prepared["runId"], self.checks())
         self.assertEqual(final["run"]["decision"], "ALLOW")
         with self.assertRaises(ValueError):
             self.app.execute(prepared["runId"], prepared["targets"])
-        self.assertEqual(self.names(), set(worker.demo.SEEDS))
+        self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
     def test_unknown_does_not_execute(self):
         prepared = self.prepare()
@@ -62,7 +63,7 @@ class CleanupTests(unittest.TestCase):
         self.assertEqual(final["run"]["decision"], "DENY")
         with self.assertRaises(ValueError):
             self.app.execute(prepared["runId"], prepared["targets"])
-        self.assertEqual(self.names(), set(worker.demo.SEEDS))
+        self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
     def test_retry_preserves_run_and_submission_identity(self):
         prepared = self.prepare()
@@ -106,7 +107,7 @@ class CleanupTests(unittest.TestCase):
                 if created:
                     self.assertEqual(original("run", "get", "--key-file", str(self.app.gateway.key),
                                               created[0]["id"])["status"], "OPEN")
-                self.assertEqual(self.names(), set(worker.demo.SEEDS))
+                self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
     def test_submit_lost_ack_retains_credential_until_identical_retry(self):
         prepared = self.prepare()
@@ -140,7 +141,7 @@ class CleanupTests(unittest.TestCase):
         (self.app.tool.path / "cache.tmp").write_text("changed after observation")
         with self.assertRaises(ValueError):
             self.app.execute(prepared["runId"], prepared["targets"])
-        self.assertEqual(self.names(), set(worker.demo.SEEDS))
+        self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
     def test_service_offline_and_missing_submission_stop_execution(self):
         prepared = self.prepare()
@@ -151,7 +152,7 @@ class CleanupTests(unittest.TestCase):
         self.app.process.wait(timeout=5)
         with self.assertRaises(RuntimeError):
             self.app.execute(prepared["runId"], prepared["targets"])
-        self.assertEqual(self.names(), set(worker.demo.SEEDS))
+        self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
     def test_real_expiry_stops_execution(self):
         self.app.policy = self.app.policy.replace("validForSeconds: 60", "validForSeconds: 1")
@@ -163,7 +164,7 @@ class CleanupTests(unittest.TestCase):
         time.sleep(max(0, final["run"]["decisionExpiresAt"] - time.time()) + .1)
         with self.assertRaises(ValueError):
             self.app.execute(prepared["runId"], prepared["targets"])
-        self.assertEqual(self.names(), set(worker.demo.SEEDS))
+        self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
     def test_isolation_and_execution_retry(self):
         other = worker.Cleanup(os.environ["OPEN_GUARDRAIL_BINARIES"])
@@ -175,7 +176,7 @@ class CleanupTests(unittest.TestCase):
         self.app.execute(prepared["runId"], prepared["targets"])
         with self.assertRaises(ValueError):
             self.app.execute(prepared["runId"], prepared["targets"])
-        self.assertEqual({f["name"] for f in other.tool.inventory()}, set(worker.demo.SEEDS))
+        self.assertEqual({f["name"] for f in other.tool.inventory()}, set(worker.runtime.SEEDS))
 
     def test_arbitrary_paths_and_incomplete_checks_are_refused(self):
         for targets in (["../cache.tmp"], ["/tmp/cache.tmp"], ["cache.tmp", "cache.tmp"]):
@@ -184,7 +185,7 @@ class CleanupTests(unittest.TestCase):
         prepared = self.prepare()
         with self.assertRaises(ValueError):
             self.app.submit(prepared["runId"], self.checks()[:1])
-        self.assertEqual(self.names(), set(worker.demo.SEEDS))
+        self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
     def test_partial_failure_preserves_effects_and_refuses_reexecution(self):
         prepared = self.prepare()
@@ -196,7 +197,7 @@ class CleanupTests(unittest.TestCase):
                 raise OSError("injected test filesystem failure")
             return unlink(name, **kwargs)
 
-        with patch.object(worker.demo.os, "unlink", side_effect=fail_second):
+        with patch.object(worker.runtime.os, "unlink", side_effect=fail_second):
             with self.assertRaises(OSError):
                 self.app.execute(prepared["runId"], prepared["targets"])
         self.assertEqual(self.app.records[prepared["runId"]]["removed"], ["cache.tmp"])

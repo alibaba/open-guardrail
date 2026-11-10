@@ -75,6 +75,11 @@ the evidence it relies on and, where relevant, the current target state.
 bypass the integrated tool are outside this check, and OpenGuardrail does not
 isolate processes or networks.
 
+The [scenario packages](scenarios/README.md) show where concrete checks,
+evidence collection and execution gates live. The
+[agent plugin](integrations/agent-plugins/README.md) provides one pi entrypoint
+and loads the bundled scenarios.
+
 ## How it works
 
 A **Scene** groups policies for one type of operation. Scenes share the same

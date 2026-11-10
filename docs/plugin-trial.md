@@ -12,7 +12,7 @@ start a private loopback service and remove their temporary data on shutdown.
 | --- | --- |
 | Native binaries | Linux/macOS, amd64 or arm64; server and CLI from the selected release |
 | Python | 3.9+ |
-| Node.js | 22+ |
+| Node.js | 22+ for pi and the standalone trial; 24.9+ for DeepSeek Harness 0.2.2-rc.1 |
 | pi | 1.5.0, `@earendil-works/pi-coding-agent` |
 | DeepSeek Harness | 0.2.2-rc.1, `@deepseek-ai/dsh`; pnpm for installation |
 | Model | Authenticate separately in your chosen host |
@@ -29,7 +29,7 @@ including its natural-exit check.
 ## Obtain a version
 
 Obtain `plugin-release.json`, `install.py`, the native archive for your platform,
-and `openguardrail-cleanup-preview-VERSION.tgz` from the same approved release
+and `openguardrail-agent-plugins-preview-VERSION.tgz` from the same approved release
 asset directory. Keep them together. Replace VERSION with the exact version.
 Official published assets appear in [GitHub Releases](https://github.com/alibaba/open-guardrail/releases).
 For a candidate supplied by a maintainer, retain its source revision and test
@@ -98,7 +98,7 @@ For DSH, install the downloaded `.tgz` into the profile you actually use
 
 ```sh
 node "$plugin_dir/doctor.mjs" --host dsh
-dsh plugin --profile headless add /absolute/path/to/openguardrail-cleanup-preview-VERSION.tgz --ignore-scripts
+dsh plugin --profile headless add /absolute/path/to/openguardrail-agent-plugins-preview-VERSION.tgz --ignore-scripts
 dsh --profile headless
 ```
 
@@ -149,10 +149,17 @@ pi remove /absolute/path/to/OLD-VERSION/plugin
 pi install /absolute/path/to/NEW-VERSION/plugin
 ```
 
-DSH replaces the package by its package name. Check the selected profile after
-installation. Stop the host and unregister the plugin before removing
+DSH replaces a package only when its name is unchanged. If upgrading from the
+earlier `@openguardrail/cleanup-preview` preview, stop DSH and remove that old
+package from the same profile before adding `@openguardrail/agent-plugins-preview`:
+
+```sh
+dsh plugin --profile headless remove @openguardrail/cleanup-preview
+```
+
+Check the selected profile after installation. Stop the host and unregister the plugin before removing
 its installation directory. DSH plugin removal is by package name
-`@openguardrail/cleanup-preview`; pi removal uses the installed directory.
+`@openguardrail/agent-plugins-preview`; pi removal uses the installed directory.
 
 If diagnosis fails, follow its `fix` field. If model login or Skill discovery
 fails, verify the chosen profile and the host's own diagnostics. If execution

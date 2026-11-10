@@ -5,11 +5,17 @@
 
 [English 与完整命令说明](README.md)
 
-为 pi、DeepSeek Harness 提供原生工具和调查取证 Skill，复用现有文件清理示例。
+本目录是**宿主适配器及安装包**。Pi 只有 `pi.mjs` 一个入口，DSH 使用
+`dsh.mjs`。工具定义、隔离 worker 和操作说明在
+[`scenarios/file-cleanup/`](../../scenarios/file-cleanup/)；
+`pack.mjs` 把场景的执行逻辑和策略装进同一个 npm 包。增加场景时在
+`scenarios.mjs` 注册并更新打包清单，不再创建一个 Pi 插件。
+
+为 pi、DeepSeek Harness 提供原生工具和调查取证 Skill，使用文件清理场景。
 Agent 读取 Run 的冻结策略和实际文件观测，自行给出检查结论；插件提交原始观测作为
 证据，执行工具再次核验权威决策、证据、操作参数及当前文件状态。
 
-当前支持 pi 1.5.0、DeepSeek Harness 0.2.2-rc.1；需要 Node.js 22+、Python 3.9+、
+当前支持 pi 1.5.0、DeepSeek Harness 0.2.2-rc.1；pi 需要 Node.js 22+，DSH 需要 Node.js 24.9+，均需 Python 3.9+、
 Linux/macOS 原生服务和 CLI 二进制，以及宿主自己的有效模型登录。没有发布公共 npm 包。
 
 从仓库根目录执行：
@@ -21,10 +27,10 @@ plugin_install_dir=$(mktemp -d)
 (cd integrations/agent-plugins && npm pack --pack-destination "$plugin_install_dir")
 ```
 
-pi 安装解压后的目录；不能直接把本地 tgz 当成扩展目录：
+pi 安装解压后的目录；不能直接把本地 tgz 当成扩展目录。若从干净源码目录直接安装，须先在仓库根目录执行 `node integrations/agent-plugins/pack.mjs`，生成 `package.json` 声明的 `skills/` 目录：
 
 ```sh
-tar -xzf "$plugin_install_dir/openguardrail-cleanup-preview-0.1.0-alpha.0.tgz" -C "$plugin_install_dir"
+tar -xzf "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" -C "$plugin_install_dir"
 pi install "$plugin_install_dir/package"
 pi --no-mcp --tools 'read,guardrail_cleanup_*'
 ```
@@ -32,7 +38,7 @@ pi --no-mcp --tools 'read,guardrail_cleanup_*'
 DSH 需要 pnpm，用所选 profile 的插件管理入口安装：
 
 ```sh
-dsh plugin --profile headless add "$plugin_install_dir/openguardrail-cleanup-preview-0.1.0-alpha.0.tgz" --ignore-scripts
+dsh plugin --profile headless add "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" --ignore-scripts
 dsh --profile headless '使用 guardrail-cleanup Skill，先评估全部四个示例文件并尝试执行，展示拒绝；再缩小到允许的目标，重新评估执行，最后核对实际文件与两条决策。'
 ```
 
@@ -53,8 +59,11 @@ dsh --profile headless '使用 guardrail-cleanup Skill，先评估全部四个�
 首批只保护插件自有的四个临时示例文件，不接受任意路径，也不承诺拦截其他 shell、
 文件工具或同一操作系统用户的进程。完整边界、重试、验证、升级及卸载命令见英文说明。
 
+从旧版 `@openguardrail/cleanup-preview` 升级时，先停止 DSH，在同一 profile 执行
+`dsh plugin --profile headless remove @openguardrail/cleanup-preview`，再安装新包，避免两份插件同时注册。
+
 `make test-python` 和 `make test` 默认包含 `make test-agent-plugins`，
-会构建原生二进制并验证隔离服务与真实文件，需要 Go、Python 和 Node 22+。
+会构建原生二进制并验证隔离服务与真实文件，需要 Go、Python 和 Node 22+；DSH SDK 测试需要 Node 24.9+。
 证据核验与实际删除依赖这层门禁；直接执行测试且不配置二进制时，live 用例会跳过。
 完整宿主 SDK 测试还需按英文说明设置
 `OPEN_GUARDRAIL_HOST_MODULES`。真实模型和实际安装包的体验任务需要另外运行，

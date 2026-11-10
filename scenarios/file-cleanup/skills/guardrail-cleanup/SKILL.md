@@ -1,6 +1,6 @@
 ---
 name: guardrail-cleanup
-description: Assess and execute the OpenGuardrail plugin's isolated file cleanup task using frozen policy and actual tool-observed evidence; applies to the four disposable sample files, not arbitrary user files.
+description: Assess and execute the isolated file cleanup scenario using frozen policy and actual tool-observed evidence; applies to the four disposable sample files, not arbitrary user files.
 ---
 
 Use `guardrail_cleanup_status` to check the service and actual files. The plugin

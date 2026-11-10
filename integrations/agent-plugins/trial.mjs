@@ -2,14 +2,15 @@
 // Deterministic installation self-check. Real-model trials use the host guide.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { CleanupBridge } from './bridge.mjs';
+import { WorkerBridge } from './bridge.mjs';
+import { byId } from './scenarios.mjs';
 
 if (process.argv.length !== 2) {
   console.error('Usage: node trial.mjs');
   process.exit(2);
 }
 
-const bridge = new CleanupBridge();
+const bridge = new WorkerBridge(byId('file-cleanup'));
 const checks = verdict => ['temporary-only', 'batch-limit'].map(checkId => ({
   checkId, verdict, summary: verdict === 'PASS' ? 'Observed temporary files within the frozen limit' : 'Protected files and too many targets',
 }));
