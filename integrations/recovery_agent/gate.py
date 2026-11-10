@@ -5,6 +5,7 @@ from datetime import datetime
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
@@ -132,9 +133,19 @@ def validate_submission(submission, observation):
         or not valid_summary(item["resultSummary"])):
         raise ValueError("Agent returned invalid Evidence")
     try:
-        observed_at = datetime.fromisoformat(item["observedAt"].replace("Z", "+00:00"))
-        if observed_at.tzinfo is None:
-            raise ValueError("observation time needs timezone")
+        raw_time = item["observedAt"]
+        stamp = re.fullmatch(
+            r"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})"
+            r"(?:\.[0-9]+)?(Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])",
+            raw_time,
+        )
+        if stamp is None:
+            raise ValueError("observation time needs RFC3339 and a timezone")
+        # Validate the calendar and offset independently of fractional precision.
+        # Python 3.9/3.10 only parse 3 or 6 fractional digits. Keep the original
+        # timestamp in Evidence, which is compared without rewriting its bytes.
+        whole, offset = stamp.groups()
+        datetime.fromisoformat(whole + offset.replace("Z", "+00:00"))
         actual = json.loads(item["resultSummary"])
     except (TypeError, AttributeError, ValueError) as error:
         raise ValueError("Agent returned invalid Evidence") from error

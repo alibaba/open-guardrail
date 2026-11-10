@@ -12,6 +12,8 @@ See [release notes](release-notes.md) for the capabilities, compatibility and
 limitations of a release. For official binary releases, see
 [GitHub Releases](https://github.com/alibaba/open-guardrail/releases).
 
+For a matched service/CLI/plugin bundle, see the [Agent plugin installation and trial guide](plugin-trial.md).
+
 ## Check and try a downloaded archive
 
 Verify its sidecar before extracting. In the download directory, use the command

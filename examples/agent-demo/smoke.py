@@ -46,6 +46,22 @@ def read_json(url, token=None):
         return json.load(response)
 
 
+def gate_error_summary(stderr, private_values):
+    """Report the adapter's final error without publishing its captured output."""
+    lines = stderr.strip().splitlines()
+    if not lines:
+        return "no stderr"
+    last = lines[-1]
+    error_type = last.partition(":")[0]
+    if not (last.startswith("Jenkins Guardrail adapter stopped: ") or
+            error_type.endswith(("Error", "Exception"))):
+        return "unrecognized stderr"
+    for value in private_values:
+        if value:
+            last = last.replace(value, "[REDACTED_SECRET]")
+    return last[:400]
+
+
 def options(argv=None):
     parser = argparse.ArgumentParser(
         description="Run four synthetic Recovery cases against a temporary local service.")
@@ -176,7 +192,8 @@ def main(argv=None):
                 raise AssertionError("repeated Scene application changed the active Revision")
             key_path = work / "project-key.json"
             cli("auth", "create-key", "--result-file", str(key_path))
-            private_values = [password, json.loads(key_path.read_text())["token"]]
+            admin_token = json.loads(Path(environment["OPEN_GUARDRAIL_SESSION_FILE"]).read_text())["token"]
+            private_values = [password, admin_token, json.loads(key_path.read_text())["token"]]
             completed = {}
             for case in ("healthy", "unhealthy", "unknown", "forged"):
                 fixture = json.loads((EXAMPLE / (("healthy" if case == "forged" else case) + ".json")).read_text(encoding="utf-8"))
@@ -233,7 +250,11 @@ def main(argv=None):
                     cwd=ROOT, env=gate_env, capture_output=True, text=True, timeout=30)
                 should_allow = verdict == "PASS" and case != "forged"
                 if polled.returncode != (0 if should_allow else 1):
-                    raise AssertionError(f"{case}: Jenkins gate returned {polled.returncode}")
+                    raise AssertionError(
+                        f"{case}: Jenkins gate returned {polled.returncode}; "
+                        f"Run status={actual['status']} result={actual['result']} "
+                        f"decision={actual['decision']}; "
+                        f"gate error={gate_error_summary(polled.stderr, private_values)}")
                 if case == "forged" and not (gate_state / "state.json").exists():
                     raise AssertionError("forged Evidence did not preserve investigation state")
                 if (actual["status"], actual["result"], actual["decision"]) != (
@@ -242,7 +263,6 @@ def main(argv=None):
                     raise AssertionError(f"{case}: wrong terminal Run or Evidence")
                 completed[case] = (created["id"], expected)
 
-            admin_token = json.loads(Path(environment["OPEN_GUARDRAIL_SESSION_FILE"]).read_text())["token"]
             listed = read_json(origin + "/api/v1alpha1/runs", admin_token)
             listed_ids = {item["id"] for item in listed["items"]}
             for case, (run_id, decision) in completed.items():

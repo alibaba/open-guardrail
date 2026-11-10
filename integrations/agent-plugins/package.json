@@ -5,10 +5,10 @@
   "type": "module",
   "license": "Apache-2.0",
   "keywords": ["pi-package", "dsh-plugin", "openguardrail"],
-  "engines": {"node": ">=22", "dsh": "0.2.2-rc.1"},
+  "engines": {"node": ">=22", "pi": "1.5.0", "dsh": "0.2.2-rc.1"},
   "exports": {"./pi": "./pi.mjs", "./dsh": "./dsh.mjs"},
   "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
   "pi": {"extensions": ["./pi.mjs"], "skills": ["./skills"]},
-  "files": ["bridge.mjs", "pi.mjs", "dsh.mjs", "cordis.patch.yml", "worker.py", "verify-host-exit.py", "skills", "assets", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE"],
+  "files": ["bridge.mjs", "pi.mjs", "dsh.mjs", "cordis.patch.yml", "worker.py", "verify-host-exit.py", "doctor.mjs", "install.py", "trial.mjs", "skills", "assets", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE"],
   "scripts": {"prepack": "node pack.mjs", "test": "node --test test/*.test.mjs"}
 }

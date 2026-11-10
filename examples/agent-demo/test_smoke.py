@@ -14,6 +14,24 @@ spec.loader.exec_module(demo)
 
 
 class DemoLifecycleTests(unittest.TestCase):
+    def test_gate_error_summary_reports_failure_without_credentials(self):
+        detail = demo.gate_error_summary(
+            "Traceback (most recent call last):\n"
+            "Jenkins Guardrail adapter stopped: secret-token failed. Inspect the Run.\n",
+            ["secret-token"])
+        self.assertIn("Jenkins Guardrail adapter stopped:", detail)
+        self.assertIn("[REDACTED_SECRET]", detail)
+        self.assertNotIn("secret-token", detail)
+        self.assertEqual(demo.gate_error_summary("unexpected output", []), "unrecognized stderr")
+
+    def test_gate_error_summary_redacts_all_credential_types_before_truncation(self):
+        secrets = ["demo-password", "admin-session-token", "project-key-token", "run-token"]
+        detail = demo.gate_error_summary("ValueError: " + " ".join(secrets) + "x" * 500, secrets)
+        self.assertLessEqual(len(detail), 400)
+        self.assertEqual(detail.count("[REDACTED_SECRET]"), len(secrets))
+        for secret in secrets:
+            self.assertNotIn(secret, detail)
+
     def test_unsupported_python_stops_before_building_or_starting_a_service(self):
         error = io.StringIO()
         with patch.object(demo.sys, "version_info", (3, 8)), patch.object(
