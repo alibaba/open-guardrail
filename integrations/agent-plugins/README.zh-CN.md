@@ -1,4 +1,7 @@
-# Agent 插件内部预览
+# Agent 清理插件预览
+
+
+版本化安装、配置诊断与独立验收请见[安装试用指南](https://github.com/alibaba/open-guardrail/blob/main/docs/plugin-trial.zh-CN.md).
 
 [English 与完整命令说明](README.md)
 

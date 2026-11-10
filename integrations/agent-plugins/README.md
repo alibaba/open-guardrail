@@ -1,4 +1,7 @@
-# Agent plugins (internal preview)
+# Agent plugins (cleanup preview)
+
+
+For a matching versioned installation and independent trial, see the [installation guide](https://github.com/alibaba/open-guardrail/blob/main/docs/plugin-trial.md).
 
 [简体中文](README.zh-CN.md)
 

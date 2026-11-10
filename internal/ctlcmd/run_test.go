@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -408,14 +409,14 @@ func TestRunWaitStopsAfterContactTimeout(t *testing.T) {
 	waitContactTimeout = 50 * time.Millisecond
 	t.Cleanup(func() { waitContactTimeout = previous })
 
-	var calls int
+	var calls atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/api/v1alpha1/meta/capabilities" {
 			_, _ = fmt.Fprint(w, testCapabilitiesResponse)
 			return
 		}
-		calls++
+		calls.Add(1)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_, _ = fmt.Fprint(w, `{"code":"UNAVAILABLE","traceId":"trace_1"}`)
 	}))
@@ -424,11 +425,13 @@ func TestRunWaitStopsAfterContactTimeout(t *testing.T) {
 	started := time.Now()
 	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
 		"--interval", "1ms", "run_1"}, &bytes.Buffer{})
-	if err == nil || commandExitCode(err) != exitServerRejected {
+	// The last lookup may consume the remaining contact budget before the
+	// 503 response arrives. Both outcomes must still stop bounded retries.
+	if err == nil || (commandExitCode(err) != exitServerRejected && commandExitCode(err) != exitConnection) {
 		t.Fatalf("err=%v", err)
 	}
-	if calls < 2 {
-		t.Fatalf("Run lookups=%d want retries before giving up", calls)
+	if calls.Load() < 2 {
+		t.Fatalf("Run lookups=%d want retries before giving up", calls.Load())
 	}
 	if elapsed := time.Since(started); elapsed > time.Second {
 		t.Fatalf("contact retries took %s", elapsed)

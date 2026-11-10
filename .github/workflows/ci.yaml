@@ -69,7 +69,10 @@ jobs:
       - run: CLEANUP_DEMO_BINARIES="$PWD/bin" python3 -m unittest discover -s examples/cleanup-demo -p 'test_*.py' -v
       - run: make smoke
   package:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -78,11 +81,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: make smoke-release VERSION=0.1.0-alpha.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: make plugin-release VERSION=0.1.0-alpha.0
+      - run: python3 scripts/smoke_release.py --version 0.1.0-alpha.0
+      - run: python3 scripts/smoke-plugin-release.py --version 0.1.0-alpha.0 --assets-dir dist/plugin-release-0.1.0-alpha.0
       - uses: actions/upload-artifact@v4
         with:
-          name: binaries
-          path: dist/*.tar.gz*
+          name: binaries-${{ matrix.os }}
+          path: dist/plugin-release-0.1.0-alpha.0/*
   docker:
     runs-on: ubuntu-latest
     steps:

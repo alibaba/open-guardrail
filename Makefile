@@ -2,6 +2,7 @@ GO ?= go
 NODE ?= node
 PYTHON ?= python3
 VERSION ?= dev
+PLUGIN_RELEASE_DIR ?= dist/plugin-release-$(VERSION)
 FUZZ_TIME ?= 10s
 FUZZ_PARALLEL ?= 2
 export GOWORK := off
@@ -56,6 +57,7 @@ test-agent-plugins: build
 	OPEN_GUARDRAIL_BINARIES="$(CURDIR)/bin" $(NODE) --test integrations/agent-plugins/test/*.test.mjs
 
 test-scripts:
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/plugin-release.test.py
 	sh scripts/check-generated.test.sh
 	sh scripts/package.test.sh
 	sh scripts/check-public-release.test.sh
@@ -90,3 +92,11 @@ public-release:
 # Verify preview artifacts without bypassing the separate public-release gates.
 smoke-release: preview-release
 	$(PYTHON) scripts/smoke_release.py --version "$(VERSION)"
+
+.PHONY: plugin-release
+plugin-release:
+	$(PYTHON) scripts/plugin-release.py --version "$(VERSION)" --output-dir "$(PLUGIN_RELEASE_DIR)"
+
+.PHONY: smoke-plugin-release
+smoke-plugin-release: plugin-release
+	$(PYTHON) scripts/smoke-plugin-release.py --version "$(VERSION)" --assets-dir "$(PLUGIN_RELEASE_DIR)"
