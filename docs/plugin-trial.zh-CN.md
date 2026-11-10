@@ -10,7 +10,7 @@
 | --- | --- |
 | 原生二进制 | Linux/macOS，amd64 或 arm64，同一发行版本的服务与 CLI |
 | Python | 3.9 及以上 |
-| Node.js | 22 及以上 |
+| Node.js | pi 与独立试运行需要 22 及以上；DeepSeek Harness 0.2.2-rc.1 需要 24.9 及以上 |
 | pi | 1.5.0，`@earendil-works/pi-coding-agent` |
 | DeepSeek Harness | 0.2.2-rc.1，`@deepseek-ai/dsh`，安装插件需要 pnpm |
 | 模型 | 在所选宿主中单独完成模型登录 |
@@ -21,7 +21,7 @@
 
 ## 获取配套产物
 
-从同一经过批准的版本产物目录获取 `plugin-release.json`、`install.py`、当前平台的原生归档和 `openguardrail-cleanup-preview-VERSION.tgz`，放在同一目录。将下文 VERSION 替换为实际版本。正式公开产物在 [GitHub Releases](https://github.com/alibaba/open-guardrail/releases) 获取。维护者提供的候选包应附源提交和验收结果，注册表安装以实际发布状态为准。
+从同一经过批准的版本产物目录获取 `plugin-release.json`、`install.py`、当前平台的原生归档和 `openguardrail-agent-plugins-preview-VERSION.tgz`，放在同一目录。将下文 VERSION 替换为实际版本。正式公开产物在 [GitHub Releases](https://github.com/alibaba/open-guardrail/releases) 获取。维护者提供的候选包应附源提交和验收结果，注册表安装以实际发布状态为准。
 
 维护者可在经过审查的源码目录生成候选产物，需要 Go、Python 3.12+、Node 22+ 和 npm
 
@@ -68,7 +68,7 @@ DSH 将下载的插件归档安装到实际使用的 profile
 
 ```sh
 node "$plugin_dir/doctor.mjs" --host dsh
-dsh plugin --profile headless add /absolute/path/to/openguardrail-cleanup-preview-VERSION.tgz --ignore-scripts
+dsh plugin --profile headless add /absolute/path/to/openguardrail-agent-plugins-preview-VERSION.tgz --ignore-scripts
 dsh --profile headless
 ```
 
@@ -104,6 +104,12 @@ pi remove /absolute/path/to/OLD-VERSION/plugin
 pi install /absolute/path/to/NEW-VERSION/plugin
 ```
 
-DSH 按同一包名替换，安装后检查实际 profile。卸载前停止宿主并注销插件，再删除对应版本目录。DSH 按包名 `@openguardrail/cleanup-preview` 移除插件，pi 按安装目录移除。
+DSH 仅在包名相同时替换旧版本。若此前安装的是 `@openguardrail/cleanup-preview` 预览包，先停止 DSH，在同一 profile 移除旧包，再安装 `@openguardrail/agent-plugins-preview`，避免两份插件同时注册：
+
+```sh
+dsh plugin --profile headless remove @openguardrail/cleanup-preview
+```
+
+安装后检查实际 profile。卸载前停止宿主并注销插件，再删除对应版本目录。DSH 按包名 `@openguardrail/agent-plugins-preview` 移除插件，pi 按安装目录移除。
 
 诊断失败时按 `fix` 字段处理。模型登录或 Skill 发现失败时检查实际 profile 和宿主诊断。执行超时或失败时，先核对实际状态及历史 Run，再决定恢复方式。问题反馈应提供版本、失败步骤、Run ID 与脱敏诊断摘要，使用[问题模板](https://github.com/alibaba/open-guardrail/issues/new?template=bug_report.md)。

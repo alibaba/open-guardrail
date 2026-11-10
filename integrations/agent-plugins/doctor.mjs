@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, accessSync, constants } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
-import { CleanupBridge } from './bridge.mjs';
+import { WorkerBridge } from './bridge.mjs';
 
 const checks = [];
 function check(name, run, fix) {
@@ -43,6 +43,11 @@ check('native-binaries', () => {
   for (const name of ['open-guardrail', 'guardrailctl']) accessSync(join(directory, name), constants.X_OK);
   return 'Both executables are accessible';
 }, 'Source the installed env.sh to select the matching native package.');
+if (host === 'dsh') check('host-node', () => {
+  const [major, minor] = process.versions.node.split('.').map(Number);
+  if (major < 24 || (major === 24 && minor < 9)) throw new Error('unsupported DSH Node');
+  return process.versions.node;
+}, 'DeepSeek Harness 0.2.2-rc.1 requires Node.js 24.9 or newer.');
 if (host) check('host-version', () => {
   const expected = metadata.engines[host];
   const output = command(host, ['--version']);
@@ -54,7 +59,8 @@ if (args.includes('--live') && checks.some(item => !item.ok)) {
   checks.push({ name: 'isolated-service', ok: false, skipped: true,
     reason: 'Prerequisite checks failed. Fix the failed checks before running --live again.' });
 } else if (args.includes('--live')) {
-  const bridge = new CleanupBridge();
+  const { byId } = await import('./scenarios.mjs');
+  const bridge = new WorkerBridge(byId('file-cleanup'));
   try {
     const status = await bridge.request('status');
     const response = await fetch(status.server + '/api/v1alpha1/meta/version', {

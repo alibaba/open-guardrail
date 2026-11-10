@@ -5,6 +5,10 @@ tool. The browser shows the files on disk, each Run, the accepted evidence and
 the tool's actual deletions. Change the initial targets or the batch limit and
 run again to compare the outcome.
 
+The browser runner imports the policy and guarded file operations from
+[`scenarios/file-cleanup/`](../../scenarios/file-cleanup/README.md). This
+directory contains the demonstration page and its entrypoint.
+
 The runner is predefined Python code, not a model. No model account, Docker,
 Jenkins or separate database is required.
 
@@ -82,7 +86,9 @@ part of the published policy; changing it creates or selects the matching
 revision. The service validates and records the assessment. It does not itself
 inspect the filesystem or infer whether the submitted observations are true.
 
-The policy source is the YAML template in `policy.yaml`. The runner replaces
+The policy source is the YAML template in
+[`scenarios/file-cleanup/policy.yaml`](../../scenarios/file-cleanup/policy.yaml).
+The runner replaces
 `${max_files}` with the selected limit (1 or 2) before publishing. The console
 and Run revision contain that rendered YAML verbatim. The demo verifies the
 Run's frozen policy against the exact YAML it published; no Python YAML package

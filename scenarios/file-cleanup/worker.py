@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private, serial stdio adapter for the isolated cleanup example (not a server API)."""
+"""Private, serial stdio adapter for the file-cleanup scenario (not a server API)."""
 
 from datetime import datetime, timezone
 import hashlib
@@ -20,12 +20,9 @@ from urllib.request import urlopen
 
 
 HERE = Path(__file__).resolve().parent
-source = HERE.parents[1] / "examples" / "cleanup-demo" / "demo.py"
-if not source.exists():
-    source = HERE / "assets" / "cleanup-demo" / "demo.py"
-spec = importlib.util.spec_from_file_location("guardrail_cleanup", source)
-demo = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(demo)
+spec = importlib.util.spec_from_file_location("guardrail_cleanup_runtime", HERE / "runtime.py")
+runtime = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runtime)
 
 
 class InputError(ValueError):
@@ -67,13 +64,13 @@ class Cleanup:
                         break
                 except (URLError, TimeoutError):
                     time.sleep(.05)
-            self.gateway = demo.Gateway(binaries / "guardrailctl", self.origin, self.private)
-            self.capabilities = json.loads(demo.command(str(binaries / "guardrailctl"),
+            self.gateway = runtime.Gateway(binaries / "guardrailctl", self.origin, self.private)
+            self.capabilities = json.loads(runtime.command(str(binaries / "guardrailctl"),
                                                        "--server", self.origin, "capabilities"))
             self.gateway.setup(secrets.token_urlsafe(32))
-            self.policy = demo.policy_yaml(2)
+            self.policy = runtime.policy_yaml(2)
             self.gateway.publish(self.policy, self.private)
-            self.tool = demo.FileTool(self.private)
+            self.tool = runtime.FileTool(self.private)
         except BaseException:
             self.close()
             raise
@@ -95,7 +92,7 @@ class Cleanup:
                         "--submission-id", final["finalSubmissionId"], record["runId"])
                     if final.get("finalSubmissionId") else None))
             records.append(item)
-        return {"mode": "isolated-cleanup-preview", "server": self.origin,
+        return {"mode": "isolated-file-cleanup-preview", "server": self.origin,
                 "capabilities": self.capabilities,
                 "files": self.tool.inventory(), "maxFiles": 2,
                 "retainedRunCount": len(self.records), "runs": records}
@@ -122,8 +119,8 @@ class Cleanup:
                              "continuing. Do not automatically retry under a new requestId") from None
         change = {"action": "delete-files", "workspaceId": self.tool.workspace_id,
                   "targets": targets, "maxFiles": 2,
-                  "observationDigest": hashlib.sha256(demo.identity(observation).encode()).hexdigest()}
-        demo.private_json(directory / "change.json", change)
+                  "observationDigest": hashlib.sha256(runtime.identity(observation).encode()).hexdigest()}
+        runtime.private_json(directory / "change.json", change)
         created = self.gateway.cli("run", "create", "--key-file", str(self.gateway.key),
                                   "--scene", "file-cleanup", "--change-set", str(directory / "change.json"),
                                   "--operation-id", requestId + "-create", "--submission-credential-file",
@@ -161,17 +158,17 @@ class Cleanup:
                 raise InputError("Each check needs a valid verdict and a nonempty summary up to 1000 characters")
             supplied.append({**check, "evidence": [{"requirementId": "files",
                 "observedAt": record["observedAt"],
-                "querySummary": "Read fixed demo filenames through the existing no-follow file tool",
-                "resultSummary": demo.identity(record["observation"])}]})
+                "querySummary": "Read fixed sample filenames through the existing no-follow file tool",
+                "resultSummary": runtime.identity(record["observation"])}]})
         verdict = next((v for v in ("BLOCKED", "UNKNOWN") if any(c["verdict"] == v for c in supplied)), "PASS")
         snapshot = {"baseSubmissionNo": record["created"]["latestSubmissionNo"], "finishRun": True,
                     "verdict": verdict, "summary": "Agent cleanup assessment: " + verdict, "checks": supplied}
         path = record["directory"] / "submission.json"
         if path.exists():
-            if demo.snapshot_identity(json.loads(path.read_text())) != demo.snapshot_identity(snapshot):
+            if runtime.snapshot_identity(json.loads(path.read_text())) != runtime.snapshot_identity(snapshot):
                 raise InputError("A submission already exists; retry exactly the same checks")
         else:
-            demo.private_json(path, snapshot)
+            runtime.private_json(path, snapshot)
         credential = record["directory"] / "credential.json"
         if "submission" not in record:
             self.gateway.cli("run", "submit", "--submission-credential-file", str(credential),
@@ -238,7 +235,7 @@ def main():
                 result = {"id": request_id, "value": value}
             except Exception as error:
                 detail = ({"code": "cleanup_refused", "message": str(error), "stage": "plugin"}
-                          if isinstance(error, InputError) else demo.public_error(error, "plugin"))
+                          if isinstance(error, InputError) else runtime.public_error(error, "plugin"))
                 result = {"id": request_id, "error": detail}
             result["initialized"] = app is not None
             print(json.dumps(result, allow_nan=False), flush=True)

@@ -2,9 +2,10 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
-// One private worker per loaded plugin. It owns only a disposable service and
-// four fixed sample files. No shell command or user-supplied executable is run.
-export class CleanupBridge {
+// One serial worker per scenario and host session. The scenario owns its
+// operation; this transport never interprets policy or executes host tools.
+export class WorkerBridge {
+  #scenario;
   #child;
   #pending = new Map();
   #next = 0;
@@ -14,6 +15,10 @@ export class CleanupBridge {
   #stopping;
   #tail = Promise.resolve();
 
+  constructor(scenario) {
+    this.#scenario = scenario;
+  }
+
   request(method, params = {}, signal) {
     const run = () => this.#request(method, params, signal);
     const result = this.#tail.then(run, run);
@@ -22,11 +27,11 @@ export class CleanupBridge {
   }
 
   #request(method, params, signal) {
-    if (this.#closed || this.#failed) return Promise.reject(new Error('Cleanup session stopped; inspect prior outcomes before starting a new session'));
-    if (signal?.aborted) return Promise.reject(new Error('Cleanup call cancelled before admission'));
+    if (this.#closed || this.#failed) return Promise.reject(new Error('Scenario session stopped; inspect prior outcomes before starting a new session'));
+    if (signal?.aborted) return Promise.reject(new Error('Scenario call cancelled before admission'));
     if (!this.#child) {
       this.#child = spawn(process.env.OPEN_GUARDRAIL_PYTHON || 'python3',
-        ['-B', fileURLToPath(new URL('./worker.py', import.meta.url))],
+        ['-B', fileURLToPath(this.#scenario.workerUrl)],
         { stdio: ['pipe', 'pipe', 'ignore'], env: process.env });
       const lines = createInterface({ input: this.#child.stdout });
       lines.on('line', (line) => {
@@ -42,20 +47,20 @@ export class CleanupBridge {
           if (reply.error) pending.reject(new Error(`${reply.error.code}: ${reply.error.message}`));
           else pending.resolve(reply.value);
         } catch {
-          this.#stop('Cleanup response could not be verified; execution stopped');
+          this.#stop('Scenario response could not be verified; execution stopped');
         }
       });
-      this.#child.on('error', () => this.#stop('Cleanup worker unavailable; check Python and native binaries'));
-      this.#child.on('exit', () => this.#stop('Cleanup worker stopped; do not retry uncertain execution automatically'));
-      this.#child.stdin.on('error', () => this.#stop('Cleanup worker input closed'));
+      this.#child.on('error', () => this.#stop('Scenario worker unavailable; check Python and native binaries'));
+      this.#child.on('exit', () => this.#stop('Scenario worker stopped; do not retry uncertain execution automatically'));
+      this.#child.stdin.on('error', () => this.#stop('Scenario worker input closed'));
     }
     return new Promise((resolve, reject) => {
       const id = ++this.#next;
-      const abort = () => this.#stop('Cleanup call cancelled; inspect actual outcomes before retrying');
+      const abort = () => this.#stop('Scenario call cancelled; inspect actual outcomes before retrying');
       // Startup can spend 30s waiting for readiness and 5 * 40s in setup
       // commands. A first prepare adds 3 * 40s; allow 70s of scheduling margin.
       const timeout = this.#initialized ? 90_000 : 420_000;
-      const timer = setTimeout(() => this.#stop('Cleanup call timed out; inspect actual outcomes before retrying'), timeout);
+      const timer = setTimeout(() => this.#stop('Scenario call timed out; inspect actual outcomes before retrying'), timeout);
       this.#pending.set(id, { resolve, reject, finish: () => {
         clearTimeout(timer);
         signal?.removeEventListener('abort', abort);
@@ -91,16 +96,6 @@ export class CleanupBridge {
 
   async close() {
     this.#closed = true;
-    await this.#stop('Cleanup session closed');
+    await this.#stop('Scenario session closed');
   }
 }
-
-const string = { type: 'string' };
-const targets = { type: 'array', items: string, maxItems: 4, uniqueItems: true };
-const object = (properties, required = Object.keys(properties)) => ({ type: 'object', properties, required, additionalProperties: false });
-export const tools = [
-  { method: 'status', name: 'guardrail_cleanup_status', description: 'Check the isolated service, actual files and the latest ten authoritative Run summaries. Supply runId to read one owned Run with its frozen revision and accepted evidence. Never touches an existing service or user files.', schema: object({ runId: string }, []) },
-  { method: 'prepare', name: 'guardrail_cleanup_prepare', description: 'Freeze exact proposed sample filenames into a Run. Returns frozen policy and tool-observed file metadata, without choosing verdicts. Use a stable requestId; a changed request needs a new ID.', schema: object({ requestId: string, targets }) },
-  { method: 'submit', name: 'guardrail_cleanup_submit', description: 'Submit your own verdict and summary for both frozen policy checks (temporary-only and batch-limit). Evidence comes from the tool observation frozen at prepare. PASS, BLOCKED or UNKNOWN; no file is deleted.', schema: object({ runId: string, checks: { type: 'array', minItems: 2, maxItems: 2, items: object({ checkId: string, verdict: { type: 'string', enum: ['PASS', 'BLOCKED', 'UNKNOWN'] }, summary: string }) } }) },
-  { method: 'execute', name: 'guardrail_cleanup_execute', description: 'Execute an assessed cleanup Run on exactly its frozen targets. Independently verifies authoritative ALLOW, validity, accepted evidence, actual file state and business rules. A refusal deletes nothing; inspect status after any execution error.', schema: object({ runId: string, targets }) },
-];

@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CleanupBridge } from '../bridge.mjs';
+import { WorkerBridge } from '../bridge.mjs';
+import { byId } from '../scenarios.mjs';
+
+const cleanup = byId('file-cleanup');
 
 const enabled = !!process.env.OPEN_GUARDRAIL_BINARIES;
 const checks = (verdict) => ['temporary-only', 'batch-limit'].map(checkId => ({
@@ -8,7 +11,7 @@ const checks = (verdict) => ['temporary-only', 'batch-limit'].map(checkId => ({
 }));
 
 test('stdio transport: denied Run, repaired scope, concurrent retries and actual files', { skip: !enabled }, async () => {
-  const bridge = new CleanupBridge();
+  const bridge = new WorkerBridge(cleanup);
   try {
     const denied = await bridge.request('prepare', { requestId: 'broad', targets: ['cache.tmp', 'orders.csv'] });
     const result = await bridge.request('submit', { runId: denied.runId, checks: checks('BLOCKED') });
@@ -29,7 +32,7 @@ test('stdio transport: denied Run, repaired scope, concurrent retries and actual
 });
 
 test('pre-admission cancellation leaves the session usable; close stops future admission', { skip: !enabled }, async () => {
-  const bridge = new CleanupBridge();
+  const bridge = new WorkerBridge(cleanup);
   try {
     await assert.rejects(bridge.request('status', {}, AbortSignal.abort()), /cancelled before admission/);
     assert.equal((await bridge.request('status')).files.length, 4);
@@ -38,7 +41,7 @@ test('pre-admission cancellation leaves the session usable; close stops future a
 });
 
 test('in-flight cancellation drains the owned worker and prevents automatic restart', { skip: !enabled }, async () => {
-  const bridge = new CleanupBridge();
+  const bridge = new WorkerBridge(cleanup);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20);
   try {
@@ -49,7 +52,7 @@ test('in-flight cancellation drains the owned worker and prevents automatic rest
 
 test('startup budget exceeds ordinary calls; initialized calls keep the 90s limit', { skip: !enabled }, async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const bridge = new CleanupBridge();
+  const bridge = new WorkerBridge(cleanup);
   try {
     const starting = bridge.request('status');
     await Promise.resolve();

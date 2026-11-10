@@ -1,6 +1,7 @@
 """File-tool enforcement tests; no running service or model is required."""
 
 import copy
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -37,7 +38,7 @@ class FileToolTests(unittest.TestCase):
         observation = tool.observe(targets or ["cache.tmp", "download.tmp"])
         change = {"action": "delete-files", "workspaceId": tool.workspace_id,
                   "targets": observation["targets"], "maxFiles": 2,
-                  "observationDigest": demo.hashlib.sha256(demo.identity(observation).encode()).hexdigest()}
+                  "observationDigest": hashlib.sha256(demo.identity(observation).encode()).hexdigest()}
         checks = demo.assess(observation, 2)
         for check in checks:
             check["evidence"] = [{"resultSummary": demo.identity(observation), "observedAt": "2026-11-06T00:00:00Z"}]

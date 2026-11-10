@@ -53,6 +53,7 @@ test-python:
 # External pi/DSH SDK tests additionally require OPEN_GUARDRAIL_HOST_MODULES.
 .PHONY: test-agent-plugins
 test-agent-plugins: build
+	$(NODE) integrations/agent-plugins/pack.mjs
 	OPEN_GUARDRAIL_BINARIES="$(CURDIR)/bin" $(PYTHON) -B -m unittest discover -s integrations/agent-plugins -p 'test_*.py' -v
 	OPEN_GUARDRAIL_BINARIES="$(CURDIR)/bin" $(NODE) --test integrations/agent-plugins/test/*.test.mjs
 

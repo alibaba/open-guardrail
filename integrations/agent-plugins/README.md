@@ -5,6 +5,15 @@ For a matching versioned installation and independent trial, see the [installati
 
 [简体中文](README.zh-CN.md)
 
+This directory is the **host adapter and package**. The only pi extension
+entrypoint is `pi.mjs`; `dsh.mjs` is the corresponding DSH adapter. They
+register tools declared by scenario modules. The current scenario source is
+[`scenarios/file-cleanup/`](../../scenarios/file-cleanup/): its manifest
+defines tools, its worker owns the isolated operation, and its Skill guides the
+agent. `pack.mjs` bundles that scenario's runtime and policy into one
+npm archive. Adding a scenario means adding a scenario module and including it
+in `scenarios.mjs` and `pack.mjs`, without creating another pi extension.
+
 Native pi and DeepSeek Harness tools let an agent assess a cleanup request
 against a frozen OpenGuardrail policy. They operate on four real sample files in
 a private disposable directory. The agent chooses verdicts and summaries; the
@@ -14,8 +23,8 @@ deletion. No arbitrary-path deletion tool or new public service API is added.
 
 ## Install
 
-Requirements: Node.js 22+, Python 3.9+, native `open-guardrail` and `guardrailctl`
-binaries, and a separately authenticated model in the host. A source checkout
+Requirements: Node.js 22+ for pi or 24.9+ for DSH 0.2.2-rc.1; Python 3.9+;
+native `open-guardrail` and `guardrailctl` binaries, and a separately authenticated model in the host. A source checkout
 also needs Go from `go.mod` to build the binaries. Linux/macOS only: the reused
 file tool depends on POSIX APIs.
 
@@ -33,16 +42,17 @@ plugin_install_dir=$(mktemp -d)
 (cd integrations/agent-plugins && npm pack --pack-destination "$plugin_install_dir")
 ```
 
-The archive contains both adapters, the Skill, shared worker, the original
-cleanup implementation/policy copied during packing, LICENSE and NOTICE. It
+The archive contains both adapters, the bundled cleanup scenario, LICENSE and NOTICE. It
 requires the configured native binaries but no source checkout or Go at runtime.
 Use a stable installation directory; do not remove it while registered in pi.
 
 For pi, extract the archive and install the directory. A raw local `.tgz` is not
-an extension directory:
+an extension directory. If installing directly from a clean source checkout,
+run `node integrations/agent-plugins/pack.mjs` from the repository root first;
+it generates the `skills/` directory declared in `package.json`:
 
 ```sh
-tar -xzf "$plugin_install_dir/openguardrail-cleanup-preview-0.1.0-alpha.0.tgz" -C "$plugin_install_dir"
+tar -xzf "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" -C "$plugin_install_dir"
 pi install "$plugin_install_dir/package"
 pi --no-mcp --tools 'read,guardrail_cleanup_*'
 ```
@@ -54,7 +64,7 @@ and cleanup tools; it does not change permissions for other invocations.
 For DSH, choose the profile you actually use:
 
 ```sh
-dsh plugin --profile headless add "$plugin_install_dir/openguardrail-cleanup-preview-0.1.0-alpha.0.tgz" --ignore-scripts
+dsh plugin --profile headless add "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" --ignore-scripts
 dsh --profile headless 'Use guardrail-cleanup to demonstrate a refused broad cleanup, then reassess a permitted narrower request and verify the actual outcome.'
 ```
 
@@ -127,7 +137,8 @@ and plugin unload stop owned services and remove temporary data. Records are
 `make test-python` and `make test` intentionally include `test-agent-plugins`.
 This gate builds both native binaries and runs isolated real service/file tests
 because mocked responses cannot verify evidence checks or actual deletions.
-It requires Go, Python and Node 22+. pi/DSH SDK tests remain opt-in through
+It requires Go, Python and Node 22+. DSH SDK tests require Node 24.9+.
+pi/DSH SDK tests remain opt-in through
 `OPEN_GUARDRAIL_HOST_MODULES`. Direct test commands without native binary
 configuration skip live cases.
 
@@ -160,7 +171,14 @@ packed installation before claiming support for a host version.
 Stop the host before replacing the package/binaries. Repack, reinstall using the
 same host commands, and check status in a new session. Remove with
 `pi remove /absolute/path/to/the/installed/package` or
-`dsh plugin --profile headless remove @openguardrail/cleanup-preview`.
+`dsh plugin --profile headless remove @openguardrail/agent-plugins-preview`.
+If migrating from the old `@openguardrail/cleanup-preview` package, remove it
+from the same DSH profile before adding the renamed package:
+
+```sh
+dsh plugin --profile headless remove @openguardrail/cleanup-preview
+```
+
 Unregister pi before deleting its installation directory. Normal model sign-in
 and other plugins remain owned by the host.
 

@@ -56,6 +56,12 @@ test('host pins follow package metadata for both adapters', async () => {
       });
       const report = JSON.parse(result.stdout);
       assert(report.checks.some(item => item.name === 'host-version' && item.ok && item.detail === version));
+      if (host === 'dsh') {
+        const [major, minor] = process.versions.node.split('.').map(Number);
+        const supported = major > 24 || (major === 24 && minor >= 9);
+        assert(report.checks.some(item => item.name === 'host-node' && item.ok === supported &&
+          (supported ? item.detail === process.versions.node : item.fix.includes('24.9'))));
+      }
     }
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

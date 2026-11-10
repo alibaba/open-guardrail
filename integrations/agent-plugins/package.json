@@ -1,7 +1,7 @@
 {
-  "name": "@openguardrail/cleanup-preview",
+  "name": "@openguardrail/agent-plugins-preview",
   "version": "0.1.0-alpha.0",
-  "description": "Evidence-driven cleanup tools for pi and DeepSeek Harness, using an isolated OpenGuardrail service",
+  "description": "OpenGuardrail scenario adapters for pi and DeepSeek Harness",
   "type": "module",
   "license": "Apache-2.0",
   "keywords": ["pi-package", "dsh-plugin", "openguardrail"],
@@ -9,6 +9,6 @@
   "exports": {"./pi": "./pi.mjs", "./dsh": "./dsh.mjs"},
   "dsh": {"bundle": {"patch": "./cordis.patch.yml"}},
   "pi": {"extensions": ["./pi.mjs"], "skills": ["./skills"]},
-  "files": ["bridge.mjs", "pi.mjs", "dsh.mjs", "cordis.patch.yml", "worker.py", "verify-host-exit.py", "doctor.mjs", "install.py", "trial.mjs", "skills", "assets", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE"],
-  "scripts": {"prepack": "node pack.mjs", "test": "node --test test/*.test.mjs"}
+  "files": ["bridge.mjs", "scenarios.mjs", "pi.mjs", "dsh.mjs", "cordis.patch.yml", "verify-host-exit.py", "doctor.mjs", "install.py", "trial.mjs", "skills", "assets", "README.md", "README.zh-CN.md", "LICENSE", "NOTICE"],
+  "scripts": {"prepack": "node pack.mjs", "pretest": "node pack.mjs", "test": "node --test test/*.test.mjs"}
 }
