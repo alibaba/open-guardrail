@@ -19,6 +19,30 @@ def snapshot(observation, verdict="PASS", summary="Healthy"):
 
 
 class RecoveryGateTest(unittest.TestCase):
+    def test_rfc3339_fractional_seconds_preserve_original_evidence(self):
+        observation = {"status": "healthy"}
+        for fraction in ("", ".1", ".12", ".123", ".1234", ".12345", ".123456",
+                         ".1234567", ".12345678", ".123456789"):
+            for offset in ("Z", "+08:00", "-05:30"):
+                timestamp = "2026-11-10T12:00:00" + fraction + offset
+                with self.subTest(timestamp=timestamp):
+                    submission = snapshot(observation)
+                    submission["checks"][0]["evidence"][0]["observedAt"] = timestamp
+                    before = json.dumps(submission, sort_keys=True)
+                    gate.validate_submission(submission, observation)
+                    self.assertEqual(json.dumps(submission, sort_keys=True), before)
+
+    def test_invalid_observation_times_are_rejected(self):
+        for timestamp in ("2026-02-30T12:00:00.12345Z", "2026-11-10T25:00:00Z",
+                          "2026-11-10T12:00:00.12345", "2026-11-10T12:00:00.Z",
+                          "2026-11-10T12:00:00.12345+99:00", "2026-11-10T12:00:00+00:60",
+                          "2026-11-10T12:00:00.１２３４５Z", "not-a-time", None, 1):
+            with self.subTest(timestamp=timestamp):
+                submission = snapshot({"status": "healthy"})
+                submission["checks"][0]["evidence"][0]["observedAt"] = timestamp
+                with self.assertRaisesRegex(ValueError, "invalid Evidence"):
+                    gate.validate_submission(submission, {"status": "healthy"})
+
     def test_empty_submission_summary_keeps_check_and_evidence_requirements(self):
         observation = {"ready": True}
         submission = snapshot(observation)
