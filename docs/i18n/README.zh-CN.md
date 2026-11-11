@@ -95,6 +95,11 @@ Run 完成后，检查结果按以下规则汇总：
 
 ### 运行一个受护栏约束的任务
 
+已发布的原生预览包见 [GitHub Releases](https://github.com/alibaba/open-guardrail/releases)。
+先按[归档验证说明](../releases.md)核验、解压，再用 Python 3.9+ 运行相同的清理 Demo；
+原生包路径无需安装 Go。需要模型参与的 pi/DeepSeek Harness 体验时，
+请使用独立的[插件安装指南](../plugin-trial.zh-CN.md)。下面的命令采用源码构建路径。
+
 请先安装 Git、`go.mod` 中指定版本的 Go，以及 Python 3.9+：
 
 ```sh

@@ -93,6 +93,78 @@ class ReleaseTests(unittest.TestCase):
             release.assemble(self.version, self.output)
         self.assertFalse(self.output.exists())
 
+    def make_shared_plugin(self):
+        shared = self.dist / 'shared-plugin'
+        release.assemble(self.version, shared, plugin_only=True)
+        return shared
+
+    def test_plugin_only_does_not_build_or_require_native_archives(self):
+        for path in self.dist.glob('*.tar.gz*'):
+            path.unlink()
+        shared = self.make_shared_plugin()
+        manifest = json.loads((shared / 'plugin-release.json').read_text())
+        self.assertEqual(set(manifest['assets']), {'plugin'})
+        self.assertEqual(len(list(shared.iterdir())), 3)
+        commands = [call.args[0] for call in self.run.call_args_list]
+        self.assertEqual(commands[0], ['make', 'check-public-release', 'VERSION=' + self.version])
+        self.assertEqual(sum(command[0] == 'npm' for command in commands), 1)
+
+    def test_one_plugin_is_reused_by_all_four_single_platform_builds(self):
+        shared = self.make_shared_plugin()
+        original = {p.name: p.read_bytes() for p in shared.iterdir()}
+        for target in release.TARGETS:
+            output = self.dist / target
+            release.assemble(self.version, output, platform=target, plugin_assets=shared)
+            manifest = json.loads((output / 'plugin-release.json').read_text())
+            self.assertEqual(set(manifest['assets']), {target, 'plugin'})
+            self.assertEqual((output / self.plugin_name).read_bytes(), original[self.plugin_name])
+            self.assertEqual(len(list(output.glob('*.tar.gz'))), 1)
+        commands = [call.args[0] for call in self.run.call_args_list]
+        self.assertEqual(sum(command[0] == 'npm' for command in commands), 1)
+        self.assertEqual(sum(command[0] == 'node' for command in commands), 1)
+        native = [command for command in commands if command[:2] == ['make', 'public-release']]
+        self.assertEqual(len(native), 4)
+        self.assertEqual({command[-1] for command in native}, {
+            'PACKAGE_PLATFORMS=' + target.replace('-', '/') for target in release.TARGETS})
+        self.assertEqual({p.name: p.read_bytes() for p in shared.iterdir()}, original)
+
+    def test_tampered_shared_plugin_fails_before_native_build(self):
+        shared = self.make_shared_plugin()
+        (shared / self.plugin_name).write_bytes(b'changed')
+        self.run.reset_mock()
+        with self.assertRaisesRegex(ValueError, 'checksum does not match'):
+            release.assemble(self.version, self.output, platform='linux-arm64', plugin_assets=shared)
+        self.run.assert_not_called()
+        self.assertFalse(self.output.exists())
+
+    def test_shared_plugin_version_and_commit_are_bound_before_build(self):
+        shared = self.make_shared_plugin()
+        path = shared / 'plugin-release.json'
+        original = json.loads(path.read_text())
+        for key, value in [('version', '9.9.9'), ('commit', 'another-commit')]:
+            with self.subTest(key=key):
+                manifest = dict(original, **{key: value})
+                path.write_text(json.dumps(manifest))
+                self.run.reset_mock()
+                with self.assertRaisesRegex(ValueError, 'version or source commit'):
+                    release.assemble(self.version, self.output, platform='linux-arm64', plugin_assets=shared)
+                self.run.assert_not_called()
+
+    def test_shared_installer_must_match_the_same_source(self):
+        shared = self.make_shared_plugin()
+        (shared / 'install.py').write_text('# wrong installer')
+        self.run.reset_mock()
+        with self.assertRaisesRegex(ValueError, 'installer does not match'):
+            release.assemble(self.version, self.output, platform='darwin-arm64', plugin_assets=shared)
+        self.run.assert_not_called()
+
+    def test_plugin_only_rejects_native_and_reuse_options(self):
+        with self.assertRaisesRegex(ValueError, 'cannot be combined'):
+            release.assemble(self.version, self.output, platform='linux-arm64', plugin_only=True)
+        with self.assertRaisesRegex(ValueError, 'cannot be combined'):
+            release.assemble(self.version, self.output, plugin_assets=self.dist, plugin_only=True)
+        self.run.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

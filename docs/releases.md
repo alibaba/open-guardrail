@@ -79,10 +79,113 @@ separate reasoning-based trial; see [the demo guide](../examples/agent-demo/READ
 
 ## Public artifact verification policy
 
-The package script produces archives and SHA-256 checksum sidecars. It does not
-generate SBOMs or attestations; the module-license inventory is not an artifact
-SBOM. Check the release's published assets and instructions for any additional
-provenance or signature verification.
+Local package scripts produce archives, SHA-256 sidecars and a matching plugin
+manifest. They do not sign artifacts or generate SBOMs. The dependency-license
+inventory is not an artifact SBOM.
+
+The public [preview release workflow](https://github.com/alibaba/open-guardrail/blob/main/.github/workflows/release.yaml) adds
+SPDX 2.3 JSON SBOMs and GitHub OIDC attestations for the exact native/plugin
+archives verified on native runners. It signs the final manifest, installer and
+`SHA256SUMS`, then creates a **draft** pre-release. Workflow code alone is not
+evidence that a release job ran or an artifact was signed. Check the release's
+actual run, assets and verification results.
+
+### Verify release provenance
+
+Download the native archive and checksum for your platform, its `.spdx.json`,
+`.provenance.sigstore.json` and `.sbom.sigstore.json`, plus `plugin-release.json`,
+`install.py`, `SHA256SUMS` and `release-manifest.sigstore.json` from the same
+official Release. Plugin users also need the matching `.tgz` and its SBOM/bundles.
+Use a current GitHub CLI with `gh attestation verify`.
+
+Replace the version, platform and expected 40-character public commit below with
+the values independently checked against the Release tag. Authenticate the
+manifest and installer before running downloaded scripts:
+
+```sh
+release_version=0.1.0-alpha.0
+release_commit=EXPECTED_PUBLIC_COMMIT
+release_archive="open-guardrail-$release_version-linux-amd64.tar.gz"
+for release_file in plugin-release.json install.py SHA256SUMS; do
+  gh attestation verify "$release_file" --bundle release-manifest.sigstore.json \
+    --repo alibaba/open-guardrail \
+    --signer-workflow alibaba/open-guardrail/.github/workflows/release.yaml \
+    --source-ref "refs/tags/v$release_version" --source-digest "$release_commit" \
+    --deny-self-hosted-runners
+done
+gh attestation verify "$release_archive" --bundle "$release_archive.provenance.sigstore.json" \
+  --repo alibaba/open-guardrail \
+  --signer-workflow alibaba/open-guardrail/.github/workflows/release.yaml \
+  --source-ref "refs/tags/v$release_version" --source-digest "$release_commit" \
+  --deny-self-hosted-runners
+gh attestation verify "$release_archive" --bundle "$release_archive.sbom.sigstore.json" \
+  --repo alibaba/open-guardrail \
+  --signer-workflow alibaba/open-guardrail/.github/workflows/release.yaml \
+  --source-ref "refs/tags/v$release_version" --source-digest "$release_commit" \
+  --deny-self-hosted-runners --predicate-type https://spdx.dev/Document/v2.3
+```
+
+Repeat the archive commands for the plugin `.tgz`. Verify the native sidecar as
+shown above. If all release assets were downloaded, also run `sha256sum -c
+SHA256SUMS` (macOS: `shasum -a 256 -c SHA256SUMS`). That file covers the payload,
+archive proofs and manifest; its own final signing bundle is authenticated
+separately and is not recursively listed in the checksums.
+
+An SBOM attestation binds the SBOM to its archive digest. An attestation establishes
+the signer and source, not the absence of vulnerabilities or sandbox coverage.
+
+## Prepare the public preview draft
+
+After syncing the reviewed internal changes to the public repository, wait for
+the final public `main` commit's CI to succeed. Commit notes at
+`docs/releases/vVERSION.md` before tagging. From the public repository, create a
+preview tag such as `v0.1.0-alpha.0` at that exact commit and push that tag. The
+workflow accepts `alpha.N`, `beta.N` and `rc.N` tags and only runs in
+`alibaba/open-guardrail`. It requires the tagged commit to belong to `main` and
+to have a successful main push CI; an unfinished check stops preflight. Rerun
+the failed jobs after CI succeeds rather than moving the tag. Preserve artifacts
+from successful native jobs when retrying a partially completed run.
+
+One shared plugin job packs the npm archive once, generates its SBOM and signs
+the archive, installer and plugin manifest. The four native jobs download and
+authenticate that same artifact before using it. Each builds only its own native
+server/CLI archive, runs the source-free native and shared-plugin checks, and
+stages its archive plus a manifest identifying the tested plugin hash. Their
+SBOM/provenance generation follows those checks. Collection verifies all four
+native archives and the shared plugin against the same version, source and
+workflow identity. No cross-platform npm tarball reproducibility assumption is
+needed; all platforms install the same bytes.
+
+Preflight, shared plugin and draft jobs each have a 15-minute execution limit;
+native jobs have 45 minutes each, and collection has 30 minutes. Native builds
+must match their runner's OS/architecture. Local `make plugin-release` retains
+its full-matrix behavior. The workflow uses these narrower script modes:
+
+```sh
+python3 scripts/plugin-release.py --version 0.1.0-alpha.0 --output-dir shared-plugin --plugin-only
+python3 scripts/plugin-release.py --version 0.1.0-alpha.0 --output-dir native-pair \
+  --platform linux-amd64 --plugin-assets shared-plugin
+```
+
+The second command produces one native pair without running `node pack.mjs` or
+`npm pack`; authenticate downloaded shared assets first as the workflow does.
+`PACKAGE_PLATFORMS=linux/amd64 make public-release VERSION=0.1.0-alpha.0` selects
+one native archive without a plugin. Omitting that setting preserves all four
+platforms for local packaging.
+
+The final job verifies the manifest, installer, checksums and unchanged tag, then
+creates a new draft. It does not replace an existing Release or its assets.
+If creation/upload fails, inspect the draft and workflow state before retrying;
+do not delete or overwrite an existing draft to make a rerun pass. Native jobs
+are deterministic technical checks, not real-model or independent-user trials.
+Record any real-model acceptance separately and describe the actual validated
+host/platform scope in the release. Complete the repository distribution review
+before publishing the draft. Creation of a draft does not publish the version.
+For the first Alpha, require all four native jobs, proof verification, draft
+creation and draft readback to succeed before publishing. A code fix changes the
+source commit: use a new preview tag (for example `alpha.1`) with matching notes,
+rather than moving the old tag. Network-only failures can retry failed jobs.
+Stable tags such as `v0.1.0` remain outside this preview workflow.
 
 ## Build and verify before distribution
 
@@ -143,10 +246,27 @@ from one archive by default. When mixing versions, inspect
 `GET /api/v1alpha1/meta/capabilities` for the advertised CLI compatibility range;
 the protocol range is independent of the server build version.
 
-The current schema initializes a new database. It has no historical schema
-upgrade path or automatic conversion of development databases. A different
-schema version is rejected. Switching database configuration does not transfer
-data. See [database initialization](configuration.md#schema-migration-mode).
+Schema 3 includes the initial schema, resource binding table (migration 2) and
+optional Run selection/audit details (migration 3). In `auto` mode, a new database
+is initialized and compatible version-1/2 databases from this source lineage
+receive the bundled additions before the HTTP listener opens. Stored Policy
+Revisions and existing Runs retain their identity and evidence; absent historical
+selection evidence stays absent. The migration regression covers a version-1
+SQLite database with an existing Policy, Revision and Run. PostgreSQL migration
+and binding behavior also require the backend CI with a disposable database.
+
+In `external` mode, storage must already have the exact bundled schema version.
+A newer database is rejected by an older server in both modes. This is not a
+promise to convert arbitrary historical development schemas. Switching drivers
+or database URLs does not transfer data.
+
+Before upgrading, stop writers and take a consistent backup of the database.
+For SQLite, account for its WAL state; for PostgreSQL, use a consistent backup
+and restore procedure. Upgrade one service instance and check readiness and
+existing records before resuming use. To roll back, stop the new server and
+restore the pre-upgrade backup with the matching old server. No automatic
+downgrade command is provided. See
+[database migration mode](configuration.md#schema-migration-mode).
 
 Fixes target the default branch and subsequent preview builds. There are no
 maintenance branches or backported security fixes during the preview. Security

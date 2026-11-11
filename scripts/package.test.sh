@@ -45,6 +45,9 @@ case "$*" in
   *github.com/alibaba/open-guardrail/internal/buildinfo.Version=0.1.0-test*) ;;
   *) echo 'Missing release version' >&2; exit 1 ;;
 esac
+if test -n "${BUILD_CALLS:-}"; then
+  printf '%s/%s\n' "$GOOS" "$GOARCH" >> "$BUILD_CALLS"
+fi
 while [ "$#" -gt 0 ]; do
   if [ "$1" = -o ]; then
     shift
@@ -115,6 +118,33 @@ PATH="$temporary/bin:$PATH" SOURCE_DATE_EPOCH=1700000000 VERSION=0.1.0-test sh "
 for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
   cmp "expected-dist/open-guardrail-0.1.0-test-$platform.tar.gz" "dist/open-guardrail-0.1.0-test-$platform.tar.gz"
 done
+
+# A native job compiles exactly its server and CLI, with no other platform outputs.
+mv dist all-platform-dist
+PATH="$temporary/bin:$PATH" SOURCE_DATE_EPOCH=1700000000 VERSION=0.1.0-test \
+  PACKAGE_PLATFORMS=linux/arm64 BUILD_CALLS="$temporary/single-build-calls" sh "$root/scripts/package.sh"
+test "$(wc -l < single-build-calls)" -eq 2
+test "$(sort -u single-build-calls)" = linux/arm64
+"${PYTHON:-python3}" - <<'PYSINGLE'
+from pathlib import Path
+assert {p.name for p in Path('dist').iterdir()} == {
+    'open-guardrail-0.1.0-test-linux-arm64.tar.gz',
+    'open-guardrail-0.1.0-test-linux-arm64.tar.gz.sha256'}
+PYSINGLE
+# Validate the complete list first: a later invalid target must not compile or
+# replace even the first valid target's pre-existing archive.
+cp dist/open-guardrail-0.1.0-test-linux-arm64.tar.gz preserved-single.tar.gz
+if PATH="$temporary/bin:$PATH" VERSION=0.1.0-test PACKAGE_PLATFORMS='linux/arm64 windows/amd64' \
+  BUILD_CALLS="$temporary/invalid-build-calls" sh "$root/scripts/package.sh" >invalid.log 2>&1; then
+  echo 'unsupported platform was accepted' >&2
+  exit 1
+fi
+grep -q 'Unsupported package platform' invalid.log
+test ! -e invalid-build-calls
+cmp preserved-single.tar.gz dist/open-guardrail-0.1.0-test-linux-arm64.tar.gz
+mv dist single-platform-dist
+mv all-platform-dist dist
+
 # A tracked symlink must not import a local file outside the public assets.
 ln -s "$temporary/integrations/jenkins/handoff.json" docs/unsafe-link.md
 git add docs/unsafe-link.md

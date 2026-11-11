@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Prepared the first preview's versioned notes and draft-release workflow.
+  See [v0.1.0-alpha.0](releases/v0.1.0-alpha.0.md). The presence of these notes
+  does not mean a Release has been published or its native jobs have passed.
+- Resource-to-Policy bindings select a fixed published Revision or follow the
+  active Revision. Run detail records optional frozen binding selection evidence;
+  idempotent binding writes retain before/after audit records. Resource references
+  are trusted caller inputs, not independently verified ownership facts.
+- One Agent plugin package serves pi and DeepSeek Harness, sharing the
+  `scenarios/file-cleanup/` policy, tools, runtime and Skill. Versioned native/plugin
+  bundles support checksum-verified installation and deterministic clean trials.
+- Go 1.27.4 is the build baseline. The native server and CLI need no Go runtime.
 - The first-use demo now runs a file cleanup task against a real local service
   and a controlled file tool. Its browser page shows actual Runs, accepted
   evidence and file effects. The predefined runner needs no model account.
@@ -42,6 +53,9 @@ this path instead of the earlier temporary `open-guardrail` module name.
 - Per-Run Submission Credentials that are separate from Project keys and can be
   replaced while the Run is open.
 - SQLite and PostgreSQL storage, with one service instance per database.
+- Exact resource bindings and frozen binding selection evidence; the public
+  distribution uses caller-supplied references without an external resolver.
+- A matched pi/DeepSeek Harness plugin and a reusable file-cleanup scenario.
 - A synthetic local Recovery Agent example, a deterministic self-check and
   reference Jenkins and Argo Rollouts demos.
 
@@ -78,8 +92,12 @@ Fixes target the default branch and subsequent preview builds. There are no
 maintenance branches, backported security fixes or fixed security-response times.
 Report vulnerabilities using [SECURITY.md](../SECURITY.md).
 
-The current schema initializes a new database. Historical schema conversion and
-data transfer are not supported.
+Schema version 3 adds resource bindings and optional Run/audit details. `auto`
+applies the bundled migrations to a new database or the compatible version-1/2
+schema from this source lineage. Existing Runs retain their frozen Revision and
+their stored selection evidence or its absence. Arbitrary historical development
+schemas and data transfer between databases are unsupported. Back up before an
+upgrade; see [upgrade and rollback](releases.md#preview-compatibility-and-upgrades).
 
 ### Known limitations
 

@@ -3,6 +3,7 @@ NODE ?= node
 PYTHON ?= python3
 VERSION ?= dev
 PLUGIN_RELEASE_DIR ?= dist/plugin-release-$(VERSION)
+PACKAGE_PLATFORMS ?= linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
 FUZZ_TIME ?= 10s
 FUZZ_PARALLEL ?= 2
 export GOWORK := off
@@ -58,6 +59,7 @@ test-agent-plugins: build
 	OPEN_GUARDRAIL_BINARIES="$(CURDIR)/bin" $(NODE) --test integrations/agent-plugins/test/*.test.mjs
 
 test-scripts:
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/assemble-release.test.py
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/plugin-release.test.py
 	sh scripts/check-generated.test.sh
 	sh scripts/package.test.sh
@@ -77,7 +79,7 @@ smoke-docker:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) scripts/smoke_docker.py
 
 preview-release:
-	PACKAGE_KIND=preview VERSION=$(VERSION) GO="$(GO)" PYTHON="$(PYTHON)" sh scripts/package.sh
+	PACKAGE_KIND=preview PACKAGE_PLATFORMS="$(PACKAGE_PLATFORMS)" VERSION=$(VERSION) GO="$(GO)" PYTHON="$(PYTHON)" sh scripts/package.sh
 
 check-public-release:
 	VERSION=$(VERSION) PYTHON="$(PYTHON)" sh scripts/check-public-release.sh
@@ -88,7 +90,7 @@ public-release:
 	$(MAKE) check-public-release
 	$(MAKE) check-dependency-licenses
 	$(MAKE) check-dependency-notices
-	PACKAGE_KIND=public VERSION=$(VERSION) GO="$(GO)" PYTHON="$(PYTHON)" sh scripts/package.sh
+	PACKAGE_KIND=public PACKAGE_PLATFORMS="$(PACKAGE_PLATFORMS)" VERSION=$(VERSION) GO="$(GO)" PYTHON="$(PYTHON)" sh scripts/package.sh
 
 # Verify preview artifacts without bypassing the separate public-release gates.
 smoke-release: preview-release
