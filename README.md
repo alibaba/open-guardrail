@@ -119,6 +119,12 @@ separate database.
 
 ### Run a guarded task
 
+Published native previews appear in [GitHub Releases](https://github.com/alibaba/open-guardrail/releases).
+Follow [archive verification](docs/releases.md) before extracting and running the
+same cleanup demo with Python 3.9+; the native path needs no Go installation.
+For a model-driven pi/DeepSeek Harness trial, use the separate
+[plugin installation guide](docs/plugin-trial.md). The commands below build from source.
+
 Install Git, the Go version specified in `go.mod` and Python 3.9+:
 
 ```sh

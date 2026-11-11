@@ -1,5 +1,7 @@
 #!/bin/sh
 set -eu
+# Split the allowlisted platform list on whitespace without pathname expansion.
+set -f
 export GOWORK=off
 
 # Invoke from the repository root. Packages stay local; this script never uploads.
@@ -16,6 +18,13 @@ case "$package_kind" in
   preview) ;;
   *) echo "Invalid PACKAGE_KIND" >&2; exit 1 ;;
 esac
+platforms=${PACKAGE_PLATFORMS:-linux/amd64 linux/arm64 darwin/amd64 darwin/arm64}
+for platform in $platforms; do
+  case "$platform" in
+    linux/amd64|linux/arm64|darwin/amd64|darwin/arm64) ;;
+    *) echo "Unsupported package platform: $platform" >&2; exit 1 ;;
+  esac
+done
 public_flag=
 if test "$package_kind" = public; then
   "$python_command" "$script_root/scripts/package_archive.py" --check-public-assets
@@ -27,7 +36,7 @@ mkdir -p dist
 staging=$(mktemp -d)
 trap 'rm -rf "$staging"' EXIT
 trap 'exit 1' HUP INT TERM
-for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+for platform in $platforms; do
   target_os=${platform%/*}
   target_arch=${platform#*/}
   name="open-guardrail-${version}-${target_os}-${target_arch}"
