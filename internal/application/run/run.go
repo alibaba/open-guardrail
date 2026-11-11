@@ -4,6 +4,7 @@ package run
 import "errors"
 
 var (
+	ErrBindingConflict     = errors.New("business resources have incomplete or conflicting Policy bindings")
 	ErrInvalid             = errors.New("invalid Run request")
 	ErrNotFound            = errors.New("Run or Scene not found")
 	ErrSpecNotPublished    = errors.New("Scene has no active Policy Revision")

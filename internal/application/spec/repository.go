@@ -1,9 +1,16 @@
 package spec
 
-import "context"
+import (
+	"context"
+
+	"github.com/alibaba/open-guardrail/internal/domain/resource"
+)
 
 // Repository defines the persistence boundary independently of the SQL adapter.
 type Repository interface {
+	PutBinding(context.Context, Scope, string, Binding) (Binding, error)
+	DeleteBinding(context.Context, Scope, string, resource.Reference) error
+	ListBindings(context.Context, Scope, string, int, *resource.Reference) (BindingPage, error)
 	GetSceneModel(ctx context.Context, scope Scope, key string) (SceneModel, error)
 	ListSceneModels(ctx context.Context, scope Scope) ([]SceneModel, error)
 	GetPolicy(ctx context.Context, scope Scope, id string) (Policy, error)

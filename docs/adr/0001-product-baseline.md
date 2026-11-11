@@ -82,7 +82,7 @@ submissions, Claim exclusivity and ActionResult finality.
 
 ### Toolchain and diagnostic contract
 
-Go 1.27.3 is the toolchain baseline across module, CI and container builds.
+Go 1.27.4 is the toolchain baseline across module, CI and container builds.
 
 The target public diagnostic contract is:
 

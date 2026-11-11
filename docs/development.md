@@ -9,7 +9,7 @@ references. Documentation-only contributions follow the
 
 ## Toolchains and checks
 
-Go 1.27.3 or newer is used to build and test. CI reads the version from `go.mod`,
+Go 1.27.4 or newer is used to build and test. CI reads the version from `go.mod`,
 and the container build uses the same default baseline. All dependencies are public
 Go modules.
 

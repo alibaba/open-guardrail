@@ -10,7 +10,7 @@ Start with the [documentation index](README.md); the
 | --- | --- |
 | Service and storage | Native service and CLI; strict configuration; SQLite/PostgreSQL initial schemas, including externally prepared schema mode; readiness and version/capability discovery |
 | Identity | Local administrator setup and recovery, browser/CLI sessions, scoped Project keys with bounded lifetimes, metadata listing, rotation and revocation |
-| Policy management | Scenes, editable Draft Revisions, immutable Published Revisions, reviewed-Draft publication, activation and bounded Revision history |
+| Policy management | Exact resource bindings with fixed/active Revision selection and audit; Scenes, editable Draft Revisions, immutable Published Revisions, reviewed-Draft publication, activation and bounded Revision history |
 | Evaluation | Independent Runs with immutable Revision references and context, complete intermediate/final Snapshots, structured evidence, fixed Result/Decision aggregation, lazy expiry and decision validity |
 | Machine integration | OpenAPI-generated HTTP clients, Run-scoped Submission Credentials, Revision and stored-Submission readers, bounded Run listing and endpoint-scope authorization |
 | User interface | Embedded management pages for administrator setup, Policies and read-only Run inspection |

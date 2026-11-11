@@ -36,6 +36,7 @@ internal/
   domain/
     spec/                    Policy document rules, canonical JSON and digest
     run/                     Arbitrary ChangeSet canonicalization and identity
+    resource/                Exact resource references for Policy bindings
   application/
     identity/                Local administrator and credential use cases
     spec/                    Scene drafts, validated publication commands and repository ports
@@ -143,3 +144,32 @@ upgrades pin the new core version and run those checks against their own adapter
 HTTP integration should exercise the same commands and must not determine a
 second, reduced guardrail model. See the directory READMEs for the planned boundaries
 and [runtime architecture](architecture.md) for implemented behavior.
+
+## Resource bindings
+
+Each Scene maps exact `{kind,id}` resources to one Policy and an optional published
+Revision. Omit the Revision to follow the Policy active Revision. Binding management
+uses the existing administrator session and write CSRF header through the OpenAPI.
+A bound Policy can be archived; matching new Runs then fail with
+`SPEC_NOT_PUBLISHED` (409), without default fallback. Existing Runs keep their
+frozen Revision. Binding audit stores before/after values; identical PUT and absent
+DELETE emit no change event.
+
+Trusted integrations supply a flat `resources` array when creating a Run:
+
+```json
+{
+  "sceneKey": "recovery",
+  "changeSet": {"changeSetRef": "change-1"},
+  "resources": [{"kind": "application", "id": "app-1"}]
+}
+```
+
+`changeSet` is opaque business context; its example field is not a standard
+OpenGuardrail field. Resources are trusted selection inputs, not independently
+verified business ownership. Missing resources or an entirely unbound set uses the
+Scene default; partially bound resources or conflicting bindings return 409.
+`policyRevisionRef` requires `runs:create-with-revision` and cannot be combined with
+`resources`. The final Policy/Revision is frozen in the Run. Optional `selection`
+evidence records matched resources and active/pinned mode only; default and explicit
+selection omit it, and exact retries preserve both the version and existing evidence.

@@ -132,7 +132,7 @@ func (s *server) GetCapabilities(w http.ResponseWriter, r *http.Request) {
 	if s.options.Identity != nil {
 		response.Features = append(response.Features, "local-administrator", "project-api-key")
 		if s.options.ModelSpecs != nil {
-			response.Features = append(response.Features, "scene-policy-management", "immutable-policy-revisions")
+			response.Features = append(response.Features, "scene-policy-management", "immutable-policy-revisions", "resource-policy-bindings")
 		}
 		if s.options.ModelRuns != nil {
 			response.Features = append(response.Features, "policy-revision-runs", "explicit-revision-run-scope", "multi-submission-decision", "run-expiry-decision-validity", "run-scoped-submission-token")
