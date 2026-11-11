@@ -1,5 +1,5 @@
 # Build from the repository root: docker build -f integrations/argo/Dockerfile .
-FROM golang:1.27.3-alpine AS build
+FROM golang:1.27.4-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 # Optional build-only transport diagnostics; never persisted into the runtime image.

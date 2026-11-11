@@ -152,7 +152,7 @@ The release matrix currently includes Linux/macOS amd64/arm64. Both commands bui
 with CGO disabled. PostgreSQL 17 is the shared-backend integration-test baseline.
 Docker is an optional packaging tool; extracted binaries run directly on the host.
 
-The code uses Go 1.27.3, `/livez` for process liveness and minimal `/readyz` for
+The code uses Go 1.27.4, `/livez` for process liveness and minimal `/readyz` for
 dependency readiness.
 Anonymous version/capability discovery excludes commit hashes and dependency
 details.

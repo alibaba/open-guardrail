@@ -1,7 +1,7 @@
 # Keep this default synchronized with the go directive in go.mod. The test target
 # enforces the relationship because Docker cannot interpolate values from go.mod
 # in a FROM instruction.
-ARG GO_VERSION=1.27.3
+ARG GO_VERSION=1.27.4
 FROM golang:${GO_VERSION} AS build
 WORKDIR /src
 COPY go.mod go.sum ./
