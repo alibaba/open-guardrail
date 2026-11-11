@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 )
 
@@ -13,6 +14,7 @@ var (
 )
 
 type PolicyRun struct {
+	Selection          *Selection      `json:"selection,omitempty"`
 	ID                 string          `json:"id"`
 	SceneKey           string          `json:"sceneKey"`
 	PolicyID           string          `json:"policyId"`
@@ -66,8 +68,9 @@ func (r PolicyRun) Summary() PolicyRunSummary {
 }
 
 type PolicyRunCreateInput struct {
+	Resources           []resource.Reference
 	SceneKey            string
-	PolicyRevisionID    string // Empty selects the Scene default Policy's active Revision.
+	PolicyRevisionID    string // Empty selects bindings or the Scene default active Revision.
 	CanSelectRevision   bool   // Granted only by a dedicated machine scope.
 	ChangeSetJSON       string
 	ChangeSetDigest     string

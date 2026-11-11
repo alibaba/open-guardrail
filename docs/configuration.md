@@ -36,7 +36,7 @@ remote bootstrap-token flow even when the backend listener is loopback.
 
 ### Schema migration mode
 
-`auto` connects to storage and installs the bundled initial schema before opening
+`auto` connects to storage and applies bundled schema migrations before opening
 the HTTP listener. `external` requires that schema and initialization version to
 be prepared in advance and does not create tables. A missing or different schema
 version fails startup.

@@ -313,6 +313,39 @@ func (e RunResult) Valid() bool {
 	}
 }
 
+// Defines values for RunSelectionRevisionMode.
+const (
+	Active RunSelectionRevisionMode = "active"
+	Pinned RunSelectionRevisionMode = "pinned"
+)
+
+// Valid indicates whether the value is a known member of the RunSelectionRevisionMode enum.
+func (e RunSelectionRevisionMode) Valid() bool {
+	switch e {
+	case Active:
+		return true
+	case Pinned:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RunSelectionSource.
+const (
+	Binding RunSelectionSource = "binding"
+)
+
+// Valid indicates whether the value is a known member of the RunSelectionSource enum.
+func (e RunSelectionSource) Valid() bool {
+	switch e {
+	case Binding:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RunStatus.
 const (
 	RunStatusEXPIRED  RunStatus = "EXPIRED"
@@ -577,6 +610,36 @@ func (e SetSceneTTLParamsXGuardrailCSRF) Valid() bool {
 	}
 }
 
+// Defines values for DeleteBindingParamsXGuardrailCSRF.
+const (
+	DeleteBindingParamsXGuardrailCSRFN1 DeleteBindingParamsXGuardrailCSRF = "1"
+)
+
+// Valid indicates whether the value is a known member of the DeleteBindingParamsXGuardrailCSRF enum.
+func (e DeleteBindingParamsXGuardrailCSRF) Valid() bool {
+	switch e {
+	case DeleteBindingParamsXGuardrailCSRFN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PutBindingParamsXGuardrailCSRF.
+const (
+	PutBindingParamsXGuardrailCSRFN1 PutBindingParamsXGuardrailCSRF = "1"
+)
+
+// Valid indicates whether the value is a known member of the PutBindingParamsXGuardrailCSRF enum.
+func (e PutBindingParamsXGuardrailCSRF) Valid() bool {
+	switch e {
+	case PutBindingParamsXGuardrailCSRFN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SetDefaultPolicyParamsXGuardrailCSRF.
 const (
 	SetDefaultPolicyParamsXGuardrailCSRFN1 SetDefaultPolicyParamsXGuardrailCSRF = "1"
@@ -667,6 +730,12 @@ type ActivatePolicyRevisionRequest struct {
 	PolicyRevisionId         string  `json:"policyRevisionId"`
 }
 
+// BindingPage defines model for BindingPage.
+type BindingPage struct {
+	Items     []PolicyBinding `json:"items"`
+	NextAfter *string         `json:"nextAfter,omitempty"`
+}
+
 // BootstrapRequest defines model for BootstrapRequest.
 type BootstrapRequest struct {
 	// Password at least 6 characters and at most 128 UTF-8 bytes
@@ -735,11 +804,16 @@ type CreatePolicyRequest struct {
 
 // CreatePolicyRunRequest defines model for CreatePolicyRunRequest.
 type CreatePolicyRunRequest struct {
-	ChangeSet         json.RawMessage `json:"changeSet"`
+	ChangeSet json.RawMessage `json:"changeSet"`
+
+	// PolicyRevisionRef Privileged override requiring runs:create-with-revision and bypassing resource bindings. Grant only to trusted override operators.
 	PolicyRevisionRef *struct {
 		PolicyRevisionId string `json:"policyRevisionId"`
 	} `json:"policyRevisionRef,omitempty"`
-	SceneKey SceneKey `json:"sceneKey"`
+
+	// Resources Selection input supplied by a trusted integration, not verified business ownership. Omission or entirely unbound resources selects the scene default. Rejected with policyRevisionRef.
+	Resources *[]ResourceReference `json:"resources,omitempty"`
+	SceneKey  SceneKey             `json:"sceneKey"`
 }
 
 // Decision defines model for Decision.
@@ -819,6 +893,13 @@ type Policy struct {
 // PolicyLifecycleState defines model for Policy.LifecycleState.
 type PolicyLifecycleState string
 
+// PolicyBinding defines model for PolicyBinding.
+type PolicyBinding struct {
+	PolicyId         string            `json:"policyId"`
+	PolicyRevisionId *string           `json:"policyRevisionId,omitempty"`
+	Resource         ResourceReference `json:"resource"`
+}
+
 // PolicyDraftRequest defines model for PolicyDraftRequest.
 type PolicyDraftRequest struct {
 	Yaml string `json:"yaml"`
@@ -875,8 +956,11 @@ type PolicyRun struct {
 	Result             *RunResult      `json:"result,omitempty"`
 	RunTtlSeconds      int64           `json:"runTtlSeconds"`
 	SceneKey           SceneKey        `json:"sceneKey"`
-	SpecDigest         string          `json:"specDigest"`
-	Status             PolicyRunStatus `json:"status"`
+
+	// Selection Optional frozen selection details beyond the Policy and final Revision IDs on the Run. New Runs record matched resource bindings only; default and explicit-Revision selection omit this field. Existing evidence or its absence stays unchanged. Resources contain only the matched group.
+	Selection  *RunSelection   `json:"selection,omitempty"`
+	SpecDigest string          `json:"specDigest"`
+	Status     PolicyRunStatus `json:"status"`
 }
 
 // PolicyRunStatus defines model for PolicyRun.Status.
@@ -941,6 +1025,18 @@ type PublishPolicyRevisionRequest struct {
 	Yaml string `json:"yaml"`
 }
 
+// PutBindingRequest defines model for PutBindingRequest.
+type PutBindingRequest struct {
+	PolicyId         string  `json:"policyId"`
+	PolicyRevisionId *string `json:"policyRevisionId,omitempty"`
+}
+
+// ResourceReference defines model for ResourceReference.
+type ResourceReference struct {
+	Id   string `json:"id"`
+	Kind string `json:"kind"`
+}
+
 // RevisionSummary defines model for RevisionSummary.
 type RevisionSummary struct {
 	Digest         string `json:"digest"`
@@ -961,6 +1057,21 @@ type RotateAPIKeyRequest struct {
 
 // RunResult defines model for RunResult.
 type RunResult string
+
+// RunSelection Optional frozen selection details beyond the Policy and final Revision IDs on the Run. New Runs record matched resource bindings only; default and explicit-Revision selection omit this field. Existing evidence or its absence stays unchanged. Resources contain only the matched group.
+type RunSelection struct {
+	Resources *[]ResourceReference `json:"resources,omitempty"`
+
+	// RevisionMode Present only for binding selections; explains the binding at Run creation.
+	RevisionMode *RunSelectionRevisionMode `json:"revisionMode,omitempty"`
+	Source       RunSelectionSource        `json:"source"`
+}
+
+// RunSelectionRevisionMode Present only for binding selections; explains the binding at Run creation.
+type RunSelectionRevisionMode string
+
+// RunSelectionSource defines model for RunSelection.Source.
+type RunSelectionSource string
 
 // RunStatus defines model for RunStatus.
 type RunStatus string
@@ -1274,6 +1385,30 @@ type SetSceneTTLParams struct {
 // SetSceneTTLParamsXGuardrailCSRF defines parameters for SetSceneTTL.
 type SetSceneTTLParamsXGuardrailCSRF string
 
+// ListBindingsParams defines parameters for ListBindings.
+type ListBindingsParams struct {
+	Limit *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	After *string `form:"after,omitempty" json:"after,omitempty"`
+}
+
+// DeleteBindingParams defines parameters for DeleteBinding.
+type DeleteBindingParams struct {
+	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
+	XGuardrailCSRF DeleteBindingParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
+}
+
+// DeleteBindingParamsXGuardrailCSRF defines parameters for DeleteBinding.
+type DeleteBindingParamsXGuardrailCSRF string
+
+// PutBindingParams defines parameters for PutBinding.
+type PutBindingParams struct {
+	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
+	XGuardrailCSRF PutBindingParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
+}
+
+// PutBindingParamsXGuardrailCSRF defines parameters for PutBinding.
+type PutBindingParamsXGuardrailCSRF string
+
 // SetDefaultPolicyParams defines parameters for SetDefaultPolicy.
 type SetDefaultPolicyParams struct {
 	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
@@ -1363,6 +1498,9 @@ type PublishPolicyRevisionJSONRequestBody = PublishPolicyRevisionRequest
 
 // SetSceneTTLJSONRequestBody defines body for SetSceneTTL for application/json ContentType.
 type SetSceneTTLJSONRequestBody = SetSceneTTLRequest
+
+// PutBindingJSONRequestBody defines body for PutBinding for application/json ContentType.
+type PutBindingJSONRequestBody = PutBindingRequest
 
 // SetDefaultPolicyJSONRequestBody defines body for SetDefaultPolicy for application/json ContentType.
 type SetDefaultPolicyJSONRequestBody = SetDefaultPolicyRequest
@@ -1621,6 +1759,24 @@ type ClientInterface interface {
 	// SetSceneTTL performs a PATCH /api/v1alpha1/scenes/{key} (the `SetSceneTTL` operationId) request.
 	// Takes a body of the `application/json` content type.
 	SetSceneTTL(ctx context.Context, key string, params *SetSceneTTLParams, body SetSceneTTLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListBindings performs a GET /api/v1alpha1/scenes/{key}/bindings (the `ListBindings` operationId) request.
+	ListBindings(ctx context.Context, key string, params *ListBindingsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteBinding performs a DELETE /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `DeleteBinding` operationId) request.
+	DeleteBinding(ctx context.Context, key string, kind string, resourceId string, params *DeleteBindingParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutBindingWithBody performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	PutBindingWithBody(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutBinding performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	PutBinding(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetDefaultPolicyWithBody performs a PUT /api/v1alpha1/scenes/{key}/default-policy (the `SetDefaultPolicy` operationId) request,
 	// with any type of body and a specified content type.
@@ -2268,6 +2424,64 @@ func (c *Client) SetSceneTTLWithBody(ctx context.Context, key string, params *Se
 // Takes a body of the `application/json` content type.
 func (c *Client) SetSceneTTL(ctx context.Context, key string, params *SetSceneTTLParams, body SetSceneTTLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetSceneTTLRequest(c.Server, key, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListBindings performs a GET /api/v1alpha1/scenes/{key}/bindings (the `ListBindings` operationId) request.
+func (c *Client) ListBindings(ctx context.Context, key string, params *ListBindingsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListBindingsRequest(c.Server, key, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteBinding performs a DELETE /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `DeleteBinding` operationId) request.
+func (c *Client) DeleteBinding(ctx context.Context, key string, kind string, resourceId string, params *DeleteBindingParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteBindingRequest(c.Server, key, kind, resourceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutBindingWithBody performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
+// with any type of body and a specified content type.
+//
+// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+func (c *Client) PutBindingWithBody(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutBindingRequestWithBody(c.Server, key, kind, resourceId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutBinding performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+func (c *Client) PutBinding(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutBindingRequest(c.Server, key, kind, resourceId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3993,6 +4207,214 @@ func NewSetSceneTTLRequestWithBody(server string, key string, params *SetSceneTT
 	return req, nil
 }
 
+// NewListBindingsRequest constructs an http.Request for the ListBindings method
+func NewListBindingsRequest(server string, key string, params *ListBindingsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/scenes/%s/bindings", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.After != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "after", *params.After, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteBindingRequest constructs an http.Request for the DeleteBinding method
+func NewDeleteBindingRequest(server string, key string, kind string, resourceId string, params *DeleteBindingParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resourceId", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/scenes/%s/bindings/%s/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-Guardrail-CSRF", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewPutBindingRequest calls the generic PutBinding builder with application/json body
+func NewPutBindingRequest(server string, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPutBindingRequestWithBody(server, key, kind, resourceId, params, "application/json", bodyReader)
+}
+
+// NewPutBindingRequestWithBody constructs an http.Request for the PutBinding method, with any body, and a specified content type
+func NewPutBindingRequestWithBody(server string, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "kind", kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "resourceId", resourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/scenes/%s/bindings/%s/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-Guardrail-CSRF", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewSetDefaultPolicyRequest calls the generic SetDefaultPolicy builder with application/json body
 func NewSetDefaultPolicyRequest(server string, key string, params *SetDefaultPolicyParams, body SetDefaultPolicyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -4949,6 +5371,30 @@ type ClientWithResponsesInterface interface {
 	// SetSceneTTLWithResponse performs a PATCH /api/v1alpha1/scenes/{key} (the `SetSceneTTL` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	SetSceneTTLWithResponse(ctx context.Context, key string, params *SetSceneTTLParams, body SetSceneTTLJSONRequestBody, reqEditors ...RequestEditorFn) (*SetSceneTTLResponse, error)
+
+	// ListBindingsWithResponse performs a GET /api/v1alpha1/scenes/{key}/bindings (the `ListBindings` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListBindingsWithResponse(ctx context.Context, key string, params *ListBindingsParams, reqEditors ...RequestEditorFn) (*ListBindingsResponse, error)
+
+	// DeleteBindingWithResponse performs a DELETE /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `DeleteBinding` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteBindingWithResponse(ctx context.Context, key string, kind string, resourceId string, params *DeleteBindingParams, reqEditors ...RequestEditorFn) (*DeleteBindingResponse, error)
+
+	// PutBindingWithBodyWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	PutBindingWithBodyWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutBindingResponse, error)
+
+	// PutBindingWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	PutBindingWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*PutBindingResponse, error)
 
 	// SetDefaultPolicyWithBodyWithResponse performs a PUT /api/v1alpha1/scenes/{key}/default-policy (the `SetDefaultPolicy` operationId) request,
 	// with any type of body and a specified content type.
@@ -6851,6 +7297,185 @@ func (r SetSceneTTLResponse) ContentType() string {
 	return ""
 }
 
+// ListBindingsResponse200Headers the declared response headers of an HTTP 200 response for ListBindings
+type ListBindingsResponse200Headers struct {
+	XTraceID string
+}
+
+// ListBindingsResponseDefaultHeaders the declared response headers of an HTTP default response for ListBindings
+type ListBindingsResponseDefaultHeaders struct {
+	XTraceID string
+}
+
+type ListBindingsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BindingPage
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *SpecError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListBindingsResponse200Headers
+	// HeadersDefault the parsed response headers for an HTTP default response
+	HeadersDefault *ListBindingsResponseDefaultHeaders
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListBindingsResponse) GetJSON200() *BindingPage {
+	return r.JSON200
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListBindingsResponse) GetJSONDefault() *SpecError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListBindingsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListBindingsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListBindingsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListBindingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// DeleteBindingResponse204Headers the declared response headers of an HTTP 204 response for DeleteBinding
+type DeleteBindingResponse204Headers struct {
+	XTraceID string
+}
+
+// DeleteBindingResponseDefaultHeaders the declared response headers of an HTTP default response for DeleteBinding
+type DeleteBindingResponseDefaultHeaders struct {
+	XTraceID string
+}
+
+type DeleteBindingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *SpecError
+	// Headers204 the parsed response headers for an HTTP 204 response
+	Headers204 *DeleteBindingResponse204Headers
+	// HeadersDefault the parsed response headers for an HTTP default response
+	HeadersDefault *DeleteBindingResponseDefaultHeaders
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r DeleteBindingResponse) GetJSONDefault() *SpecError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteBindingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteBindingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteBindingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteBindingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// PutBindingResponse200Headers the declared response headers of an HTTP 200 response for PutBinding
+type PutBindingResponse200Headers struct {
+	XTraceID string
+}
+
+// PutBindingResponseDefaultHeaders the declared response headers of an HTTP default response for PutBinding
+type PutBindingResponseDefaultHeaders struct {
+	XTraceID string
+}
+
+type PutBindingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PolicyBinding
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *SpecError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *PutBindingResponse200Headers
+	// HeadersDefault the parsed response headers for an HTTP default response
+	HeadersDefault *PutBindingResponseDefaultHeaders
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PutBindingResponse) GetJSON200() *PolicyBinding {
+	return r.JSON200
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r PutBindingResponse) GetJSONDefault() *SpecError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PutBindingResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutBindingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutBindingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutBindingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // SetDefaultPolicyResponse200Headers the declared response headers of an HTTP 200 response for SetDefaultPolicy
 type SetDefaultPolicyResponse200Headers struct {
 	XTraceID string
@@ -8241,6 +8866,54 @@ func (c *ClientWithResponses) SetSceneTTLWithResponse(ctx context.Context, key s
 		return nil, err
 	}
 	return ParseSetSceneTTLResponse(rsp)
+}
+
+// ListBindingsWithResponse performs a GET /api/v1alpha1/scenes/{key}/bindings (the `ListBindings` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListBindingsWithResponse(ctx context.Context, key string, params *ListBindingsParams, reqEditors ...RequestEditorFn) (*ListBindingsResponse, error) {
+	rsp, err := c.ListBindings(ctx, key, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListBindingsResponse(rsp)
+}
+
+// DeleteBindingWithResponse performs a DELETE /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `DeleteBinding` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteBindingWithResponse(ctx context.Context, key string, kind string, resourceId string, params *DeleteBindingParams, reqEditors ...RequestEditorFn) (*DeleteBindingResponse, error) {
+	rsp, err := c.DeleteBinding(ctx, key, kind, resourceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteBindingResponse(rsp)
+}
+
+// PutBindingWithBodyWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
+// with any type of body and a specified content type.
+//
+// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PutBindingWithBodyWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutBindingResponse, error) {
+	rsp, err := c.PutBindingWithBody(ctx, key, kind, resourceId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutBindingResponse(rsp)
+}
+
+// PutBindingWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+func (c *ClientWithResponses) PutBindingWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*PutBindingResponse, error) {
+	rsp, err := c.PutBinding(ctx, key, kind, resourceId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutBindingResponse(rsp)
 }
 
 // SetDefaultPolicyWithBodyWithResponse performs a PUT /api/v1alpha1/scenes/{key}/default-policy (the `SetDefaultPolicy` operationId) request,
@@ -10161,6 +10834,170 @@ func ParseSetSceneTTLResponse(rsp *http.Response) (*SetSceneTTLResponse, error) 
 	return response, nil
 }
 
+// ParseListBindingsResponse parses an HTTP response from a ListBindingsWithResponse call
+func ParseListBindingsResponse(rsp *http.Response) (*ListBindingsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListBindingsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BindingPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest SpecError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListBindingsResponse200Headers
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.Headers200 = &headers
+	case true:
+		var headers ListBindingsResponseDefaultHeaders
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.HeadersDefault = &headers
+	}
+
+	return response, nil
+}
+
+// ParseDeleteBindingResponse parses an HTTP response from a DeleteBindingWithResponse call
+func ParseDeleteBindingResponse(rsp *http.Response) (*DeleteBindingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteBindingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest SpecError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		var headers DeleteBindingResponse204Headers
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.Headers204 = &headers
+	case true:
+		var headers DeleteBindingResponseDefaultHeaders
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.HeadersDefault = &headers
+	}
+
+	return response, nil
+}
+
+// ParsePutBindingResponse parses an HTTP response from a PutBindingWithResponse call
+func ParsePutBindingResponse(rsp *http.Response) (*PutBindingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutBindingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PolicyBinding
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest SpecError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers PutBindingResponse200Headers
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.Headers200 = &headers
+	case true:
+		var headers PutBindingResponseDefaultHeaders
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.HeadersDefault = &headers
+	}
+
+	return response, nil
+}
+
 // ParseSetDefaultPolicyResponse parses an HTTP response from a SetDefaultPolicyWithResponse call
 func ParseSetDefaultPolicyResponse(rsp *http.Response) (*SetDefaultPolicyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -11097,6 +11934,15 @@ type ServerInterface interface {
 
 	// (PATCH /api/v1alpha1/scenes/{key})
 	SetSceneTTL(w http.ResponseWriter, r *http.Request, key string, params SetSceneTTLParams)
+
+	// (GET /api/v1alpha1/scenes/{key}/bindings)
+	ListBindings(w http.ResponseWriter, r *http.Request, key string, params ListBindingsParams)
+
+	// (DELETE /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId})
+	DeleteBinding(w http.ResponseWriter, r *http.Request, key string, kind string, resourceId string, params DeleteBindingParams)
+
+	// (PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId})
+	PutBinding(w http.ResponseWriter, r *http.Request, key string, kind string, resourceId string, params PutBindingParams)
 
 	// (PUT /api/v1alpha1/scenes/{key}/default-policy)
 	SetDefaultPolicy(w http.ResponseWriter, r *http.Request, key string, params SetDefaultPolicyParams)
@@ -12373,6 +13219,205 @@ func (siw *ServerInterfaceWrapper) SetSceneTTL(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// ListBindings operation middleware
+func (siw *ServerInterfaceWrapper) ListBindings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "key" -------------
+	var key string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "key", r.PathValue("key"), &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListBindingsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "after" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "after", r.URL.Query(), &params.After, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "after"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "after", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListBindings(w, r, key, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteBinding operation middleware
+func (siw *ServerInterfaceWrapper) DeleteBinding(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "key" -------------
+	var key string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "key", r.PathValue("key"), &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteBindingParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
+		var XGuardrailCSRF DeleteBindingParamsXGuardrailCSRF
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
+			return
+		}
+
+		params.XGuardrailCSRF = XGuardrailCSRF
+
+	} else {
+		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteBinding(w, r, key, kind, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PutBinding operation middleware
+func (siw *ServerInterfaceWrapper) PutBinding(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "key" -------------
+	var key string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "key", r.PathValue("key"), &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "kind" -------------
+	var kind string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "kind", r.PathValue("kind"), &kind, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "resourceId" -------------
+	var resourceId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "resourceId", r.PathValue("resourceId"), &resourceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PutBindingParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
+		var XGuardrailCSRF PutBindingParamsXGuardrailCSRF
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
+			return
+		}
+
+		params.XGuardrailCSRF = XGuardrailCSRF
+
+	} else {
+		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PutBinding(w, r, key, kind, resourceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SetDefaultPolicy operation middleware
 func (siw *ServerInterfaceWrapper) SetDefaultPolicy(w http.ResponseWriter, r *http.Request) {
 
@@ -13097,6 +14142,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}", wrapper.SetSceneTTL)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/policies", wrapper.ListPolicies)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/policies", wrapper.CreatePolicy)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/bindings", wrapper.ListBindings)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId}", wrapper.DeleteBinding)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId}", wrapper.PutBinding)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/default-policy", wrapper.SetDefaultPolicy)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/policies/{policyId}", wrapper.GetPolicy)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/policies/{policyId}/draft", wrapper.GetPolicyDraft)

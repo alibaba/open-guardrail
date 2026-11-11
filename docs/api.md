@@ -70,6 +70,9 @@ exposing database or credential details.
 | `GET /api/v1alpha1/runs` | List Runs for the authenticated administrator's read-only management view |
 | `GET /api/v1alpha1/runs/{runId}` | Inspect one Run from the management view |
 | `POST /api/v1alpha1/scenes/{key}:initialize` | Atomically create Scene, default Policy and Revision 1 |
+| `GET /api/v1alpha1/scenes/{key}/bindings` | List exact resource bindings with limit/after pagination |
+| `PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId}` | Idempotently create/replace a binding; optional published Revision pin |
+| `DELETE /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId}` | Remove a binding; absent bindings return 204 |
 | `POST /api/v1alpha1/scenes/{key}/policies` | Create another Policy |
 | `GET /api/v1alpha1/policies/{policyId}/draft` | Read the current Draft Revision, or 404 when absent |
 | `PUT /api/v1alpha1/policies/{policyId}/draft` | Save and return the Draft Revision |
@@ -85,3 +88,10 @@ use the Submission reader to inspect accepted evidence. A `FINISHED` Run exposes
 its Result, Decision and `decisionExpiresAt`; callers must also verify the evidence
 and evaluation identity they rely on. Execution Claims and ActionResults remain
 planned. See [Runs and submissions](runs.md) for the full lifecycle.
+
+Binding management uses existing administrator sessions and the write CSRF header.
+Encode resource IDs in paths, including slash. Run `resources` are trusted inputs
+and cannot be combined with an explicit Revision override. Optional
+`selection` evidence is recorded only for matched bindings; default/explicit paths
+omit it. Binding CLI commands are not included. See the
+[contract and trust boundaries](extensions.md#resource-bindings).

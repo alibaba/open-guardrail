@@ -9,21 +9,26 @@ import (
 	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
+	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 	specdomain "github.com/alibaba/open-guardrail/internal/domain/spec"
 )
 
-const policyRunColumns = "gr.run_id,gr.scene_key,p.policy_id,pr.policy_revision_id,gr.spec_digest,gr.status,gr.change_set_json,gr.change_set_digest,gr.run_ttl_seconds,gr.deadline_at,gr.latest_submission_no,fs.submission_id,gr.created_at,gr.finished_at,gr.expired_at,gr.result_verdict,gr.decision_verdict,gr.decision_expires_at"
+const policyRunColumns = "gr.run_id,gr.scene_key,p.policy_id,pr.policy_revision_id,gr.spec_digest,gr.status,gr.change_set_json,gr.change_set_digest,gr.run_ttl_seconds,gr.deadline_at,gr.latest_submission_no,fs.submission_id,gr.created_at,gr.finished_at,gr.expired_at,gr.result_verdict,gr.decision_verdict,gr.decision_expires_at,gr.selection_json"
 const policyRunFrom = " FROM guardrail_run gr JOIN policy p ON p.id=gr.policy_id JOIN policy_revision pr ON pr.id=gr.policy_revision_id LEFT JOIN submission fs ON fs.id=gr.final_submission_id"
 
 func scanPolicyRun(row scanner) (runapp.PolicyRun, error) {
 	var run runapp.PolicyRun
 	var changeSet string
+	var selection sql.NullString
 	var finalID, result, decision sql.NullString
 	var finished, expired, expiresAt sql.NullInt64
-	err := row.Scan(&run.ID, &run.SceneKey, &run.PolicyID, &run.PolicyRevisionID, &run.SpecDigest, &run.Status, &changeSet, &run.ChangeSetDigest, &run.RunTTLSeconds, &run.DeadlineAt, &run.LatestSubmissionNo, &finalID, &run.CreatedAt, &finished, &expired, &result, &decision, &expiresAt)
+	err := row.Scan(&run.ID, &run.SceneKey, &run.PolicyID, &run.PolicyRevisionID, &run.SpecDigest, &run.Status, &changeSet, &run.ChangeSetDigest, &run.RunTTLSeconds, &run.DeadlineAt, &run.LatestSubmissionNo, &finalID, &run.CreatedAt, &finished, &expired, &result, &decision, &expiresAt, &selection)
 	if err != nil {
 		return runapp.PolicyRun{}, runError(err)
+	}
+	if selection.Valid && json.Unmarshal([]byte(selection.String), &run.Selection) != nil {
+		return runapp.PolicyRun{}, runapp.ErrUnavailable
 	}
 	run.ChangeSetJSON = json.RawMessage(changeSet)
 	if finalID.Valid {
@@ -87,6 +92,9 @@ func findPolicyRunByKey(ctx context.Context, q rowQueryer, scope runapp.Scope, k
 
 // CreatePolicyRun freezes the selected revision and Scene TTL in one transaction.
 func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input runapp.PolicyRunCreateInput) (runapp.PolicyRun, bool, error) {
+	if !resource.ValidReferences(input.Resources) {
+		return runapp.PolicyRun{}, false, runapp.ErrInvalid
+	}
 	if input.PolicyRevisionID != "" && !input.CanSelectRevision {
 		return runapp.PolicyRun{}, false, runapp.ErrUnauthorized
 	}
@@ -116,18 +124,39 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	if n == 0 {
 		return runapp.PolicyRun{}, false, runapp.ErrNotFound
 	}
+	selectedPolicy, selectedRevision := "", input.PolicyRevisionID
+	var selection *runapp.Selection
+	if selectedRevision == "" {
+		selected, err := selectBinding(ctx, tx, scope, input.SceneKey, input.Resources)
+		if err != nil {
+			return runapp.PolicyRun{}, false, err
+		}
+		selectedPolicy, selectedRevision = selected.PolicyID, selected.RevisionID
+		if selectedPolicy != "" {
+			mode := "active"
+			if selectedRevision != "" {
+				mode = "pinned"
+			}
+			selection = &runapp.Selection{Source: "binding", Resources: selected.Resources, RevisionMode: mode}
+		}
+	}
 	var policyID, revisionID, digest, canonical string
 	var ttl int64
-	if input.PolicyRevisionID == "" {
+	if selectedRevision == "" && selectedPolicy == "" {
 		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,sc.run_ttl_seconds
    FROM scene sc JOIN policy p ON p.id=sc.default_policy_id
    JOIN policy_revision r ON r.id=p.active_revision_id
    WHERE sc.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND sc.project_id=(SELECT id FROM project WHERE project_id=$2) AND sc.scene_key=$3 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey).Scan(&policyID, &revisionID, &digest, &canonical, &ttl)
+	} else if selectedRevision == "" {
+		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,sc.run_ttl_seconds
+   FROM policy p JOIN scene sc ON sc.workspace_id=p.workspace_id AND sc.project_id=p.project_id AND sc.scene_key=p.scene_key
+   JOIN policy_revision r ON r.id=p.active_revision_id
+   WHERE p.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND p.project_id=(SELECT id FROM project WHERE project_id=$2) AND p.scene_key=$3 AND p.policy_id=$4 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey, selectedPolicy).Scan(&policyID, &revisionID, &digest, &canonical, &ttl)
 	} else {
 		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,sc.run_ttl_seconds
    FROM scene sc JOIN policy p ON p.workspace_id=sc.workspace_id AND p.project_id=sc.project_id AND p.scene_key=sc.scene_key
    JOIN policy_revision r ON r.policy_id=p.id
-   WHERE sc.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND sc.project_id=(SELECT id FROM project WHERE project_id=$2) AND sc.scene_key=$3 AND r.policy_revision_id=$4 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey, input.PolicyRevisionID).Scan(&policyID, &revisionID, &digest, &canonical, &ttl)
+   WHERE sc.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND sc.project_id=(SELECT id FROM project WHERE project_id=$2) AND sc.scene_key=$3 AND r.policy_revision_id=$4 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey, selectedRevision).Scan(&policyID, &revisionID, &digest, &canonical, &ttl)
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return runapp.PolicyRun{}, false, runapp.ErrSpecNotPublished
@@ -135,12 +164,15 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	if err != nil {
 		return runapp.PolicyRun{}, false, runError(err)
 	}
+	if selectedPolicy != "" && policyID != selectedPolicy {
+		return runapp.PolicyRun{}, false, runapp.ErrSpecNotPublished
+	}
 	// Activation locks Policy. Re-read the selected Revision after taking the
 	// same lock so a concurrent activation cannot mix identity and content.
 	if _, err = tx.ExecContext(ctx, "UPDATE policy SET lifecycle_state=lifecycle_state WHERE policy_id=$1 AND workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND project_id=(SELECT id FROM project WHERE project_id=$3)", policyID, scope.WorkspaceID, scope.ProjectID); err != nil {
 		return runapp.PolicyRun{}, false, runError(err)
 	}
-	if input.PolicyRevisionID == "" {
+	if selectedRevision == "" {
 		err = tx.QueryRowContext(ctx, `SELECT r.policy_revision_id,r.digest,r.canonical_json FROM policy p
 		 JOIN policy_revision r ON r.id=p.active_revision_id
 		 WHERE p.policy_id=$1 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, policyID).Scan(&revisionID, &digest, &canonical)
@@ -163,11 +195,19 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	if err != nil || ttl < 1 || ttl > 604800 || input.Now > 9223372036854775807-ttl-decisionTTL {
 		return runapp.PolicyRun{}, false, runapp.ErrInvalid
 	}
-	run := runapp.PolicyRun{ID: identity.RandomToken("run_"), SceneKey: input.SceneKey, PolicyID: policyID, PolicyRevisionID: revisionID, SpecDigest: digest, Status: "OPEN", ChangeSetJSON: json.RawMessage(input.ChangeSetJSON), ChangeSetDigest: input.ChangeSetDigest, RunTTLSeconds: ttl, DeadlineAt: input.Now + ttl, CreatedAt: input.Now}
-	insert := `INSERT INTO guardrail_run(run_id,workspace_id,project_id,scene_key,policy_id,policy_revision_id,spec_digest,status,change_set_json,change_set_digest,idempotency_key,request_digest,run_ttl_seconds,deadline_at,decision_ttl_seconds,created_by,created_at)
-  VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,(SELECT id FROM policy WHERE policy_id=$5),(SELECT id FROM policy_revision WHERE policy_revision_id=$6 AND status='PUBLISHED'),$7,'OPEN',$8,$9,$10,$11,$12,$13,$14,$15,$16)`
+	var selectionJSON any
+	if selection != nil {
+		data, err := json.Marshal(selection)
+		if err != nil {
+			return runapp.PolicyRun{}, false, runapp.ErrUnavailable
+		}
+		selectionJSON = string(data)
+	}
+	run := runapp.PolicyRun{Selection: selection, ID: identity.RandomToken("run_"), SceneKey: input.SceneKey, PolicyID: policyID, PolicyRevisionID: revisionID, SpecDigest: digest, Status: "OPEN", ChangeSetJSON: json.RawMessage(input.ChangeSetJSON), ChangeSetDigest: input.ChangeSetDigest, RunTTLSeconds: ttl, DeadlineAt: input.Now + ttl, CreatedAt: input.Now}
+	insert := `INSERT INTO guardrail_run(run_id,workspace_id,project_id,scene_key,policy_id,policy_revision_id,spec_digest,status,change_set_json,change_set_digest,idempotency_key,request_digest,run_ttl_seconds,deadline_at,decision_ttl_seconds,created_by,created_at,selection_json)
+  VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,(SELECT id FROM policy WHERE policy_id=$5),(SELECT id FROM policy_revision WHERE policy_revision_id=$6 AND status='PUBLISHED'),$7,'OPEN',$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`
 	insert += s.driver.conflictClause("workspace_id,project_id,idempotency_key")
-	result, err := tx.ExecContext(ctx, insert, run.ID, scope.WorkspaceID, scope.ProjectID, run.SceneKey, run.PolicyID, run.PolicyRevisionID, run.SpecDigest, input.ChangeSetJSON, run.ChangeSetDigest, input.IdempotencyKey, input.RequestDigest, run.RunTTLSeconds, run.DeadlineAt, decisionTTL, scope.ActorID, run.CreatedAt)
+	result, err := tx.ExecContext(ctx, insert, run.ID, scope.WorkspaceID, scope.ProjectID, run.SceneKey, run.PolicyID, run.PolicyRevisionID, run.SpecDigest, input.ChangeSetJSON, run.ChangeSetDigest, input.IdempotencyKey, input.RequestDigest, run.RunTTLSeconds, run.DeadlineAt, decisionTTL, scope.ActorID, run.CreatedAt, selectionJSON)
 	duplicate := s.driver.isDuplicate(err)
 	if err != nil && !duplicate {
 		return runapp.PolicyRun{}, false, runError(err)

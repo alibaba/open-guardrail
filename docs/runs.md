@@ -23,8 +23,9 @@ guardrail_credentials_dir=/absolute/path/to/private/guardrail-credentials
 New Run credentials stay in this directory. See Getting started for example
 `change-set.json` and `submission.json` inputs.
 
-The Scene default Policy's active Revision is selected at creation. A trusted HTTP
-caller with `runs:create-with-revision` can explicitly select an immutable Revision
+Resource bindings select the Policy/Revision at creation; entirely unbound resources
+use the Scene default active Revision. See [bindings](extensions.md#resource-bindings).
+A trusted HTTP caller with `runs:create-with-revision` can explicitly select an immutable Revision
 through `policyRevisionRef`; ordinary orchestrator keys cannot. The current CLI
 has no explicit-Revision flag. Machine callers can inspect their effective scopes
 through `GET /runtime/v1alpha1/identity` before enabling an integration.

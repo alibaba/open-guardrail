@@ -1,13 +1,16 @@
 package run
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/alibaba/open-guardrail/internal/application/identity"
+	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 )
 
@@ -23,6 +26,7 @@ func New(repository Repository) *Service {
 }
 
 type CreateInput struct {
+	Resources      []resource.Reference
 	SceneKey       string
 	ChangeSet      json.RawMessage
 	RevisionID     *string
@@ -38,15 +42,35 @@ func (s *Service) Create(ctx context.Context, scope Scope, input CreateInput) (P
 	if input.RevisionID != nil {
 		revisionID, mode = *input.RevisionID, "revision"
 	}
+	requestDigest := hashString(input.SceneKey + "\n" + string(canonical) + "\n" + mode + "\n" + revisionID)
+	var refs []resource.Reference
+	if len(input.Resources) > 0 {
+		if input.RevisionID != nil {
+			return PolicyRun{}, false, "", ErrInvalid
+		}
+		refs = slices.Clone(input.Resources)
+		slices.SortFunc(refs, func(a, b resource.Reference) int {
+			if n := cmp.Compare(a.Kind, b.Kind); n != 0 {
+				return n
+			}
+			return cmp.Compare(a.ID, b.ID)
+		})
+		if !resource.ValidReferences(refs) {
+			return PolicyRun{}, false, "", ErrInvalid
+		}
+		encoded, _ := json.Marshal(refs)
+		requestDigest = hashString(requestDigest + "\n" + string(encoded))
+	}
 	token := s.newToken()
 	run, created, err := s.Repository.CreatePolicyRun(ctx, scope, PolicyRunCreateInput{
 		SceneKey:            input.SceneKey,
 		PolicyRevisionID:    revisionID,
 		CanSelectRevision:   scope.CanSelectRevision,
+		Resources:           refs,
 		ChangeSetJSON:       string(canonical),
 		ChangeSetDigest:     digest,
 		IdempotencyKey:      input.IdempotencyKey,
-		RequestDigest:       hashString(input.SceneKey + "\n" + string(canonical) + "\n" + mode + "\n" + revisionID),
+		RequestDigest:       requestDigest,
 		SubmissionTokenHash: hashString(token),
 		Now:                 s.now().Unix(),
 	})

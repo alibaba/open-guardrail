@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	contract "github.com/alibaba/open-guardrail/api/openapi"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -12,9 +11,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	contract "github.com/alibaba/open-guardrail/api/openapi"
 	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
+	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 	specdomain "github.com/alibaba/open-guardrail/internal/domain/spec"
 )
@@ -398,6 +399,8 @@ func (s *server) modelRunError(w http.ResponseWriter, r *http.Request, err error
 		writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Run not found")
 	case errors.Is(err, runapp.ErrSpecNotPublished):
 		writeError(w, r, http.StatusConflict, "SPEC_NOT_PUBLISHED", "No usable Policy Revision")
+	case errors.Is(err, runapp.ErrBindingConflict):
+		writeError(w, r, http.StatusConflict, "BINDING_CONFLICT", "Resources have incomplete or conflicting Policy bindings")
 	case errors.Is(err, runapp.ErrIdempotencyConflict):
 		writeError(w, r, http.StatusConflict, "IDEMPOTENCY_CONFLICT", "Idempotency key has different content")
 	case errors.Is(err, runapp.ErrBaseSubmissionMismatch):
@@ -443,7 +446,8 @@ func (s *server) modelRunRoute(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var in contract.CreatePolicyRunRequest
-		if !s.decodeModel(w, r, &in, rundomain.MaxChangeSetBytes+4096, "sceneKey", "changeSet") {
+		// Each resource needs bounded space for JSON-escaped kind/ID and keys.
+		if !s.decodeModel(w, r, &in, rundomain.MaxChangeSetBytes+4096+resource.MaxResources*2048, "sceneKey", "changeSet") {
 			return
 		}
 		if !modelSceneKey.MatchString(string(in.SceneKey)) {
@@ -458,7 +462,17 @@ func (s *server) modelRunRoute(w http.ResponseWriter, r *http.Request) {
 			}
 			revisionID = &in.PolicyRevisionRef.PolicyRevisionId
 		}
-		run, created, token, err := s.options.ModelRuns.Create(r.Context(), scope, runapp.CreateInput{SceneKey: string(in.SceneKey), ChangeSet: in.ChangeSet, RevisionID: revisionID, IdempotencyKey: modelKey(r)})
+		var resources []resource.Reference
+		if in.Resources != nil {
+			if len(*in.Resources) == 0 {
+				s.modelRunError(w, r, runapp.ErrInvalid)
+				return
+			}
+			for _, ref := range *in.Resources {
+				resources = append(resources, resource.Reference{Kind: ref.Kind, ID: ref.Id})
+			}
+		}
+		run, created, token, err := s.options.ModelRuns.Create(r.Context(), scope, runapp.CreateInput{Resources: resources, SceneKey: string(in.SceneKey), ChangeSet: in.ChangeSet, RevisionID: revisionID, IdempotencyKey: modelKey(r)})
 		if err != nil {
 			s.modelRunError(w, r, err)
 			return

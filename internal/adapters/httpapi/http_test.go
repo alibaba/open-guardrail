@@ -26,9 +26,9 @@ func TestCapabilitiesMatchRegisteredFeatures(t *testing.T) {
 	}{
 		{"diagnostics", Options{}, ""},
 		{"identity", Options{Identity: &identity.Service{}}, "local-administrator,project-api-key"},
-		{"specs", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions"},
+		{"specs", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,resource-policy-bindings"},
 		{"runs", Options{Identity: &identity.Service{}, ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token"},
-		{"all", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{}), ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token"},
+		{"all", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{}), ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,resource-policy-bindings,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token"},
 		{"specs without identity", Options{ModelSpecs: spec.New(&storage.Specs{})}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -115,10 +115,10 @@ effective scopes and endpoint authorization checks those scopes. A Project-scope
 `RUN_ORCHESTRATOR` key receives `runs:create`, `runs:read` and
 `submission-credential:rotate`. A trusted integration key may additionally receive
 `runs:create-with-revision` so it can select an immutable Revision already frozen by
-an upstream system. Ordinary orchestrator keys always use the Scene default active
-Revision. A separate `POLICY_PUBLISHER` key receives `policies:create` and
+an upstream system. Ordinary orchestrator keys select through exact resource bindings, or use the
+Scene default active Revision when no resources are bound. A separate `POLICY_PUBLISHER` key receives `policies:create` and
 `revisions:publish`; it cannot create Runs or edit an administrator's Draft.
-The Scene default Policy's active Revision and Scene TTL are frozen in the Run
+The selected Policy Revision and Scene TTL are frozen in the Run
 with its `policyId`, `policyRevisionId`, Spec digest and normalized ChangeSet.
 A Run starts OPEN and creation returns its plaintext Submission Credential once;
 only a digest is persisted. A Project key can rotate the credential while OPEN.
