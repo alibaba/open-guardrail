@@ -93,5 +93,7 @@ Binding management uses existing administrator sessions and the write CSRF heade
 Encode resource IDs in paths, including slash. Run `resources` are trusted inputs
 and cannot be combined with an explicit Revision override. Optional
 `selection` evidence is recorded only for matched bindings; default/explicit paths
-omit it. Binding CLI commands are not included. See the
+omit it. Use `guardrailctl binding list|put|delete` with an administrator session and
+`guardrailctl run create --resources FILE` with a Project key. See the
+[CLI walkthrough](../examples/resource-bindings/README.md) and the
 [contract and trust boundaries](extensions.md#resource-bindings).

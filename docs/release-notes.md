@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `guardrailctl binding list|put|delete` manages exact resource bindings using
+  administrator sessions. `run create --resources FILE` supplies trusted resource
+  references through the existing API. The bilingual resource-binding walkthrough
+  includes a disposable real-service CLI acceptance check.
+
 - Prepared the first preview's versioned notes and draft-release workflow.
   See [v0.1.0-alpha.0](releases/v0.1.0-alpha.0.md). The presence of these notes
   does not mean a Release has been published or its native jobs have passed.

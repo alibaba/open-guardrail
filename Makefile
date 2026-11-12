@@ -49,9 +49,14 @@ test-python:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/agent-demo -p 'test_*.py'
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/cleanup-demo -p 'test_*.py'
 	$(MAKE) test-agent-plugins
+	$(PYTHON) -B examples/resource-bindings/smoke.py
 
 # Default plugin gate builds native binaries and checks isolated service/file effects.
 # External pi/DSH SDK tests additionally require OPEN_GUARDRAIL_HOST_MODULES.
+.PHONY: smoke-bindings
+smoke-bindings: build
+	$(PYTHON) -B examples/resource-bindings/smoke.py
+
 .PHONY: test-agent-plugins
 test-agent-plugins: build
 	$(NODE) integrations/agent-plugins/pack.mjs
