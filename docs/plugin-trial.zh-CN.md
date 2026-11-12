@@ -15,21 +15,35 @@
 | DeepSeek Harness | 0.2.2-rc.1，`@deepseek-ai/dsh`，安装插件需要 pnpm |
 | 模型 | 在所选宿主中单独完成模型登录 |
 
-上述宿主此前已在 macOS arm64 上通过真实模型清理验证。其他平台二进制经过交叉编译，CI 在 Linux 和 macOS 执行原生安装验收，具体结果以对应提交的 CI 为准。升级宿主或切换模型路由后，需要重新验证真实模型任务。
+上述宿主此前已在 macOS arm64 上通过真实模型清理验证。发行工作流在 Linux 和 macOS 上分别执行四个平台的原生安装验收，具体结果以对应提交的 CI 为准。升级宿主或切换模型路由后，需要重新验证真实模型任务。
 
 固定版本的 DSH 使用 Codex 订阅时，请在现有配置中选择 SSE。配置及自然退出验收见[宿主限制说明](../integrations/agent-plugins/README.zh-CN.md)。
 
 ## 获取配套产物
 
-从同一经过批准的版本产物目录获取 `plugin-release.json`、`install.py`、当前平台的原生归档和 `openguardrail-agent-plugins-preview-VERSION.tgz`，放在同一目录。将下文 VERSION 替换为实际版本。正式公开产物在 [GitHub Releases](https://github.com/alibaba/open-guardrail/releases) 获取。维护者提供的候选包应附源提交和验收结果，注册表安装以实际发布状态为准。
+从 `v0.1.0-alpha.1` 起，在同一经过批准的
+[GitHub Release](https://github.com/alibaba/open-guardrail/releases) 下载：
 
-维护者可在经过审查的源码目录生成候选产物，需要 Go、Python 3.12+、Node 22+ 和 npm
+- 当前平台的 `open-guardrail-VERSION-PLATFORM.tar.gz`。
+- `openguardrail-agent-plugins-preview-VERSION-install.tar.gz`。
+- `SHA256SUMS`。
+
+将 VERSION 和 PLATFORM 替换为选定版本与平台。先按[归档和来源验证说明](releases.md#verify-release-provenance)核验，在下载目录解压插件安装包：
 
 ```sh
-make smoke-plugin-release VERSION=0.1.0-alpha.0
+tar -xzf openguardrail-agent-plugins-preview-VERSION-install.tar.gz
 ```
 
-该入口执行公开打包检查，生成四平台原生归档、同版本插件、校验清单及安装器，并在仓外完成安装验收。配套产物校验完成后整体写入 `dist/plugin-release-VERSION/`，其他版本及 `dist/` 中间文件均不进入该目录。已存在的产物目录会保留，重新构建时通过 `PLUGIN_RELEASE_DIR=/absolute/path/to/new-bundle` 选择新目录。
+解压后得到 `install.py`、`plugin-release.json` 和配套 npm `.tgz`。当前平台的原生归档放在同一目录。安装器与清单已包含在插件安装包中，无需逐个下载。DSH 使用解出的 npm `.tgz`，外层 `-install.tar.gz` 是完整安装包。
+
+旧版 `alpha.0` 的下载布局请使用其[版本化安装指南](https://github.com/alibaba/open-guardrail/blob/v0.1.0-alpha.0/docs/plugin-trial.zh-CN.md)。
+维护者提供的候选包应附源提交和验收结果。从经过审查的源码目录生成本地候选包，需要 Go、Python 3.12+、Node 22+ 和 npm：
+
+```sh
+make smoke-plugin-release VERSION=0.1.0-alpha.1
+```
+
+该本地入口保留 `dist/plugin-release-VERSION/` 中的原生包、npm 包、安装器和清单，便于开发。公开 Tag 工作流在四平台验收和来源验证通过后，汇总为六个用户附件，再用这些文件执行仓外安装与 doctor 实时可用性检查，然后生成最终来源证明。完整清理验收已在各原生平台运行。已存在的本地目录会保留；重新构建时通过 `PLUGIN_RELEASE_DIR=/absolute/path/to/new-bundle` 选择新目录。
 
 ## 安装与诊断
 
@@ -64,7 +78,7 @@ pi install "$plugin_dir"
 pi --no-mcp --tools 'read,guardrail_cleanup_*'
 ```
 
-DSH 将下载的插件归档安装到实际使用的 profile
+DSH 将安装包中解出的 npm `.tgz` 安装到实际使用的 profile
 
 ```sh
 node "$plugin_dir/doctor.mjs" --host dsh

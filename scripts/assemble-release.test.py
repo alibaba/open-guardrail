@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """Reject unverified, mixed or changed native release artifacts."""
 import importlib.util
+import io
 import json
+import os
 from pathlib import Path
+import tarfile
 import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location('assemble_release', Path(__file__).with_name('assemble-release.py'))
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
+smoke_spec = importlib.util.spec_from_file_location('smoke_plugin_release', Path(__file__).with_name('smoke-plugin-release.py'))
+smoke = importlib.util.module_from_spec(smoke_spec)
+smoke_spec.loader.exec_module(smoke)
 
 
 class AssemblyTests(unittest.TestCase):
@@ -62,13 +68,138 @@ class AssemblyTests(unittest.TestCase):
 
     def test_collects_native_archives_and_matching_plugin_without_extra_files(self):
         self.assemble()
-        manifest = json.loads((self.output / 'plugin-release.json').read_text())
+        expected = {'open-guardrail-' + self.version + '-' + target + '.tar.gz' for target in release.TARGETS}
+        expected |= {release.plugin_bundle_name(self.version), 'SHA256SUMS'}
+        self.assertEqual({p.name for p in self.output.iterdir()}, expected)
+        with tarfile.open(self.output / release.plugin_bundle_name(self.version)) as bundle:
+            self.assertEqual(set(bundle.getnames()), {'install.py', 'plugin-release.json', self.plugin})
+            manifest = json.load(bundle.extractfile('plugin-release.json'))
+            self.assertEqual(bundle.extractfile(self.plugin).read(), b'same-plugin')
+            self.assertEqual(bundle.extractfile('install.py').read(), b'# synthetic installer\n')
         self.assertEqual(set(manifest['assets']), set(release.TARGETS) | {'plugin'})
-        for line in (self.output / 'SHA256SUMS').read_text().splitlines():
+        checksums = (self.output / 'SHA256SUMS').read_text().splitlines()
+        self.assertEqual(len(checksums), 5)
+        for line in checksums:
             checksum, name = line.split()
             self.assertEqual(checksum, release.digest(self.output / name))
         self.assertFalse((self.output / 'untracked-secret.txt').exists())
-        self.assertEqual(len(list(self.output.glob('*.tgz'))), 1)
+        self.assertFalse(list(self.output.glob('*.tgz')))
+
+    def test_plugin_installation_bundle_is_reproducible_and_has_no_local_identity(self):
+        self.assemble()
+        another = self.root / 'another'
+        release.assemble(self.root, another, self.version, self.commit)
+        name = release.plugin_bundle_name(self.version)
+        self.assertEqual((self.output / name).read_bytes(), (another / name).read_bytes())
+        with tarfile.open(self.output / name) as bundle:
+            for member in bundle:
+                self.assertTrue(member.isfile())
+                self.assertEqual((member.uid, member.gid, member.uname, member.gname, member.mtime),
+                                 (0, 0, '', '', 0))
+
+    def public_assets(self):
+        return smoke.prepare_assets(self.output, self.version, self.root / 'downloads', public=True)
+
+    def test_public_bundle_opens_without_modifying_published_files(self):
+        self.assemble()
+        original = {p.name: release.digest(p) for p in self.output.iterdir()}
+        downloads = self.public_assets()
+        self.assertEqual((downloads / self.plugin).read_bytes(), b'same-plugin')
+        self.assertEqual(set(json.loads((downloads / 'plugin-release.json').read_text())['assets']),
+                         set(release.TARGETS) | {'plugin'})
+        self.assertEqual({p.name: release.digest(p) for p in self.output.iterdir()}, original)
+
+    def test_public_download_corruption_is_rejected_before_loading_installer(self):
+        self.assemble()
+        next(self.output.glob('open-guardrail-*.tar.gz')).write_bytes(b'changed')
+        with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+            self.public_assets()
+        self.assertFalse((self.root / 'downloads').exists())
+
+    def test_public_directory_cannot_include_extra_proofs_or_untracked_files(self):
+        self.assemble()
+        (self.output / 'unexpected.sigstore.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'exactly the six'):
+            self.public_assets()
+
+    def test_public_directory_with_raw_manifest_cannot_bypass_validation(self):
+        self.assemble()
+        (self.output / 'plugin-release.json').write_bytes((self.common / 'plugin-release.json').read_bytes())
+        with self.assertRaisesRegex(ValueError, 'exactly the six'):
+            self.public_assets()
+        self.assertFalse((self.root / 'downloads').exists())
+
+    def test_public_checksum_manifest_rejects_malformed_lines_with_clear_error(self):
+        self.assemble()
+        path = self.output / 'SHA256SUMS'
+        original = path.read_text()
+        for malformed in ('', 'checksum-only', '0' * 64 + '  archive.tar.gz  extra'):
+            with self.subTest(line=malformed):
+                path.write_text(malformed + '\n' + original)
+                with self.assertRaisesRegex(ValueError, '^invalid or duplicate public checksum$'):
+                    self.public_assets()
+                self.assertFalse((self.root / 'downloads').exists())
+
+    def test_public_checksum_manifest_cannot_omit_an_archive(self):
+        self.assemble()
+        path = self.output / 'SHA256SUMS'
+        path.write_text('\n'.join(path.read_text().splitlines()[1:]) + '\n')
+        with self.assertRaisesRegex(ValueError, 'cover the five'):
+            self.public_assets()
+
+    def test_unsafe_install_bundle_is_rejected_even_with_matching_checksum(self):
+        self.assemble()
+        name = release.plugin_bundle_name(self.version)
+        with tarfile.open(self.output / name, 'w:gz') as bundle:
+            member = tarfile.TarInfo('../install.py')
+            member.size = 1
+            bundle.addfile(member, io.BytesIO(b'x'))
+        path = self.output / 'SHA256SUMS'
+        path.write_text(''.join(release.digest(p) + '  ' + p.name + '\n'
+                                for p in sorted(self.output.iterdir()) if p.name != 'SHA256SUMS'))
+        with self.assertRaisesRegex(ValueError, 'unsafe or unexpected'):
+            self.public_assets()
+        self.assertFalse((self.root / 'downloads').exists())
+
+    def test_local_raw_bundle_mode_remains_available(self):
+        self.assertEqual(smoke.prepare_assets(self.common, self.version, self.root / 'unused'), self.common)
+        self.assertFalse((self.root / 'unused').exists())
+
+    def test_complete_public_bundle_installs_native_and_plugin_from_downloads_only(self):
+        # Real archives and the real installer, without Go compilation or a host SDK.
+        def archive(path, entries):
+            with tarfile.open(path, 'w:gz') as package:
+                for name, data, mode in entries:
+                    member = tarfile.TarInfo(name)
+                    member.size, member.mode = len(data), mode
+                    package.addfile(member, io.BytesIO(data))
+        archive(self.common / self.plugin, [
+            ('package/package.json', json.dumps({'version': self.version}).encode(), 0o644)])
+        plugin = {'file': self.plugin, 'sha256': release.digest(self.common / self.plugin)}
+        path = self.common / 'plugin-release.json'
+        value = json.loads(path.read_text())
+        value['assets']['plugin'] = plugin
+        path.write_text(json.dumps(value))
+        installer_source = Path(__file__).resolve().parents[1] / 'integrations/agent-plugins/install.py'
+        (self.common / 'install.py').write_bytes(installer_source.read_bytes())
+        for target, directory in zip(release.TARGETS, self.directories):
+            name = 'open-guardrail-' + self.version + '-' + target + '.tar.gz'
+            archive(directory / name, [(binary, b'#!/bin/sh\nexit 0\n', 0o755)
+                                      for binary in ('open-guardrail', 'guardrailctl')])
+            checksum = release.digest(directory / name)
+            (directory / (name + '.sha256')).write_text(checksum + '  ' + name + '\n')
+            self.change_manifest(lambda m, target=target, checksum=checksum: m['assets'].update({
+                'plugin': plugin, target: {'file': name, 'sha256': checksum}}),
+                index=self.directories.index(directory))
+        self.assemble()
+        downloads = self.public_assets()
+        installer_spec = importlib.util.spec_from_file_location('downloaded_installer', downloads / 'install.py')
+        installer = importlib.util.module_from_spec(installer_spec)
+        installer_spec.loader.exec_module(installer)
+        installed = installer.install(downloads, self.root / 'versions with spaces', self.version)
+        for binary in ('open-guardrail', 'guardrailctl'):
+            self.assertTrue(os.access(installed / 'native' / binary, os.X_OK))
+        self.assertEqual(json.loads((installed / 'plugin/package.json').read_text())['version'], self.version)
 
     def test_mixed_commits_fail_without_partial_output(self):
         self.change_manifest(lambda m: m.update(commit='b' * 40))
