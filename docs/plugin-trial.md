@@ -18,8 +18,8 @@ start a private loopback service and remove their temporary data on shutdown.
 | Model | Authenticate separately in your chosen host |
 
 The pinned hosts previously passed real-model cleanup trials on macOS arm64.
-Other platform binaries are cross-compiled; native installation checks run on
-Linux and macOS in CI. Check the actual CI results for the source revision you
+The release workflow checks native installations on Linux and macOS for each
+supported architecture. Check the actual CI results for the source revision you
 use. A model route or host upgrade requires a new real-model trial.
 
 For Codex subscriptions in the pinned DSH version, configure SSE in the existing
@@ -28,25 +28,42 @@ including its natural-exit check.
 
 ## Obtain a version
 
-Obtain `plugin-release.json`, `install.py`, the native archive for your platform,
-and `openguardrail-agent-plugins-preview-VERSION.tgz` from the same approved release
-asset directory. Keep them together. Replace VERSION with the exact version.
-Official published assets appear in [GitHub Releases](https://github.com/alibaba/open-guardrail/releases).
-For a candidate supplied by a maintainer, retain its source revision and test
-results. Registry installation is available only after a package is published.
+For `v0.1.0-alpha.1` and later, download these from the same approved
+[GitHub Release](https://github.com/alibaba/open-guardrail/releases):
 
-Maintainers can produce that asset directory from a reviewed checkout with Go,
-Python 3.12+, Node 22+ and npm installed
+- The native `open-guardrail-VERSION-PLATFORM.tar.gz` for your platform.
+- `openguardrail-agent-plugins-preview-VERSION-install.tar.gz`.
+- `SHA256SUMS`.
+
+Replace VERSION and PLATFORM with the selected release and platform. Follow
+[archive and provenance verification](releases.md#verify-release-provenance)
+before extracting the installation archive. In your download directory:
 
 ```sh
-make smoke-plugin-release VERSION=0.1.0-alpha.0
+tar -xzf openguardrail-agent-plugins-preview-VERSION-install.tar.gz
 ```
 
-This builds native archives and the matching plugin version, runs public release
-checks and verifies a clean installation. It publishes a complete bundle under `dist/plugin-release-VERSION/` only after
-all archives have been verified. Other versions and intermediate archives in
-`dist/` are excluded. Existing bundle directories are preserved; for a rebuild,
-choose a fresh `PLUGIN_RELEASE_DIR=/absolute/path/to/new-bundle`.
+This creates `install.py`, `plugin-release.json` and the matching npm `.tgz` in that
+directory. Keep your native archive beside these files. The installer and manifest
+are included in the plugin installation archive, rather than separate downloads.
+The inner npm archive remains suitable for DSH; the outer `-install.tar.gz` is
+the complete installation bundle and is not an npm package.
+
+For the older `alpha.0` layout, use its
+[versioned installation guide](https://github.com/alibaba/open-guardrail/blob/v0.1.0-alpha.0/docs/plugin-trial.md).
+For a maintainer's local candidate, retain its source revision and acceptance
+results. From a reviewed checkout with Go, Python 3.12+, Node 22+ and npm:
+
+```sh
+make smoke-plugin-release VERSION=0.1.0-alpha.1
+```
+
+This preserves the raw local native/plugin bundle under `dist/plugin-release-VERSION/`
+for development. The public Tag workflow authenticates all four native jobs,
+assembles the six user download files and repeats installation and the packaged
+doctor's live readiness check before signing them. Native jobs already run the
+full deterministic cleanup trial. Existing local bundle directories are preserved; use
+a fresh `PLUGIN_RELEASE_DIR=/absolute/path/to/new-bundle` for a rebuild.
 
 ## Install and diagnose
 
@@ -94,7 +111,8 @@ pi install "$plugin_dir"
 pi --no-mcp --tools 'read,guardrail_cleanup_*'
 ```
 
-For DSH, install the downloaded `.tgz` into the profile you actually use
+For DSH, install the inner `.tgz` extracted from the installation archive into
+the profile you actually use
 
 ```sh
 node "$plugin_dir/doctor.mjs" --host dsh

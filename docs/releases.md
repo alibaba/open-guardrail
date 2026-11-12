@@ -16,22 +16,24 @@ For a matched service/CLI/plugin bundle, see the [Agent plugin installation and 
 
 ## Check and try a downloaded archive
 
-Verify its sidecar before extracting. In the download directory, use the command
-available on your platform:
+Download the archive for your platform and `SHA256SUMS` from the same release.
+For `v0.1.0-alpha.1` and later, one checksum file covers all five download archives.
+In a directory containing only your chosen archive and the checksum file:
 
 ```sh
-sha256sum -c open-guardrail-VERSION-linux-amd64.tar.gz.sha256
-# macOS:
-shasum -a 256 -c open-guardrail-VERSION-darwin-arm64.tar.gz.sha256
+release_archive=open-guardrail-0.1.0-alpha.1-linux-amd64.tar.gz
+awk -v name="$release_archive" '$2 == name { print }' SHA256SUMS | sha256sum -c -
+# macOS: choose darwin-arm64 or darwin-amd64, then use:
+# awk -v name="$release_archive" '$2 == name { print }' SHA256SUMS | shasum -a 256 -c -
 ```
 
-Replace VERSION and the platform with the archive you downloaded. Extract into
-an empty directory and run `./open-guardrail serve`; initialize the administrator
-in the browser. Use a persistent `--data-dir` for data you want to keep.
+Choose the version and platform you downloaded. For publisher authentication, follow
+[provenance verification](#verify-release-provenance). Extract the verified native
+archive into an empty directory and run `./open-guardrail serve`; initialize the
+administrator in the browser. Use a persistent `--data-dir` for data you want to keep.
 
-Obtain the archive and checksum from the same official release. A matching
-checksum checks file integrity; publisher authentication additionally requires
-verification of the release's signatures or provenance.
+The older `alpha.0` detached-checksum layout is described in its
+[versioned verification guide](https://github.com/alibaba/open-guardrail/blob/v0.1.0-alpha.0/docs/releases.md).
 
 For an interactive trial from the extraction root:
 
@@ -79,72 +81,85 @@ separate reasoning-based trial; see [the demo guide](../examples/agent-demo/READ
 
 ## Public artifact verification policy
 
-Local package scripts produce archives, SHA-256 sidecars and a matching plugin
-manifest. They do not sign artifacts or generate SBOMs. The dependency-license
-inventory is not an artifact SBOM.
+From `v0.1.0-alpha.1`, a Release has six uploaded user assets:
 
-The public [preview release workflow](https://github.com/alibaba/open-guardrail/blob/main/.github/workflows/release.yaml) adds
-SPDX 2.3 JSON SBOMs and GitHub OIDC attestations for the exact native/plugin
-archives verified on native runners. It signs the final manifest, installer and
-`SHA256SUMS`, then creates a **draft** pre-release. Workflow code alone is not
-evidence that a release job ran or an artifact was signed. Check the release's
-actual run, assets and verification results.
+| Download | Contents |
+| --- | --- |
+| `open-guardrail-VERSION-linux-amd64.tar.gz` | Linux amd64 server, CLI and runtime files |
+| `open-guardrail-VERSION-linux-arm64.tar.gz` | Linux arm64 server, CLI and runtime files |
+| `open-guardrail-VERSION-darwin-amd64.tar.gz` | macOS Intel server, CLI and runtime files |
+| `open-guardrail-VERSION-darwin-arm64.tar.gz` | macOS Apple silicon server, CLI and runtime files |
+| `openguardrail-agent-plugins-preview-VERSION-install.tar.gz` | The unchanged npm plugin archive, installer and matching native/plugin manifest |
+| `SHA256SUMS` | SHA-256 hashes of the five archives above |
+
+GitHub also provides its standard source archive links. The service and CLI need
+only the native archive for their platform. Plugin users download their native
+archive and the complete plugin installation archive from the same release.
+See the [plugin installation guide](plugin-trial.md).
+
+The public [preview release workflow](https://github.com/alibaba/open-guardrail/blob/main/.github/workflows/release.yaml)
+generates SPDX 2.3 SBOMs for the four native archives and the shared npm plugin,
+then signs build provenance and SBOM attestations with GitHub OIDC. Collection
+authenticates every input and checks installation and live readiness using only
+the six final download files. The complete plugin installation archive and `SHA256SUMS` also receive
+build provenance before the workflow creates a draft pre-release.
+
+SBOMs, individual checksum sidecars and signing bundles remain CI audit material,
+rather than separate Release downloads. The signed attestations can be queried
+through GitHub independently of the 14-day CI artifact retention. Local
+`make plugin-release` produces unsigned candidate assets; the dependency-license
+inventory is not an artifact SBOM. Consult the actual release run and verification
+results before treating any archive as an attested release.
 
 ### Verify release provenance
 
-Download the native archive and checksum for your platform, its `.spdx.json`,
-`.provenance.sigstore.json` and `.sbom.sigstore.json`, plus `plugin-release.json`,
-`install.py`, `SHA256SUMS` and `release-manifest.sigstore.json` from the same
-official Release. Plugin users also need the matching `.tgz` and its SBOM/bundles.
-Use a current GitHub CLI with `gh attestation verify`.
-
-Replace the version, platform and expected 40-character public commit below with
-the values independently checked against the Release tag. Authenticate the
-manifest and installer before running downloaded scripts:
+Use a current GitHub CLI with `gh attestation verify`. It fetches attestations
+from GitHub by default; downloading a separate signing file is unnecessary.
+Replace the version, platform and expected 40-character public source commit with
+values independently checked against the release tag:
 
 ```sh
-release_version=0.1.0-alpha.0
+release_version=0.1.0-alpha.1
 release_commit=EXPECTED_PUBLIC_COMMIT
 release_archive="open-guardrail-$release_version-linux-amd64.tar.gz"
-for release_file in plugin-release.json install.py SHA256SUMS; do
-  gh attestation verify "$release_file" --bundle release-manifest.sigstore.json \
+for release_file in SHA256SUMS "$release_archive"; do
+  gh attestation verify "$release_file" \
     --repo alibaba/open-guardrail \
     --signer-workflow alibaba/open-guardrail/.github/workflows/release.yaml \
     --source-ref "refs/tags/v$release_version" --source-digest "$release_commit" \
     --deny-self-hosted-runners
 done
-gh attestation verify "$release_archive" --bundle "$release_archive.provenance.sigstore.json" \
-  --repo alibaba/open-guardrail \
-  --signer-workflow alibaba/open-guardrail/.github/workflows/release.yaml \
-  --source-ref "refs/tags/v$release_version" --source-digest "$release_commit" \
-  --deny-self-hosted-runners
-gh attestation verify "$release_archive" --bundle "$release_archive.sbom.sigstore.json" \
-  --repo alibaba/open-guardrail \
-  --signer-workflow alibaba/open-guardrail/.github/workflows/release.yaml \
-  --source-ref "refs/tags/v$release_version" --source-digest "$release_commit" \
-  --deny-self-hosted-runners --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-Repeat the archive commands for the plugin `.tgz`. Verify the native sidecar as
-shown above. If all release assets were downloaded, also run `sha256sum -c
-SHA256SUMS` (macOS: `shasum -a 256 -c SHA256SUMS`). That file covers the payload,
-archive proofs and manifest; its own final signing bundle is authenticated
-separately and is not recursively listed in the checksums.
+Plugin users repeat this command for
+`openguardrail-agent-plugins-preview-VERSION-install.tar.gz` before extracting or
+running its installer. Native archive SBOM attestations can be checked with the
+same identity restrictions and `--predicate-type https://spdx.dev/Document/v2.3`.
+For plugin SBOM verification, first authenticate and extract the installation
+archive, then verify its inner `openguardrail-agent-plugins-preview-VERSION.tgz`
+with that predicate type and the same source/workflow restrictions. The plugin
+SBOM describes this npm component.
 
-An SBOM attestation binds the SBOM to its archive digest. An attestation establishes
-the signer and source, not the absence of vulnerabilities or sandbox coverage.
+After authenticating `SHA256SUMS`, check the downloaded archives against it.
+When all five archives are present, run `sha256sum -c SHA256SUMS` (macOS:
+`shasum -a 256 -c SHA256SUMS`). For a single archive, use the filtered command
+[above](#check-and-try-a-downloaded-archive). An attestation establishes signer
+and source identity; it does not establish the absence of vulnerabilities.
 
 ## Prepare the public preview draft
 
 After syncing the reviewed internal changes to the public repository, wait for
 the final public `main` commit's CI to succeed. Commit notes at
 `docs/releases/vVERSION.md` before tagging. From the public repository, create a
-preview tag such as `v0.1.0-alpha.0` at that exact commit and push that tag. The
+preview tag such as `v0.1.0-alpha.1` at that exact commit and push that tag. The
 workflow accepts `alpha.N`, `beta.N` and `rc.N` tags and only runs in
 `alibaba/open-guardrail`. It requires the tagged commit to belong to `main` and
 to have a successful main push CI; an unfinished check stops preflight. Rerun
 the failed jobs after CI succeeds rather than moving the tag. Preserve artifacts
-from successful native jobs when retrying a partially completed run.
+from successful native jobs when retrying a partially completed run. Before any
+push of an annotated tag, configure the public checkout's tagger identity to use
+your GitHub noreply email and inspect that identity locally. A rejected push does
+not guarantee that an uploaded Git object is no longer publicly retrievable.
 
 One shared plugin job packs the npm archive once, generates its SBOM and signs
 the archive, installer and plugin manifest. The four native jobs download and
@@ -153,8 +168,10 @@ server/CLI archive, runs the source-free native and shared-plugin checks, and
 stages its archive plus a manifest identifying the tested plugin hash. Their
 SBOM/provenance generation follows those checks. Collection verifies all four
 native archives and the shared plugin against the same version, source and
-workflow identity. No cross-platform npm tarball reproducibility assumption is
-needed; all platforms install the same bytes.
+workflow identity. It wraps the already-tested npm archive, installer and combined
+manifest in one plugin installation archive without invoking npm again, and runs
+a fresh installation and live-readiness check from the six final user assets. All platforms install
+the same npm plugin bytes.
 
 Preflight, shared plugin and draft jobs each have a 15-minute execution limit;
 native jobs have 45 minutes each, and collection has 30 minutes. Native builds
@@ -162,19 +179,22 @@ must match their runner's OS/architecture. Local `make plugin-release` retains
 its full-matrix behavior. The workflow uses these narrower script modes:
 
 ```sh
-python3 scripts/plugin-release.py --version 0.1.0-alpha.0 --output-dir shared-plugin --plugin-only
-python3 scripts/plugin-release.py --version 0.1.0-alpha.0 --output-dir native-pair \
+python3 scripts/plugin-release.py --version 0.1.0-alpha.1 --output-dir shared-plugin --plugin-only
+python3 scripts/plugin-release.py --version 0.1.0-alpha.1 --output-dir native-pair \
   --platform linux-amd64 --plugin-assets shared-plugin
 ```
 
 The second command produces one native pair without running `node pack.mjs` or
 `npm pack`; authenticate downloaded shared assets first as the workflow does.
-`PACKAGE_PLATFORMS=linux/amd64 make public-release VERSION=0.1.0-alpha.0` selects
+`PACKAGE_PLATFORMS=linux/amd64 make public-release VERSION=0.1.0-alpha.1` selects
 one native archive without a plugin. Omitting that setting preserves all four
 platforms for local packaging.
 
-The final job verifies the manifest, installer, checksums and unchanged tag, then
-creates a new draft. It does not replace an existing Release or its assets.
+The final job verifies provenance for all six user assets, checks the five archive
+hashes and unchanged tag, then creates a new draft from an explicit six-file list.
+Readback checks the draft state and exact attachment names. Audit files are stored
+in separate workflow artifacts and are never added to this list. The workflow does
+not replace an existing Release or its assets.
 If creation/upload fails, inspect the draft and workflow state before retrying;
 do not delete or overwrite an existing draft to make a rerun pass. Native jobs
 are deterministic technical checks, not real-model or independent-user trials.
@@ -196,7 +216,7 @@ Build and verify a preview from its source commit:
 
 ```sh
 make test
-make smoke-release VERSION=0.1.0-alpha.0
+make smoke-release VERSION=0.1.0-alpha.1
 ```
 
 The second command builds Linux/macOS archives for amd64/arm64, checks the native
@@ -225,7 +245,7 @@ mtime and the gzip header. It uses the Git commit timestamp by default; to fix
 that timestamp explicitly:
 
 ```sh
-SOURCE_DATE_EPOCH=1700000000 make preview-release VERSION=0.1.0-alpha.0
+SOURCE_DATE_EPOCH=1700000000 make preview-release VERSION=0.1.0-alpha.1
 ```
 
 With identical binary and public-asset bytes, VERSION, epoch, and Go/Python build

@@ -1,6 +1,6 @@
 {
   "name": "@openguardrail/agent-plugins-preview",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "OpenGuardrail scenario adapters for pi and DeepSeek Harness",
   "type": "module",
   "license": "Apache-2.0",

@@ -240,11 +240,14 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: release-*
           path: native-artifacts
-      - name: Collect exact tested bytes and verify signer identity
+      - name: Authenticate tested inputs and assemble the six user assets
         run: |
           verify_proof() {
             local artifact=$1 bundle=$2
@@ -255,34 +258,44 @@ jobs:
           }
           for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
             platform="native-artifacts/release-$target"
+            archive="$platform/open-guardrail-$VERSION-$target.tar.gz"
             verify_proof "$platform/platform-manifest.json" "$platform/provenance.sigstore.json"
-          done
-          for file in plugin-release.json install.py; do
-            verify_proof "native-artifacts/release-plugin/$file" native-artifacts/release-plugin/provenance.sigstore.json
-          done
-          python3 scripts/assemble-release.py --input native-artifacts --output release --version "$VERSION" --commit "$SOURCE_COMMIT"
-          for archive in release/*.tar.gz release/*.tgz; do
-            verify_proof "$archive" "$archive.provenance.sigstore.json"
-            verify_proof "$archive.spdx.json" "$archive.provenance.sigstore.json"
+            verify_proof "$archive" "$platform/provenance.sigstore.json"
+            verify_proof "$archive.spdx.json" "$platform/provenance.sigstore.json"
             verify_proof "$archive" "$archive.sbom.sigstore.json" \
               --predicate-type https://spdx.dev/Document/v2.3
           done
-      - name: Attest final manifest, checksums and installer
-        id: manifest
+          common=native-artifacts/release-plugin
+          for file in "$common/plugin-release.json" "$common/install.py" "$common"/*.tgz "$common"/*.tgz.spdx.json; do
+            verify_proof "$file" "$common/provenance.sigstore.json"
+          done
+          plugin="$common/openguardrail-agent-plugins-preview-$VERSION.tgz"
+          verify_proof "$plugin" "$plugin.sbom.sigstore.json" \
+            --predicate-type https://spdx.dev/Document/v2.3
+          python3 scripts/assemble-release.py --input native-artifacts --output release --version "$VERSION" --commit "$SOURCE_COMMIT"
+      - name: Install the six public download files and check live readiness
+        run: python3 scripts/smoke-plugin-release.py --version "$VERSION" --assets-dir release --public --doctor-only
+      - name: Attest all final user assets
+        id: final
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
-          subject-path: |
-            release/plugin-release.json
-            release/SHA256SUMS
-            release/install.py
-      - name: Retain final manifest provenance
+          subject-path: release/*
+      - name: Retain final provenance outside the user download directory
         env:
-          PROVENANCE: ${{ steps.manifest.outputs.bundle-path }}
-        run: cp "$PROVENANCE" release/release-manifest.sigstore.json
+          PROVENANCE: ${{ steps.final.outputs.bundle-path }}
+        run: |
+          mkdir proofs
+          cp "$PROVENANCE" proofs/release-provenance.sigstore.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: verified-release-assets
           path: release/*
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-release-provenance
+          path: proofs/release-provenance.sigstore.json
           if-no-files-found: error
           retention-days: 14
 
@@ -307,21 +320,51 @@ jobs:
         with:
           name: verified-release-assets
           path: release
-      - name: Verify final manifest and tag before creating the draft
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-release-provenance
+          path: proofs
+      - name: Verify all six user assets and the unchanged tag
         run: |
           git fetch --force origin "refs/tags/v$VERSION:refs/tags/v$VERSION"
           test "$(git rev-parse "v$VERSION^{commit}")" = "$SOURCE_COMMIT"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          version = os.environ['VERSION']
+          expected = {'open-guardrail-' + version + '-' + target + '.tar.gz'
+                      for target in ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64')}
+          expected |= {'openguardrail-agent-plugins-preview-' + version + '-install.tar.gz', 'SHA256SUMS'}
+          files = list(Path('release').iterdir())
+          assert {path.name for path in files} == expected
+          assert all(path.is_file() and not path.is_symlink() for path in files)
+          PY
           (cd release && sha256sum -c SHA256SUMS)
-          for file in plugin-release.json SHA256SUMS install.py; do
-            gh attestation verify "release/$file" --bundle release/release-manifest.sigstore.json \
+          for file in release/*; do
+            gh attestation verify "$file" --bundle proofs/release-provenance.sigstore.json \
               --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yaml" \
               --source-ref "$GITHUB_REF" --source-digest "$SOURCE_COMMIT" --deny-self-hosted-runners
           done
-      - name: Create a new preview draft without replacing existing assets
+      - name: Create and read back a new draft containing exactly six attachments
         run: |
-          gh release create "v$VERSION" release/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+          assets=()
+          for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+            assets+=("release/open-guardrail-$VERSION-$target.tar.gz")
+          done
+          assets+=("release/openguardrail-agent-plugins-preview-$VERSION-install.tar.gz" "release/SHA256SUMS")
+          gh release create "v$VERSION" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --draft --prerelease --title "OpenGuardrail v$VERSION" \
             --notes-file "docs/releases/v$VERSION.md"
           gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" \
-            --json url,isDraft,isPrerelease,tagName > release-state.json
-          cat release-state.json
+            --json url,isDraft,isPrerelease,tagName,assets > release-state.json
+          python3 - <<'PY'
+          import json, os
+          state = json.load(open('release-state.json'))
+          version = os.environ['VERSION']
+          expected = {'open-guardrail-' + version + '-' + target + '.tar.gz'
+                      for target in ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64')}
+          expected |= {'openguardrail-agent-plugins-preview-' + version + '-install.tar.gz', 'SHA256SUMS'}
+          assert state['isDraft'] and state['isPrerelease'] and state['tagName'] == 'v' + version
+          assert len(state['assets']) == 6 and {asset['name'] for asset in state['assets']} == expected
+          print(json.dumps(state, indent=2))
+          PY

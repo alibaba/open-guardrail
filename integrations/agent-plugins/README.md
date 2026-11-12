@@ -52,7 +52,7 @@ run `node integrations/agent-plugins/pack.mjs` from the repository root first;
 it generates the `skills/` directory declared in `package.json`:
 
 ```sh
-tar -xzf "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" -C "$plugin_install_dir"
+tar -xzf "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.1.tgz" -C "$plugin_install_dir"
 pi install "$plugin_install_dir/package"
 pi --no-mcp --tools 'read,guardrail_cleanup_*'
 ```
@@ -64,7 +64,7 @@ and cleanup tools; it does not change permissions for other invocations.
 For DSH, choose the profile you actually use:
 
 ```sh
-dsh plugin --profile headless add "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" --ignore-scripts
+dsh plugin --profile headless add "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.1.tgz" --ignore-scripts
 dsh --profile headless 'Use guardrail-cleanup to demonstrate a refused broad cleanup, then reassess a permitted narrower request and verify the actual outcome.'
 ```
 

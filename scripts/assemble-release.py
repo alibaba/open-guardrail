@@ -1,14 +1,38 @@
 #!/usr/bin/env python3
 """Collect the exact archives verified by all four native release jobs."""
 import argparse
+import gzip
 import hashlib
+import io
 import json
 from pathlib import Path
 import re
 import shutil
+import tarfile
 import tempfile
 
 TARGETS = ('linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64')
+
+
+def plugin_bundle_name(version):
+    return 'openguardrail-agent-plugins-preview-' + version + '-install.tar.gz'
+
+
+def write_plugin_bundle(path, manifest, plugin, installer):
+    """Keep the npm archive unchanged and include everything its installer needs."""
+    entries = {
+        plugin.name: plugin.read_bytes(),
+        'install.py': installer.read_bytes(),
+        'plugin-release.json': (json.dumps(manifest, indent=2) + '\n').encode(),
+    }
+    # Fixed metadata avoids local names, paths and timestamps in the public bundle.
+    with path.open('xb') as output:
+        with gzip.GzipFile(filename='', fileobj=output, mode='wb', mtime=0) as compressed:
+            with tarfile.open(fileobj=compressed, mode='w', format=tarfile.USTAR_FORMAT) as archive:
+                for name, data in sorted(entries.items()):
+                    member = tarfile.TarInfo(name)
+                    member.size, member.mode, member.mtime = len(data), 0o644, 0
+                    archive.addfile(member, io.BytesIO(data))
 
 
 def regular(root, name):
@@ -71,18 +95,18 @@ def assemble(source, output, version, commit):
             raise ValueError('mixed release version or commit: ' + target)
         entry = manifest['assets'][target]
         name = 'open-guardrail-' + version + '-' + target + '.tar.gz'
-        files.update(archive_files(directory, entry, name, 'github.com/alibaba/open-guardrail'))
+        checked = archive_files(directory, entry, name, 'github.com/alibaba/open-guardrail')
+        files[name] = checked[name]
         sidecar = regular(directory, name + '.sha256')
         if sidecar.read_text().split() != [entry['sha256'], name]:
             raise ValueError('native checksum sidecar mismatch: ' + target)
-        files[name + '.sha256'] = sidecar
         assets[target] = entry
         current_plugin = manifest['assets']['plugin']
         if plugin != current_plugin:
             raise ValueError('native jobs tested different plugin bytes')
     plugin_name = 'openguardrail-agent-plugins-preview-' + version + '.tgz'
-    files.update(archive_files(common, plugin, plugin_name, '@openguardrail/agent-plugins-preview', version))
-    files['install.py'] = regular(common, 'install.py')
+    checked_plugin = archive_files(common, plugin, plugin_name, '@openguardrail/agent-plugins-preview', version)
+    installer = regular(common, 'install.py')
     assets['plugin'] = plugin
     # Validate everything before creating an output; never reuse stale dist files.
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -91,8 +115,9 @@ def assemble(source, output, version, commit):
         staged.mkdir()
         for name, path in files.items():
             shutil.copy2(path, staged / name)
-        (staged / 'plugin-release.json').write_text(json.dumps(
-            {'version': version, 'commit': commit, 'assets': assets}, indent=2) + '\n')
+        manifest = {'version': version, 'commit': commit, 'assets': assets}
+        write_plugin_bundle(staged / plugin_bundle_name(version), manifest,
+                            checked_plugin[plugin_name], installer)
         (staged / 'SHA256SUMS').write_text(''.join(
             digest(path) + '  ' + path.name + '\n' for path in sorted(staged.iterdir())))
         staged.rename(output)

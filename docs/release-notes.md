@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Prepared [v0.1.0-alpha.1](releases/v0.1.0-alpha.1.md): four native archives,
+  one complete plugin installation archive and one checksum file form the six
+  Release downloads. Installation metadata travels with the plugin. SBOM and
+  provenance verification remain release gates and are queried through GitHub,
+  rather than published as separate download files.
 - `guardrailctl binding list|put|delete` manages exact resource bindings using
   administrator sessions. `run create --resources FILE` supplies trusted resource
   references through the existing API. The bilingual resource-binding walkthrough

@@ -30,7 +30,7 @@ plugin_install_dir=$(mktemp -d)
 pi 安装解压后的目录；不能直接把本地 tgz 当成扩展目录。若从干净源码目录直接安装，须先在仓库根目录执行 `node integrations/agent-plugins/pack.mjs`，生成 `package.json` 声明的 `skills/` 目录：
 
 ```sh
-tar -xzf "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" -C "$plugin_install_dir"
+tar -xzf "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.1.tgz" -C "$plugin_install_dir"
 pi install "$plugin_install_dir/package"
 pi --no-mcp --tools 'read,guardrail_cleanup_*'
 ```
@@ -38,7 +38,7 @@ pi --no-mcp --tools 'read,guardrail_cleanup_*'
 DSH 需要 pnpm，用所选 profile 的插件管理入口安装：
 
 ```sh
-dsh plugin --profile headless add "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.0.tgz" --ignore-scripts
+dsh plugin --profile headless add "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.1.tgz" --ignore-scripts
 dsh --profile headless '使用 guardrail-cleanup Skill，先评估全部四个示例文件并尝试执行，展示拒绝；再缩小到允许的目标，重新评估执行，最后核对实际文件与两条决策。'
 ```
 

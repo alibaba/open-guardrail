@@ -120,6 +120,8 @@ separate database.
 ### Run a guarded task
 
 Published native previews appear in [GitHub Releases](https://github.com/alibaba/open-guardrail/releases).
+Choose the native archive for your platform and `SHA256SUMS`; plugin users also
+choose the complete `-install.tar.gz` plugin archive.
 Follow [archive verification](docs/releases.md) before extracting and running the
 same cleanup demo with Python 3.9+; the native path needs no Go installation.
 For a model-driven pi/DeepSeek Harness trial, use the separate
