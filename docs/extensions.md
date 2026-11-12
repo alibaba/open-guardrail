@@ -150,6 +150,8 @@ and [runtime architecture](architecture.md) for implemented behavior.
 Each Scene maps exact `{kind,id}` resources to one Policy and an optional published
 Revision. Omit the Revision to follow the Policy active Revision. Binding management
 uses the existing administrator session and write CSRF header through the OpenAPI.
+The CLI exposes `binding list|put|delete` and `run create --resources FILE`;
+see the [complete walkthrough](../examples/resource-bindings/README.md).
 A bound Policy can be archived; matching new Runs then fail with
 `SPEC_NOT_PUBLISHED` (409), without default fallback. Existing Runs keep their
 frozen Revision. Binding audit stores before/after values; identical PUT and absent

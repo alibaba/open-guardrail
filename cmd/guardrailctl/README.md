@@ -10,7 +10,7 @@ from the checkout root with `guardrailctl` on `PATH`, or use
 Current commands cover `status`, `capabilities`,
 `version`, `bootstrap init`, `auth login`, `logout`, `whoami`, `create-key`,
 `list-keys`, `rotate-key` and `revoke-key`,
-and `scene apply`.
+`scene apply`, and `binding list`, `binding put`, `binding delete`.
 It also implements `run create`, `run get`, `run wait`, `run revision`,
 `run submission`, `run list`, `run rotate-credential` and `run submit`.
 `run get` reports frozen deadlines, lazy expiry and Decision validity; `run wait`
@@ -21,7 +21,7 @@ there is no checkpoint model.
 | --- | --- |
 | `status`, `version`, `capabilities` | Public diagnostics; no credential required |
 | `bootstrap init` | First-administrator setup; a private bootstrap token is required for remote mode |
-| `auth` and `scene apply` | Administrator session (`auth login` creates it) |
+| `auth`, `scene apply`, `binding` | Administrator session (`auth login` creates it) |
 | `run create/get/wait/list/revision/submission/rotate-credential` | Project key with the endpoint's effective scopes |
 | `run submit` | The Submission Credential bound to that Run |
 
@@ -83,8 +83,10 @@ and `submission-credential:rotate` scopes. Use
 key receives `policies:create` and `revisions:publish` and cannot operate Runs.
 An HTTP integration that must select an already-frozen immutable Revision uses a
 separate key created with `--scope runs:create-with-revision`; ordinary orchestrator
-keys cannot supply `policyRevisionRef`. The current `run create` CLI selects the
-Scene default active Revision and has no explicit-Revision flag.
+keys cannot supply `policyRevisionRef`. `run create` selects the Scene default active Revision when resources are omitted.
+Pass `--resources FILE` for a JSON array of trusted `{kind,id}` references to use
+resource binding selection. Follow the [binding walkthrough](../../examples/resource-bindings/README.md)
+for active/pinned selection, pagination and retries.
 Creation saves a one-time Run Submission Credential in a new private file:
 
 ```sh

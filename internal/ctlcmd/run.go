@@ -19,6 +19,7 @@ import (
 	contract "github.com/alibaba/open-guardrail/api/openapi"
 	"github.com/alibaba/open-guardrail/internal/adapters/security"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
+	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 )
 
@@ -29,6 +30,7 @@ var validRunResourceID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$
 type runOptions struct {
 	server, keyFile, tokenFile, scene, status, cursor, changeSetFile, submissionFile, operationID, runID, submissionID string
 	limit                                                                                                              int
+	resourcesFile                                                                                                      string
 	waitTimeout                                                                                                        time.Duration
 	waitInterval                                                                                                       time.Duration
 }
@@ -130,6 +132,7 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	}
 	if command == "create" {
 		flags.StringVar(&opts.scene, "scene", "", "Scene key")
+		flags.StringVar(&opts.resourcesFile, "resources", "", "optional JSON array file of trusted resource references (kind/id)")
 		flags.StringVar(&opts.changeSetFile, "change-set", "", "JSON object file")
 		flags.StringVar(&opts.tokenFile, "submission-credential-file", "", "new private file for the Run Submission Credential")
 		flags.StringVar(&opts.operationID, "operation-id", "", "stable retry identifier; generated when omitted")
@@ -164,6 +167,15 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 		}
 	} else if flags.NArg() != 0 {
 		return opts, usageError("unexpected positional arguments")
+	}
+	resourcesProvided := false
+	flags.Visit(func(current *flag.Flag) {
+		if current.Name == "resources" {
+			resourcesProvided = true
+		}
+	})
+	if resourcesProvided && opts.resourcesFile == "" {
+		return opts, usageError("--resources cannot be empty")
 	}
 	if command == "submission" && !validRunResourceID.MatchString(opts.submissionID) {
 		return opts, usageError("--submission-id must be a valid Submission ID")
@@ -411,6 +423,13 @@ func createRun(opts runOptions, client *apiClient, out io.Writer) error {
 		return usageError("changeSet must contain valid JSON")
 	}
 	request := contract.CreatePolicyRunJSONRequestBody{SceneKey: opts.scene, ChangeSet: json.RawMessage(changeSet)}
+	if opts.resourcesFile != "" {
+		refs, err := readRunResources(opts.resourcesFile)
+		if err != nil {
+			return err
+		}
+		request.Resources = &refs
+	}
 	generatedOperationID := false
 	if opts.operationID == "" {
 		opts.operationID, err = newOperationID()
@@ -498,4 +517,26 @@ func newOperationID() (string, error) {
 
 func newRunClient(server, token string) (*apiClient, error) {
 	return newCompatibleClient(server, token, runResponseLimit)
+}
+
+// Resource identities come from the trusted caller, as in the HTTP API.
+func readRunResources(path string) ([]contract.ResourceReference, error) {
+	data, err := readInputFile(path, 64<<10)
+	if err != nil {
+		return nil, usageError("--resources must be a readable regular JSON file of at most 64 KiB")
+	}
+	var refs []resource.Reference
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err = decoder.Decode(&refs); err != nil {
+		return nil, usageError("--resources must contain a JSON array of kind/id references")
+	}
+	if decoder.Decode(new(any)) != io.EOF || len(refs) == 0 || !resource.ValidReferences(refs) {
+		return nil, usageError("--resources must contain 1-100 valid, distinct kind/id references")
+	}
+	result := make([]contract.ResourceReference, len(refs))
+	for i, ref := range refs {
+		result[i] = contract.ResourceReference{Kind: ref.Kind, Id: ref.ID}
+	}
+	return result, nil
 }
