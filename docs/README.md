@@ -25,3 +25,5 @@ Start with [Getting started](getting-started.md) for a local example or
 Guides describe the current checkout unless marked as planned or historical.
 Examples use synthetic data; use your own identifiers and keep credentials private.
 For project status and current limitations, see the [README](../README.md).
+
+- [Audit queries and diagnostic reports](audit-and-reports.md)

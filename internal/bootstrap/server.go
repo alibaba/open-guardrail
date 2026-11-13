@@ -11,6 +11,7 @@ import (
 
 	"github.com/alibaba/open-guardrail/internal/adapters/httpapi"
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
+	"github.com/alibaba/open-guardrail/internal/application/audit"
 	"github.com/alibaba/open-guardrail/internal/application/capability"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
@@ -48,6 +49,7 @@ func Serve(ctx context.Context, c config.Config, logger *slog.Logger) error {
 	server := &http.Server{
 		Handler: httpapi.New(store, httpapi.Options{
 			Identity:   identityService,
+			Audits:     audit.New(store.Audits()),
 			Logger:     logger,
 			ModelSpecs: spec.New(store.Specs()), ModelRuns: runapp.New(store.Runs()),
 			Origin: origin, LocalBootstrap: localBootstrap(c, listener.Addr()),

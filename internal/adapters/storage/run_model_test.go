@@ -86,6 +86,14 @@ func testPolicyRunSubmissionTransactionsBackend(t *testing.T, store *Store) {
 	if err != nil || current.Status != "FINISHED" || current.LatestSubmissionNo != 2 || current.FinalSubmissionID == nil || *current.FinalSubmissionID != final.ID {
 		t.Fatalf("finished=%+v err=%v", current, err)
 	}
+
+	report, err := runapp.New(store.Runs()).Report(ctx, scope, run.ID)
+	if err != nil || report.FinalSubmission == nil || report.FinalSubmission.ID != final.ID || report.Run.FinalSubmissionID == nil || report.Revision.Digest != specDigest || len(report.FinalSubmission.Checks) != 1 || len(report.FinalSubmission.Checks[0].Evidence) != 2 {
+		t.Fatalf("Run report failed: %+v %v", report, err)
+	}
+	if _, err := runapp.New(store.Runs()).Report(ctx, runapp.Scope{WorkspaceID: "w", ProjectID: "other"}, run.ID); !errors.Is(err, runapp.ErrNotFound) {
+		t.Fatalf("cross-project report: %v", err)
+	}
 	stillFinished, err := store.Runs().RefreshPolicyRun(ctx, scope, run.ID, run.DeadlineAt+1000)
 	if err != nil || stillFinished.Status != "FINISHED" || stillFinished.Decision == nil || *stillFinished.Decision != "ALLOW" {
 		t.Fatalf("finished Run changed after deadline: %+v %v", stillFinished, err)

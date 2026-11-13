@@ -178,3 +178,7 @@ server APIs, rather than creating a CLI implementation for each CD platform.
 
 See [administrator setup and CLI sessions](../../docs/local-administrator.md)
 for the currently supported initialization and identity commands.
+
+## Audit and diagnostic exports
+
+Use `guardrailctl audit list|export` with an administrator session, and `guardrailctl run report` with a Project key carrying `runs:read`. Exports are bounded and omit business text. See the [audit and report guide](../../docs/audit-and-reports.md) for filters, pagination, permissions and privacy boundaries.

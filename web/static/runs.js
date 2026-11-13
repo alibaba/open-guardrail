@@ -59,6 +59,7 @@
   }
   function leaveDetail() {
     detailVersion++; visibleRun = null; clearEvidence();
+    el("export-run-report").hidden = true; el("export-run-report").disabled = false;
     el("run-detail-content").hidden = true; el("run-detail-message").textContent = "";
     el("run-detail-message").removeAttribute("data-i18n");
     el("run-detail-id").textContent = "";
@@ -247,6 +248,7 @@
       if (!signedIn || current !== detailVersion) return false;
       if (run.id !== id || revision.id !== run.policyRevisionId || revision.digest !== run.specDigest) throw {};
       visibleRun = run;
+      el("export-run-report").hidden = false;
       el("run-detail-id").textContent = run.id;
       el("run-detail-scene").textContent = run.sceneKey;
       el("run-detail-status").textContent = run.status;
@@ -314,6 +316,22 @@
       this.show();
     },
   };
+
+  el("export-run-report").addEventListener("click", async () => {
+    const run = visibleRun, current = detailVersion;
+    if (!signedIn || !run || el("export-run-report").disabled) return;
+    el("export-run-report").disabled = true;
+    try {
+      const report = await request("/api/v1alpha1/runs/" + encodeURIComponent(run.id) + "/report");
+      if (!signedIn || current !== detailVersion) return;
+      if (report.format !== "openguardrail.run-report.v1" || report.run?.id !== run.id) throw {};
+      window.downloadGuardrailJSON(report, "guardrail-run-" + run.id + ".json");
+      setText(el("run-detail-message"), "exportReady");
+    } catch (error) {
+      if (!signedIn || current !== detailVersion) return;
+      if (error.status === 401) show("login"); else setText(el("run-detail-message"), "exportFailed");
+    } finally { if (current === detailVersion) el("export-run-report").disabled = false; }
+  });
 
   el("retry-run-submission").addEventListener("click", () => retryEvidence?.());
   el("run-submission-select").addEventListener("change", async () => {

@@ -39,6 +39,7 @@ function page() {
     AbortSignal, Date, JSON, URLSearchParams, encodeURIComponent,
     fetch: async url => {
       calls.push(url);
+      if (url.endsWith("/report")) return state.reportResponse || {ok:true, json:async()=>({format:"openguardrail.run-report.v1",run:{id:run.id}})};
       if (url.includes('/submissions/') && state.evidenceResponse) return typeof state.evidenceResponse === 'function' ? state.evidenceResponse(url) : state.evidenceResponse;
       if (url.includes('/submissions?') && state.historyResponse) return state.historyResponse;
       if (state.pending) return state.pending;
@@ -216,4 +217,20 @@ test("failed or superseded detail navigation cannot display the previous decisio
   let resolve;p.state.pending=new Promise(done=>{resolve=done;});const older=p.ctx.window.RunUI.open(p.run.id);await settle();
   p.state.pending=null;await p.ctx.window.RunUI.open(p.run.id);await settle();resolve({ok:true,json:async()=>({...p.run,id:'run_stale'})});await older;
   assert.equal(p.elements.get('run-detail-id').textContent,p.run.id);
+});
+
+
+test("Run report download checks identity and leaves no download after navigation", async () => {
+  const p = page(), downloads = [];
+  p.ctx.window.downloadGuardrailJSON = (data, name) => downloads.push({data, name});
+  p.ctx.window.RunUI.setSignedIn(true); await p.ctx.window.RunUI.open(p.run.id); await settle();
+  assert.equal(p.elements.get("export-run-report").hidden, false);
+  await p.elements.get("export-run-report").handlers.click();
+  assert.equal(downloads.length, 1); assert.match(p.calls.at(-1), /\/report$/);
+  p.state.reportResponse = {ok:true, json:async()=>({format:"openguardrail.run-report.v1",run:{id:"another"}})};
+  await p.elements.get("export-run-report").handlers.click();assert.equal(downloads.length, 1);
+  let resolve; p.state.reportResponse = new Promise(done => {resolve = done;});
+  const pending = p.elements.get("export-run-report").handlers.click();p.ctx.window.RunUI.leave();
+  resolve({ok:true,json:async()=>({format:"openguardrail.run-report.v1",run:{id:p.run.id}})});await pending;
+  assert.equal(downloads.length, 1);assert.equal(p.elements.get("export-run-report").hidden, true);
 });

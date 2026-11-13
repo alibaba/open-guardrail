@@ -10,7 +10,9 @@
 <script src="/console.js" defer></script>
 <script src="/editor.js" defer></script>
 <script src="/specs.js" defer></script>
+<script src="/export.js" defer></script>
 <script src="/runs.js" defer></script>
+<script src="/audit.js" defer></script>
 <script src="/app.js" defer></script>
 </head>
 <body>
@@ -21,6 +23,7 @@
 <nav aria-label="Main">
 <button id="nav-scenes" class="nav-item" type="button" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-i18n="scenesTitle">Scenes and Specs</span></button>
 <button id="nav-runs" class="nav-item" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"/><circle cx="7" cy="5" r="1"/><circle cx="7" cy="12" r="1"/><circle cx="7" cy="19" r="1"/></svg><span data-i18n="runsTitle">Runs</span></button>
+<button id="nav-audit" class="nav-item" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 3h14v18H5zM8 7h8M8 12h8M8 17h5"/></svg><span data-i18n="auditTitle">Audit events</span></button>
 <button id="nav-settings" class="nav-item" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg><span data-i18n="accountSettings">Account settings</span></button>
 </nav>
 <div class="sidebar-bottom"><span class="preview-badge" data-i18n="previewShort">DEVELOPMENT PREVIEW</span><a href="/openapi.yaml" data-i18n="apiReference">API reference ↗</a><button id="logout" class="nav-item" type="button" data-i18n="logout">Log out</button></div>
@@ -112,6 +115,13 @@
 </div></div>
 </fieldset>
 </div>
+<section id="audit-view" hidden>
+<div class="page-heading"><div><h1 data-i18n="auditTitle">Audit events</h1><p data-i18n="auditIntro">Inspect changes in this project. Export removes actor and resource identifiers and free-text details.</p></div><button id="export-audit" class="secondary" type="button" data-i18n="exportAudit">Export redacted page</button></div>
+<p id="audit-message" role="status" aria-live="polite"></p>
+<div id="audit-surface" class="surface" aria-busy="false"><form id="audit-filters" class="audit-filters"><label><span data-i18n="eventType">Event type</span><input id="audit-eventType" type="text" maxlength="512"></label><label><span data-i18n="actorId">Actor ID</span><input id="audit-actorId" type="text" maxlength="512"></label><label><span data-i18n="resourceType">Resource type</span><input id="audit-resourceType" type="text" maxlength="512"></label><label><span data-i18n="resourceId">Stored resource ID</span><input id="audit-resourceId" type="text" maxlength="512"></label><label><span data-i18n="auditFrom">From (inclusive)</span><input id="audit-from" type="datetime-local" step="1"></label><label><span data-i18n="auditTo">To (exclusive)</span><input id="audit-to" type="datetime-local" step="1"></label><button id="apply-audit" type="submit" data-i18n="applyFilters">Apply filters</button></form>
+<p id="audit-empty" data-i18n="auditEmpty" hidden>No audit events match these filters.</p>
+<div class="table-scroll"><table><thead><tr><th data-i18n="occurredAt">Occurred</th><th data-i18n="eventType">Event type</th><th data-i18n="actorId">Actor ID</th><th data-i18n="resourceType">Resource type</th><th data-i18n="resourceId">Stored resource ID</th><th data-i18n="auditDetails">Details</th></tr></thead><tbody id="audit-rows"></tbody></table></div>
+<div class="pagination"><button id="previous-audit" class="secondary" type="button" data-i18n="previousPage">Previous</button><button id="next-audit" class="secondary" type="button" data-i18n="nextPage">Next</button></div></div></section>
 <div id="runs-view" hidden>
 <div id="run-list-view">
 <div class="page-heading"><div><p class="eyebrow" data-i18n="runWorkspace">RUN HISTORY</p><h1 data-i18n="runsTitle">Runs</h1><p data-i18n="runsIntro">Inspect immutable Guardrail evaluations and their decisions.</p></div><button id="reload-runs" class="secondary" type="button" data-i18n="reloadRuns">Reload Runs</button></div>
@@ -124,7 +134,7 @@
 </div>
 </div>
 <div id="run-detail-view" hidden>
-<div class="run-evidence-toolbar"><button id="back-runs" class="text-button" type="button" data-i18n="backRuns">← All Runs</button><button id="refresh-run" class="secondary" type="button" data-i18n="refreshRun">Refresh Run</button></div>
+<div class="run-evidence-toolbar"><button id="back-runs" class="text-button" type="button" data-i18n="backRuns">← All Runs</button><button id="export-run-report" class="secondary" type="button" data-i18n="exportRunReport" hidden>Export diagnostic report</button><button id="refresh-run" class="secondary" type="button" data-i18n="refreshRun">Refresh Run</button></div>
 <p id="run-detail-message" role="status" aria-live="polite"></p>
 <div id="run-detail-content" hidden>
 <div class="detail-heading run-heading"><h1 id="run-detail-scene"></h1><span id="run-detail-status" class="badge"></span></div>

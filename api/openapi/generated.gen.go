@@ -730,6 +730,28 @@ type ActivatePolicyRevisionRequest struct {
 	PolicyRevisionId         string  `json:"policyRevisionId"`
 }
 
+// AuditEvent defines model for AuditEvent.
+type AuditEvent struct {
+	ActorId            *string          `json:"actorId,omitempty"`
+	ActorRef           *string          `json:"actorRef,omitempty"`
+	Details            *json.RawMessage `json:"details,omitempty"`
+	DetailsDigest      *string          `json:"detailsDigest,omitempty"`
+	DetailsUnavailable *bool            `json:"detailsUnavailable,omitempty"`
+	EventType          string           `json:"eventType"`
+	Id                 string           `json:"id"`
+	OccurredAt         int64            `json:"occurredAt"`
+	ResourceId         *string          `json:"resourceId,omitempty"`
+	ResourceRef        *string          `json:"resourceRef,omitempty"`
+	ResourceType       *string          `json:"resourceType,omitempty"`
+}
+
+// AuditPage defines model for AuditPage.
+type AuditPage struct {
+	Items      []AuditEvent `json:"items"`
+	NextCursor *string      `json:"nextCursor,omitempty"`
+	Redacted   bool         `json:"redacted"`
+}
+
 // BindingPage defines model for BindingPage.
 type BindingPage struct {
 	Items     []PolicyBinding `json:"items"`
@@ -1055,6 +1077,56 @@ type RotateAPIKeyRequest struct {
 	ExpiresInSeconds *int64 `json:"expiresInSeconds,omitempty"`
 }
 
+// RunReport defines model for RunReport.
+type RunReport struct {
+	FinalSubmission *RunReportSubmission `json:"finalSubmission,omitempty"`
+	Format          string               `json:"format"`
+	GeneratedAt     int64                `json:"generatedAt"`
+	NextBefore      *int64               `json:"nextBefore,omitempty"`
+	Reasons         []string             `json:"reasons"`
+	Revision        RunReportRevision    `json:"revision"`
+
+	// Run Bounded Run list item. Read the Run detail endpoint for changeSet.
+	Run         PolicyRunSummary      `json:"run"`
+	Submissions []RunReportSubmission `json:"submissions"`
+}
+
+// RunReportCheck defines model for RunReportCheck.
+type RunReportCheck struct {
+	CheckId  string              `json:"checkId"`
+	Evidence []RunReportEvidence `json:"evidence"`
+	Verdict  RunResult           `json:"verdict"`
+}
+
+// RunReportEvidence defines model for RunReportEvidence.
+type RunReportEvidence struct {
+	ObservedAt      string  `json:"observedAt"`
+	QueryDigest     string  `json:"queryDigest"`
+	ReferenceDigest *string `json:"referenceDigest,omitempty"`
+	RequirementId   string  `json:"requirementId"`
+	ResultDigest    string  `json:"resultDigest"`
+}
+
+// RunReportRevision defines model for RunReportRevision.
+type RunReportRevision struct {
+	Digest         string `json:"digest"`
+	Id             string `json:"id"`
+	PolicyId       string `json:"policyId"`
+	PublishedAt    *int64 `json:"publishedAt,omitempty"`
+	RevisionNumber *int64 `json:"revisionNumber,omitempty"`
+}
+
+// RunReportSubmission defines model for RunReportSubmission.
+type RunReportSubmission struct {
+	Checks         *[]RunReportCheck `json:"checks,omitempty"`
+	CreatedAt      int64             `json:"createdAt"`
+	FinishRun      bool              `json:"finishRun"`
+	Id             string            `json:"id"`
+	SnapshotDigest *string           `json:"snapshotDigest,omitempty"`
+	SubmissionNo   int64             `json:"submissionNo"`
+	Verdict        RunResult         `json:"verdict"`
+}
+
 // RunResult defines model for RunResult.
 type RunResult string
 
@@ -1219,6 +1291,25 @@ type RunError = Error
 
 // SpecError defines model for SpecError.
 type SpecError = Error
+
+// ListAuditEventsParams defines parameters for ListAuditEvents.
+type ListAuditEventsParams struct {
+	EventType    *string `form:"eventType,omitempty" json:"eventType,omitempty"`
+	ActorId      *string `form:"actorId,omitempty" json:"actorId,omitempty"`
+	ResourceType *string `form:"resourceType,omitempty" json:"resourceType,omitempty"`
+	ResourceId   *string `form:"resourceId,omitempty" json:"resourceId,omitempty"`
+	Cursor       *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// From Unix seconds; from is inclusive and to is exclusive.
+	From *int64 `form:"from,omitempty" json:"from,omitempty"`
+
+	// To Unix seconds; from is inclusive and to is exclusive.
+	To    *int64 `form:"to,omitempty" json:"to,omitempty"`
+	Limit *int   `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Redacted Return actor/resource fingerprints and omit stored detail contents for sharing.
+	Redacted *bool `form:"redacted,omitempty" json:"redacted,omitempty"`
+}
 
 // ListProjectAPIKeysParams defines parameters for ListProjectAPIKeys.
 type ListProjectAPIKeysParams struct {
@@ -1591,6 +1682,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// ListAuditEvents performs a GET /api/v1alpha1/audit-events (the `ListAuditEvents` operationId) request.
+	//
+	// Read one project-scoped audit page in descending event ID order. Cursors are bound to filters and scope. Unscoped historical events are excluded. Detail objects above 4096 bytes are unavailable.
+	ListAuditEvents(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListProjectAPIKeys performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
 	//
 	// Lists secret-free key metadata in key-ID order, including expired and revoked keys.
@@ -1736,6 +1832,11 @@ type ClientInterface interface {
 	// GetManagedPolicyRun performs a GET /api/v1alpha1/runs/{runId} (the `GetManagedPolicyRun` operationId) request.
 	GetManagedPolicyRun(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetManagedRunReport performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
+	//
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	GetManagedRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListManagedRunSubmissions performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 	//
 	// Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
@@ -1852,6 +1953,11 @@ type ClientInterface interface {
 	// Requires runs:read.
 	GetRunPolicyRevision(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetRunReport performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
+	//
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	GetRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RotatePolicySubmissionCredential performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 	//
 	// Requires submission-credential:rotate.
@@ -1873,6 +1979,21 @@ type ClientInterface interface {
 	//
 	// Requires runs:read.
 	GetRunSubmission(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// ListAuditEvents performs a GET /api/v1alpha1/audit-events (the `ListAuditEvents` operationId) request.
+//
+// Read one project-scoped audit page in descending event ID order. Cursors are bound to filters and scope. Unscoped historical events are excluded. Detail objects above 4096 bytes are unavailable.
+func (c *Client) ListAuditEvents(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAuditEventsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // ListProjectAPIKeys performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
@@ -2350,6 +2471,21 @@ func (c *Client) GetManagedPolicyRun(ctx context.Context, runId string, reqEdito
 	return c.Client.Do(req)
 }
 
+// GetManagedRunReport performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
+//
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+func (c *Client) GetManagedRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetManagedRunReportRequest(c.Server, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListManagedRunSubmissions performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 //
 // Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
@@ -2726,6 +2862,21 @@ func (c *Client) GetRunPolicyRevision(ctx context.Context, runId string, reqEdit
 	return c.Client.Do(req)
 }
 
+// GetRunReport performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
+//
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+func (c *Client) GetRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRunReportRequest(c.Server, runId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RotatePolicySubmissionCredential performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 //
 // Requires submission-credential:rotate.
@@ -2786,6 +2937,156 @@ func (c *Client) GetRunSubmission(ctx context.Context, runId string, submissionI
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewListAuditEventsRequest constructs an http.Request for the ListAuditEvents method
+func NewListAuditEventsRequest(server string, params *ListAuditEventsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/audit-events")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.EventType != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "eventType", *params.EventType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ActorId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "actorId", *params.ActorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ResourceType != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resourceType", *params.ResourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ResourceId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resourceId", *params.ResourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.From != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", *params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.To != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", *params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Redacted != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redacted", *params.Redacted, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewListProjectAPIKeysRequest constructs an http.Request for the ListProjectAPIKeys method
@@ -3972,6 +4273,40 @@ func NewGetManagedPolicyRunRequest(server string, runId string) (*http.Request, 
 	return req, nil
 }
 
+// NewGetManagedRunReportRequest constructs an http.Request for the GetManagedRunReport method
+func NewGetManagedRunReportRequest(server string, runId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/runs/%s/report", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListManagedRunSubmissionsRequest constructs an http.Request for the ListManagedRunSubmissions method
 func NewListManagedRunSubmissionsRequest(server string, runId string, params *ListManagedRunSubmissionsParams) (*http.Request, error) {
 	var err error
@@ -4966,6 +5301,40 @@ func NewGetRunPolicyRevisionRequest(server string, runId string) (*http.Request,
 	return req, nil
 }
 
+// NewGetRunReportRequest constructs an http.Request for the GetRunReport method
+func NewGetRunReportRequest(server string, runId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/runtime/v1alpha1/runs/%s/report", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewRotatePolicySubmissionCredentialRequest constructs an http.Request for the RotatePolicySubmissionCredential method
 func NewRotatePolicySubmissionCredentialRequest(server string, runId string) (*http.Request, error) {
 	var err error
@@ -5144,6 +5513,13 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+
+	// ListAuditEventsWithResponse performs a GET /api/v1alpha1/audit-events (the `ListAuditEvents` operationId) request.
+	//
+	// Read one project-scoped audit page in descending event ID order. Cursors are bound to filters and scope. Unscoped historical events are excluded. Detail objects above 4096 bytes are unavailable.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListAuditEventsWithResponse(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*ListAuditEventsResponse, error)
 
 	// ListProjectAPIKeysWithResponse performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
 	//
@@ -5338,6 +5714,13 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetManagedPolicyRunWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetManagedPolicyRunResponse, error)
 
+	// GetManagedRunReportWithResponse performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
+	//
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetManagedRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetManagedRunReportResponse, error)
+
 	// ListManagedRunSubmissionsWithResponse performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 	//
 	// Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
@@ -5494,6 +5877,13 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetRunPolicyRevisionWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetRunPolicyRevisionResponse, error)
 
+	// GetRunReportWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
+	//
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetRunReportResponse, error)
+
 	// RotatePolicySubmissionCredentialWithResponse performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 	//
 	// Requires submission-credential:rotate.
@@ -5521,6 +5911,68 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetRunSubmissionWithResponse(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*GetRunSubmissionResponse, error)
+}
+
+// ListAuditEventsResponse200Headers the declared response headers of an HTTP 200 response for ListAuditEvents
+type ListAuditEventsResponse200Headers struct {
+	XTraceID string
+}
+
+// ListAuditEventsResponseDefaultHeaders the declared response headers of an HTTP default response for ListAuditEvents
+type ListAuditEventsResponseDefaultHeaders struct {
+	XTraceID string
+}
+
+type ListAuditEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuditPage
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *SpecError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *ListAuditEventsResponse200Headers
+	// HeadersDefault the parsed response headers for an HTTP default response
+	HeadersDefault *ListAuditEventsResponseDefaultHeaders
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAuditEventsResponse) GetJSON200() *AuditPage {
+	return r.JSON200
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r ListAuditEventsResponse) GetJSONDefault() *SpecError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAuditEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAuditEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAuditEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAuditEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 // ListProjectAPIKeysResponse200Headers the declared response headers of an HTTP 200 response for ListProjectAPIKeys
@@ -6987,6 +7439,68 @@ func (r GetManagedPolicyRunResponse) ContentType() string {
 	return ""
 }
 
+// GetManagedRunReportResponse200Headers the declared response headers of an HTTP 200 response for GetManagedRunReport
+type GetManagedRunReportResponse200Headers struct {
+	XTraceID string
+}
+
+// GetManagedRunReportResponseDefaultHeaders the declared response headers of an HTTP default response for GetManagedRunReport
+type GetManagedRunReportResponseDefaultHeaders struct {
+	XTraceID string
+}
+
+type GetManagedRunReportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RunReport
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *RunError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetManagedRunReportResponse200Headers
+	// HeadersDefault the parsed response headers for an HTTP default response
+	HeadersDefault *GetManagedRunReportResponseDefaultHeaders
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetManagedRunReportResponse) GetJSON200() *RunReport {
+	return r.JSON200
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetManagedRunReportResponse) GetJSONDefault() *RunError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetManagedRunReportResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetManagedRunReportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetManagedRunReportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetManagedRunReportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ListManagedRunSubmissionsResponse200Headers the declared response headers of an HTTP 200 response for ListManagedRunSubmissions
 type ListManagedRunSubmissionsResponse200Headers struct {
 	XTraceID string
@@ -8207,6 +8721,68 @@ func (r GetRunPolicyRevisionResponse) ContentType() string {
 	return ""
 }
 
+// GetRunReportResponse200Headers the declared response headers of an HTTP 200 response for GetRunReport
+type GetRunReportResponse200Headers struct {
+	XTraceID string
+}
+
+// GetRunReportResponseDefaultHeaders the declared response headers of an HTTP default response for GetRunReport
+type GetRunReportResponseDefaultHeaders struct {
+	XTraceID string
+}
+
+type GetRunReportResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *RunReport
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *RunError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *GetRunReportResponse200Headers
+	// HeadersDefault the parsed response headers for an HTTP default response
+	HeadersDefault *GetRunReportResponseDefaultHeaders
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRunReportResponse) GetJSON200() *RunReport {
+	return r.JSON200
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r GetRunReportResponse) GetJSONDefault() *RunError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRunReportResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRunReportResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRunReportResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRunReportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // RotatePolicySubmissionCredentialResponse201Headers the declared response headers of an HTTP 201 response for RotatePolicySubmissionCredential
 type RotatePolicySubmissionCredentialResponse201Headers struct {
 	XTraceID string
@@ -8405,6 +8981,19 @@ func (r GetRunSubmissionResponse) ContentType() string {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
+}
+
+// ListAuditEventsWithResponse performs a GET /api/v1alpha1/audit-events (the `ListAuditEvents` operationId) request.
+//
+// Read one project-scoped audit page in descending event ID order. Cursors are bound to filters and scope. Unscoped historical events are excluded. Detail objects above 4096 bytes are unavailable.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListAuditEventsWithResponse(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*ListAuditEventsResponse, error) {
+	rsp, err := c.ListAuditEvents(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAuditEventsResponse(rsp)
 }
 
 // ListProjectAPIKeysWithResponse performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
@@ -8798,6 +9387,19 @@ func (c *ClientWithResponses) GetManagedPolicyRunWithResponse(ctx context.Contex
 	return ParseGetManagedPolicyRunResponse(rsp)
 }
 
+// GetManagedRunReportWithResponse performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
+//
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetManagedRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetManagedRunReportResponse, error) {
+	rsp, err := c.GetManagedRunReport(ctx, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetManagedRunReportResponse(rsp)
+}
+
 // ListManagedRunSubmissionsWithResponse performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 //
 // Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
@@ -9110,6 +9712,19 @@ func (c *ClientWithResponses) GetRunPolicyRevisionWithResponse(ctx context.Conte
 	return ParseGetRunPolicyRevisionResponse(rsp)
 }
 
+// GetRunReportWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
+//
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetRunReportResponse, error) {
+	rsp, err := c.GetRunReport(ctx, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRunReportResponse(rsp)
+}
+
 // RotatePolicySubmissionCredentialWithResponse performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 //
 // Requires submission-credential:rotate.
@@ -9160,6 +9775,62 @@ func (c *ClientWithResponses) GetRunSubmissionWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetRunSubmissionResponse(rsp)
+}
+
+// ParseListAuditEventsResponse parses an HTTP response from a ListAuditEventsWithResponse call
+func ParseListAuditEventsResponse(rsp *http.Response) (*ListAuditEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAuditEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest SpecError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers ListAuditEventsResponse200Headers
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.Headers200 = &headers
+	case true:
+		var headers ListAuditEventsResponseDefaultHeaders
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.HeadersDefault = &headers
+	}
+
+	return response, nil
 }
 
 // ParseListProjectAPIKeysResponse parses an HTTP response from a ListProjectAPIKeysWithResponse call
@@ -10554,6 +11225,62 @@ func ParseGetManagedPolicyRunResponse(rsp *http.Response) (*GetManagedPolicyRunR
 	return response, nil
 }
 
+// ParseGetManagedRunReportResponse parses an HTTP response from a GetManagedRunReportWithResponse call
+func ParseGetManagedRunReportResponse(rsp *http.Response) (*GetManagedRunReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetManagedRunReportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RunReport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest RunError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetManagedRunReportResponse200Headers
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.Headers200 = &headers
+	case true:
+		var headers GetManagedRunReportResponseDefaultHeaders
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.HeadersDefault = &headers
+	}
+
+	return response, nil
+}
+
 // ParseListManagedRunSubmissionsResponse parses an HTTP response from a ListManagedRunSubmissionsWithResponse call
 func ParseListManagedRunSubmissionsResponse(rsp *http.Response) (*ListManagedRunSubmissionsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -11660,6 +12387,62 @@ func ParseGetRunPolicyRevisionResponse(rsp *http.Response) (*GetRunPolicyRevisio
 	return response, nil
 }
 
+// ParseGetRunReportResponse parses an HTTP response from a GetRunReportWithResponse call
+func ParseGetRunReportResponse(rsp *http.Response) (*GetRunReportResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRunReportResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RunReport
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest RunError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers GetRunReportResponse200Headers
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.Headers200 = &headers
+	case true:
+		var headers GetRunReportResponseDefaultHeaders
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.HeadersDefault = &headers
+	}
+
+	return response, nil
+}
+
 // ParseRotatePolicySubmissionCredentialResponse parses an HTTP response from a RotatePolicySubmissionCredentialWithResponse call
 func ParseRotatePolicySubmissionCredentialResponse(rsp *http.Response) (*RotatePolicySubmissionCredentialResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -11848,6 +12631,9 @@ func ParseGetRunSubmissionResponse(rsp *http.Response) (*GetRunSubmissionRespons
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (GET /api/v1alpha1/audit-events)
+	ListAuditEvents(w http.ResponseWriter, r *http.Request, params ListAuditEventsParams)
+
 	// (GET /api/v1alpha1/auth/api-keys)
 	ListProjectAPIKeys(w http.ResponseWriter, r *http.Request, params ListProjectAPIKeysParams)
 
@@ -11920,6 +12706,9 @@ type ServerInterface interface {
 	// (GET /api/v1alpha1/runs/{runId})
 	GetManagedPolicyRun(w http.ResponseWriter, r *http.Request, runId string)
 
+	// (GET /api/v1alpha1/runs/{runId}/report)
+	GetManagedRunReport(w http.ResponseWriter, r *http.Request, runId string)
+
 	// (GET /api/v1alpha1/runs/{runId}/submissions)
 	ListManagedRunSubmissions(w http.ResponseWriter, r *http.Request, runId string, params ListManagedRunSubmissionsParams)
 
@@ -11980,6 +12769,9 @@ type ServerInterface interface {
 	// (GET /runtime/v1alpha1/runs/{runId}/policy-revision)
 	GetRunPolicyRevision(w http.ResponseWriter, r *http.Request, runId string)
 
+	// (GET /runtime/v1alpha1/runs/{runId}/report)
+	GetRunReport(w http.ResponseWriter, r *http.Request, runId string)
+
 	// (POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate)
 	RotatePolicySubmissionCredential(w http.ResponseWriter, r *http.Request, runId string)
 
@@ -11998,6 +12790,143 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAuditEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListAuditEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAuditEventsParams
+
+	// ------------- Optional query parameter "eventType" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "eventType", r.URL.Query(), &params.EventType, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "eventType"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "eventType", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "actorId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "actorId", r.URL.Query(), &params.ActorId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "actorId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "actorId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "resourceType" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resourceType", r.URL.Query(), &params.ResourceType, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resourceType"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceType", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "resourceId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resourceId", r.URL.Query(), &params.ResourceId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resourceId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resourceId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "redacted" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "redacted", r.URL.Query(), &params.Redacted, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "redacted"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "redacted", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAuditEvents(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListProjectAPIKeys operation middleware
 func (siw *ServerInterfaceWrapper) ListProjectAPIKeys(w http.ResponseWriter, r *http.Request) {
@@ -13035,6 +13964,32 @@ func (siw *ServerInterfaceWrapper) GetManagedPolicyRun(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r)
 }
 
+// GetManagedRunReport operation middleware
+func (siw *ServerInterfaceWrapper) GetManagedRunReport(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "runId" -------------
+	var runId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runId", r.PathValue("runId"), &runId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "runId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetManagedRunReport(w, r, runId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListManagedRunSubmissions operation middleware
 func (siw *ServerInterfaceWrapper) ListManagedRunSubmissions(w http.ResponseWriter, r *http.Request) {
 
@@ -13877,6 +14832,32 @@ func (siw *ServerInterfaceWrapper) GetRunPolicyRevision(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r)
 }
 
+// GetRunReport operation middleware
+func (siw *ServerInterfaceWrapper) GetRunReport(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "runId" -------------
+	var runId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runId", r.PathValue("runId"), &runId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "runId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRunReport(w, r, runId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // RotatePolicySubmissionCredential operation middleware
 func (siw *ServerInterfaceWrapper) RotatePolicySubmissionCredential(w http.ResponseWriter, r *http.Request) {
 
@@ -14156,6 +15137,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/policy-revisions/{revisionId}", wrapper.GetPolicyRevision)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/runtime/v1alpha1/runs/{runId}/policy-revision", wrapper.GetRunPolicyRevision)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/runtime/v1alpha1/runs/{runId}/submissions/{submissionId}", wrapper.GetRunSubmission)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/audit-events", wrapper.ListAuditEvents)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/runs/{runId}/report", wrapper.GetManagedRunReport)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/runtime/v1alpha1/runs/{runId}/report", wrapper.GetRunReport)
 
 	return m
 }
