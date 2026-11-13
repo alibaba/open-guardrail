@@ -30,19 +30,19 @@ var validRunResourceID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$
 type runOptions struct {
 	server, keyFile, tokenFile, scene, status, cursor, changeSetFile, submissionFile, operationID, runID, submissionID string
 	limit                                                                                                              int
-	resourcesFile                                                                                                      string
+	resourcesFile, reportFile                                                                                          string
 	waitTimeout                                                                                                        time.Duration
 	waitInterval                                                                                                       time.Duration
 }
 
 func runRun(args []string, out io.Writer) error {
 	if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
-		fmt.Fprintln(out, "Usage: guardrailctl run create|get|wait|revision|submission|list|submit|rotate-credential [flags]")
-		fmt.Fprintln(out, "\nCommands:\n  create             Create an immutable Run and save its Submission Credential\n  get                Get one Run by ID\n  wait               Wait for one Run to reach FINISHED or EXPIRED\n  revision           Read the immutable Revision selected by a Run\n  submission         Read a persisted Submission within a Run\n  list               List Runs in stable descending creation order\n  submit             Submit a complete Snapshot with a Run Submission Credential\n  rotate-credential  Replace and save the Submission Credential for an OPEN Run")
+		fmt.Fprintln(out, "Usage: guardrailctl run create|get|wait|report|revision|submission|list|submit|rotate-credential [flags]")
+		fmt.Fprintln(out, "\nCommands:\n  create             Create an immutable Run and save its Submission Credential\n  get                Get one Run by ID\n  wait               Wait for one Run to reach FINISHED or EXPIRED\n  report             Export structured diagnostics and evidence fingerprints\n  revision           Read the immutable Revision selected by a Run\n  submission         Read a persisted Submission within a Run\n  list               List Runs in stable descending creation order\n  submit             Submit a complete Snapshot with a Run Submission Credential\n  rotate-credential  Replace and save the Submission Credential for an OPEN Run")
 		return nil
 	}
-	if len(args) < 2 || (args[1] != "create" && args[1] != "get" && args[1] != "wait" && args[1] != "revision" && args[1] != "submission" && args[1] != "list" && args[1] != "submit" && args[1] != "rotate-credential") {
-		return usageError("usage: guardrailctl run create|get|wait|revision|submission|list|submit|rotate-credential [flags]")
+	if len(args) < 2 || (args[1] != "create" && args[1] != "get" && args[1] != "wait" && args[1] != "report" && args[1] != "revision" && args[1] != "submission" && args[1] != "list" && args[1] != "submit" && args[1] != "rotate-credential") {
+		return usageError("usage: guardrailctl run create|get|wait|report|revision|submission|list|submit|rotate-credential [flags]")
 	}
 	command := args[1]
 	opts, err := parseRunOptions(command, args[2:], out)
@@ -64,6 +64,19 @@ func runRun(args []string, out io.Writer) error {
 	client, err := newRunClient(opts.server, credential.Token)
 	if err != nil {
 		return err
+	}
+	if command == "report" {
+		result, err := client.generated.GetRunReportWithResponse(context.Background(), opts.runID)
+		if err != nil {
+			return transportError(err, false)
+		}
+		if err = validateResponse(result, runResponseLimit, "Run report", false); err != nil {
+			return err
+		}
+		if result.StatusCode() != 200 || result.JSON200 == nil || result.JSON200.Run.Id != opts.runID || result.JSON200.Format != "openguardrail.run-report.v1" {
+			return internalError("invalid Run report response")
+		}
+		return writeExport(opts.reportFile, result.Body, out)
 	}
 	if command == "revision" {
 		result, err := client.generated.GetRunPolicyRevisionWithResponse(context.Background(), opts.runID)
@@ -142,6 +155,8 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 		flags.StringVar(&opts.operationID, "operation-id", "", "stable retry identifier; generated when omitted")
 	} else if command == "rotate-credential" {
 		flags.StringVar(&opts.tokenFile, "submission-credential-file", "", "new private file for the replacement Run Submission Credential")
+	} else if command == "report" {
+		flags.StringVar(&opts.reportFile, "output", "", "new private JSON file; defaults to stdout")
 	} else if command == "wait" {
 		flags.DurationVar(&opts.waitTimeout, "timeout", 0, "optional earlier limit; 0 waits until the Run deadline")
 		flags.DurationVar(&opts.waitInterval, "interval", time.Second, "polling interval")
@@ -157,7 +172,7 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	if err := flags.Parse(args); err != nil {
 		return opts, err
 	}
-	if command == "get" || command == "wait" || command == "revision" || command == "submission" || command == "submit" || command == "rotate-credential" {
+	if command == "get" || command == "wait" || command == "report" || command == "revision" || command == "submission" || command == "submit" || command == "rotate-credential" {
 		if flags.NArg() != 1 {
 			return opts, usageError("run " + command + " requires exactly one Run ID")
 		}
@@ -174,6 +189,15 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 			resourcesProvided = true
 		}
 	})
+	outputEmpty := false
+	flags.Visit(func(current *flag.Flag) {
+		if current.Name == "output" && opts.reportFile == "" {
+			outputEmpty = true
+		}
+	})
+	if outputEmpty {
+		return opts, usageError("--output cannot be empty")
+	}
 	if resourcesProvided && opts.resourcesFile == "" {
 		return opts, usageError("--resources cannot be empty")
 	}

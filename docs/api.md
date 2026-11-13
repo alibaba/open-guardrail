@@ -67,6 +67,9 @@ exposing database or credential details.
 | `GET /runtime/v1alpha1/runs/{runId}` | Query a Run in the authenticated Project |
 | `GET /runtime/v1alpha1/runs/{runId}/policy-revision` | Read the immutable Policy Revision selected by a Run |
 | `GET /runtime/v1alpha1/runs/{runId}/submissions/{submissionId}` | Read a persisted Submission and its complete Snapshot within a Run |
+| `GET /api/v1alpha1/audit-events` | Administrator audit query with filters, cursor pagination and optional redaction |
+| `GET /api/v1alpha1/runs/{runId}/report` | Administrator diagnostic report |
+| `GET /runtime/v1alpha1/runs/{runId}/report` | Diagnostic report using a Project key with `runs:read` |
 | `GET /api/v1alpha1/runs` | List Runs for the authenticated administrator's read-only management view |
 | `GET /api/v1alpha1/runs/{runId}` | Inspect one Run from the management view |
 | `POST /api/v1alpha1/scenes/{key}:initialize` | Atomically create Scene, default Policy and Revision 1 |
@@ -97,3 +100,5 @@ omit it. Use `guardrailctl binding list|put|delete` with an administrator sessio
 `guardrailctl run create --resources FILE` with a Project key. See the
 [CLI walkthrough](../examples/resource-bindings/README.md) and the
 [contract and trust boundaries](extensions.md#resource-bindings).
+
+See [audit and report exports](audit-and-reports.md) for privacy boundaries and bounded history.

@@ -13,6 +13,7 @@ import (
 
 	contract "github.com/alibaba/open-guardrail/api/openapi"
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
+	"github.com/alibaba/open-guardrail/internal/application/audit"
 	"github.com/alibaba/open-guardrail/internal/application/capability"
 	"github.com/alibaba/open-guardrail/internal/application/identity"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
@@ -27,8 +28,9 @@ func TestCapabilitiesMatchRegisteredFeatures(t *testing.T) {
 		{"diagnostics", Options{}, ""},
 		{"identity", Options{Identity: &identity.Service{}}, "local-administrator,project-api-key"},
 		{"specs", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,resource-policy-bindings"},
-		{"runs", Options{Identity: &identity.Service{}, ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token"},
-		{"all", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{}), ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,resource-policy-bindings,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token"},
+		{"runs", Options{Identity: &identity.Service{}, ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token,run-diagnostic-report"},
+		{"all", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{}), ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,resource-policy-bindings,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token,run-diagnostic-report"},
+		{"audit", Options{Identity: &identity.Service{}, Audits: audit.New(&storage.AuditEvents{})}, "local-administrator,project-api-key,project-audit-query"},
 		{"specs without identity", Options{ModelSpecs: spec.New(&storage.Specs{})}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
