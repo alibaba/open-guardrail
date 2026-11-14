@@ -1,0 +1,12 @@
+{
+  "name": "open-guardrail-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs && node check-built.mjs",
+    "preview": "python3 -m http.server 4173 --directory dist",
+    "check": "node check-syntax.mjs && node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": { "marked": "15.0.12" }
+}

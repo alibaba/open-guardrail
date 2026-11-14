@@ -1,5 +1,6 @@
 GO ?= go
 NODE ?= node
+NPM ?= npm
 PYTHON ?= python3
 VERSION ?= dev
 PLUGIN_RELEASE_DIR ?= dist/plugin-release-$(VERSION)
@@ -41,8 +42,14 @@ test-fuzz:
 	$(GO) test ./internal/domain/run -run '^$$' -fuzz '^FuzzCanonicalizeChangeSet$$' -fuzztime "$(FUZZ_TIME)" -fuzzminimizetime=5s -parallel "$(FUZZ_PARALLEL)" -timeout=2m
 	$(GO) test ./internal/domain/run -run '^$$' -fuzz '^FuzzRejectDuplicateChangeSetKeys$$' -fuzztime "$(FUZZ_TIME)" -fuzzminimizetime=5s -parallel "$(FUZZ_PARALLEL)" -timeout=2m
 
-test-web:
+test-web: test-pages
 	$(NODE) --test web/*.test.cjs scripts/spec-canonicalization.test.cjs
+
+.PHONY: test-pages
+test-pages:
+	$(NPM) --prefix pages ci --ignore-scripts
+	$(NPM) --prefix pages run check
+	SITE_BASE_PATH=/open-guardrail/ SITE_ORIGIN=https://alibaba.github.io $(NPM) --prefix pages run build
 
 test-python:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s integrations -t . -p 'test_*.py'
