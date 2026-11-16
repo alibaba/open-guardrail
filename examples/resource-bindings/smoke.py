@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Exercise resource bindings through the CLI against a disposable real service."""
 import argparse
+from datetime import datetime, timezone
+import hashlib
 import importlib.util
 import json
 import os
@@ -129,9 +131,50 @@ def verify(binaries):
             removed = create("after-delete", refs)
             if removed["policyId"] != initialized["scene"]["defaultPolicyId"]:
                 raise RuntimeError("Deleted binding still selected")
+            # Audit every binding mutation, including before/after values, then
+            # export without the private resource identifiers or stored details.
+            audit_args = ("--session-file", str(session), "--resource-type", "policy-binding", "--limit", "2")
+            events, cursor = [], None
+            while True:
+                page = cli("audit", "list", *audit_args, *(("--cursor", cursor) if cursor else ()))
+                events.extend(page["items"])
+                cursor = page.get("nextCursor")
+                if not cursor:
+                    break
+            ids = [item["id"] for item in events]
+            if len(ids) != len(set(ids)) or not {"policy_binding_created", "policy_binding_updated", "policy_binding_deleted"}.issubset({item["eventType"] for item in events}):
+                raise RuntimeError("Audit mutation chain or pagination mismatch")
+            export_path = work / "audit-export.json"
+            cli("audit", "export", *audit_args, "--output", str(export_path))
+            exported = json.loads(export_path.read_text())
+            if not exported["redacted"] or any(any(key in item for key in ("actorId", "resourceId", "details")) for item in exported["items"]):
+                raise RuntimeError("Audit export contains private fields")
+            if export_path.stat().st_mode & 0o777 != 0o600:
+                raise RuntimeError("Audit export has unsafe permissions")
+            original_export = export_path.read_bytes()
+            cli("audit", "export", *audit_args, "--output", str(export_path), expected=2)
+            if export_path.read_bytes() != original_export:
+                raise RuntimeError("Existing export overwritten")
+            snapshot = {"baseSubmissionNo": 0, "finishRun": True, "verdict": "BLOCKED", "summary": "Private diagnostic context",
+                        "checks": [{"checkId": "readiness", "verdict": "BLOCKED", "summary": "Private health details",
+                                    "evidence": [{"requirementId": "health", "observedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                                                  "querySummary": "Private source query", "resultSummary": "Private observed failure"}]}]}
+            snapshot_path = work / "snapshot.json"
+            snapshot_path.write_text(json.dumps(snapshot))
+            cli("run", "submit", "--submission-credential-file", str(work / "after-delete.json"),
+                "--submission", str(snapshot_path), "--operation-id", "diagnose", removed["id"])
+            report_path = work / "run-report.json"
+            cli("run", "report", "--key-file", str(key), "--output", str(report_path), removed["id"])
+            report_text = report_path.read_text()
+            report = json.loads(report_text)
+            evidence = report["finalSubmission"]["checks"][0]["evidence"][0]
+            if (report["run"].get("decision") != "DENY" or report["reasons"] != ["CHECK_BLOCKED"] or
+                    report["revision"]["id"] != removed["policyRevisionId"] or "Private" in report_text or
+                    evidence["resultDigest"] != hashlib.sha256(b"Private observed failure").hexdigest()):
+                raise RuntimeError("Redacted Run report lost decision or evidence linkage")
             print(json.dumps({"result": "PASS", "checks": ["resource-encoding", "pagination", "active-revision",
                              "pinned-revision", "frozen-run", "idempotent-replay", "partial-binding-denied",
-                             "conflicting-bindings-denied", "default-fallback", "idempotent-delete"],
+                             "conflicting-bindings-denied", "default-fallback", "idempotent-delete", "audit-pagination", "audit-redaction", "run-diagnostics"],
                              "runId": old["id"], "policyId": policy["id"]}))
         finally:
             if process.poll() is None:

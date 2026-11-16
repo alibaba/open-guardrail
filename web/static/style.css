@@ -297,3 +297,11 @@ dialog p { font-size: 13px; }
  #run-submission-history { max-width: 100%; }
  #run-detail-content summary { min-height: 44px; }
 }
+
+.audit-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: end; padding: 24px; }
+.audit-filters label { display: grid; gap: 8px; }
+#audit-rows td { vertical-align: top; overflow-wrap: anywhere; max-width: 28ch; }
+#audit-rows pre { white-space: pre-wrap; max-height: 24rem; overflow: auto; min-width: 20ch; }
+#audit-empty { padding: 24px; }
+@media (max-width: 800px) { .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .audit-filters { grid-template-columns: 1fr; padding: 16px; } }

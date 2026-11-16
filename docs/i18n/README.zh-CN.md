@@ -229,3 +229,5 @@ OpenGuardrail 校验提交内容并记录决策，执行工具在操作前核验
 
 OpenGuardrail 采用 [Apache License 2.0](../../LICENSE)。第三方组件保留各自的许可条款，
 详见[声明清单](../../third_party/README.md)和[依赖许可审查](../dependency-licenses.md)。
+
+- [审计查询与 Run 排障报告](audit-and-reports.zh-CN.md)

@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	contract "github.com/alibaba/open-guardrail/api/openapi"
+	"github.com/alibaba/open-guardrail/internal/application/audit"
 	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
 )
 
 type Options struct {
+	Audits     *audit.Service
 	Logger     *slog.Logger
 	Identity   *identity.Service
 	ModelSpecs *spec.Service

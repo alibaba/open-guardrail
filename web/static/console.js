@@ -7,10 +7,12 @@
   function navigate(view) {
     if (view !== "runs") window.RunUI?.leave();
     window.scrollTo({top: 0});
+    if (view !== "audit") window.AuditUI?.leave();
+    el("audit-view").hidden = view !== "audit";
     el("settings-view").hidden = view !== "settings";
     el("runs-view").hidden = view !== "runs";
     el("scenes").hidden = view !== "scenes";
-    for (const [id, selected] of [["nav-scenes", view === "scenes"], ["nav-runs", view === "runs"], ["nav-settings", view === "settings"]]) {
+    for (const [id, selected] of [["nav-audit", view === "audit"], ["nav-scenes", view === "scenes"], ["nav-runs", view === "runs"], ["nav-settings", view === "settings"]]) {
       if (selected) el(id).setAttribute("aria-current", "page");
       else el(id).removeAttribute("aria-current");
     }
@@ -41,6 +43,7 @@
     if (!signedIn) return;
     if (!window.location.hash) { go("scenes", true); return; }
     const {parts: [view, id], params} = routeState();
+    if (view === "audit" && !id) { navigate("audit"); window.AuditUI?.route(params); return; }
     if (view === "settings" && !id) { navigate("settings"); return; }
     if (view === "runs") {
       navigate("runs");
@@ -143,6 +146,7 @@
   };
   el("nav-scenes").addEventListener("click", () => go("scenes"));
   el("nav-runs").addEventListener("click", () => go("runs"));
+  el("nav-audit").addEventListener("click", () => go("audit"));
   el("nav-settings").addEventListener("click", () => go("settings"));
   el("back-scenes").addEventListener("click", () => go("scenes"));
   for (const id of ["new-scene", "empty-create"]) el(id).addEventListener("click", openCreate);

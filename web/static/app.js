@@ -12,6 +12,7 @@ function show(name) {
   if (window.ConsoleUI) window.ConsoleUI.setSignedIn(name === "home");
   if (window.SpecUI) window.SpecUI.setSignedIn(name === "home");
   if (window.RunUI) window.RunUI.setSignedIn(name === "home");
+  window.AuditUI?.setSignedIn(name === "home");
   if (name === "home" && window.ConsoleUI) window.ConsoleUI.route();
 }
 async function api(path, method = "GET", body, token) {

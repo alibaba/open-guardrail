@@ -87,3 +87,5 @@ Repeated deletion succeeds without changing the Scene default.
 - A binding write timeout can have an uncertain outcome. List the bindings to
   inspect the actual state before repeating a write. Pagination returns one page
   and the server's opaque `nextAfter` value.
+
+The smoke also checks audit mutation history, redacted export and a denied Run diagnostic report. See [audit and reports](../../docs/audit-and-reports.md).

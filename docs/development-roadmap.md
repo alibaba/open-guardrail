@@ -13,7 +13,7 @@ Start with the [documentation index](README.md); the
 | Policy management | Exact resource bindings with fixed/active Revision selection and audit; Scenes, editable Draft Revisions, immutable Published Revisions, reviewed-Draft publication, activation and bounded Revision history |
 | Evaluation | Independent Runs with immutable Revision references and context, complete intermediate/final Snapshots, structured evidence, fixed Result/Decision aggregation, lazy expiry and decision validity |
 | Machine integration | OpenAPI-generated HTTP clients, Run-scoped Submission Credentials, Revision and stored-Submission readers, bounded Run listing and endpoint-scope authorization |
-| User interface | Embedded management pages for administrator setup, Policies and read-only Run inspection |
+| User interface | Embedded management pages for administrator setup, Policies and read-only Run inspection, project audit queries and structured diagnostic exports |
 | Examples and packaging | Synthetic local Agent, Jenkins and Argo Rollouts demos; native archives; optional Docker Compose behind HTTPS |
 
 See [current limits](../README.md#current-capabilities-and-limits) and
@@ -34,7 +34,7 @@ See [current limits](../README.md#current-capabilities-and-limits) and
 4. **Shared deployment guarantees.** Prove cross-process concurrency and recovery
    for PostgreSQL before advertising multi-instance operation. Continue to
    document SQLite's single-instance boundary.
-5. **Operational completeness.** Extend audit, retention, observability and
+5. **Operational completeness.** Extend audit coverage, retention, observability and
    supported import/export interfaces alongside their user guides and CLI paths.
 6. **Additional delivery examples.** Implement and validate GitHub Actions and
    Argo CD sync-hook recipes. Keep the existing Jenkins and Argo Rollouts examples
