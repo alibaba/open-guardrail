@@ -1,7 +1,6 @@
 import { marked } from 'marked';
 import { headingId } from './docs.mjs';
-
-const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+import { inlineText, escapeHtml as esc } from './text.mjs';
 
 export function headingTokens(markdown) {
   const headings = [];
@@ -13,9 +12,7 @@ export function headingTokens(markdown) {
 
 export function documentDescription(markdown) {
   const paragraph = marked.lexer(markdown).find(token => token.type === 'paragraph');
-  return paragraph ? marked.parseInline(paragraph.text).replace(/<[^>]*>/g, '')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
-    .replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+  return paragraph ? inlineText(paragraph.tokens).replace(/\s+/g, ' ').trim().slice(0, 200) : '';
 }
 
 export function renderMarkdown(markdown, original, {source, locale, rewriteLink}) {
@@ -34,13 +31,13 @@ export function renderMarkdown(markdown, original, {source, locale, rewriteLink}
   renderer.html = ({text}) => esc(text);
   renderer.heading = function({tokens, depth}) {
     const html = this.parser.parseInline(tokens);
-    const text = html.replace(/<[^>]+>/g, '');
-    const slug = headingId(marked.parseInline(originals[index++].text));
+    const text = inlineText(tokens);
+    const slug = headingId(inlineText(originals[index++].tokens));
     const count = used.get(slug) || 0;
     used.set(slug, count + 1);
     const id = `${slug}${count ? `-${count}` : ''}`;
     if (depth === 2) headings.push([id, text]);
-    const localizedId = headingId(html);
+    const localizedId = headingId(text);
     const alias = localizedId && localizedId !== id ? `<span id="${esc(localizedId)}"></span>` : '';
     return `<h${depth} id="${esc(id)}">${alias}${html}<a class="heading-anchor" href="#${esc(id)}" aria-label="${locale === 'zh' ? '链接到' : 'Link to'} ${esc(text)}">#</a></h${depth}>`;
   };

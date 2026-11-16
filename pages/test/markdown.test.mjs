@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderMarkdown, documentDescription } from '../src/markdown.mjs';
+import { inlineText, escapeHtml } from '../src/text.mjs';
+import { headingId } from '../src/docs.mjs';
+import { marked } from 'marked';
 
 const options = {source:'nested.zh.md',locale:'zh',rewriteLink:href => href};
 test('nested quote and list headings retain source anchors and document order', () => {
@@ -24,4 +27,23 @@ test('raw HTML and attribute injection remain escaped', () => {
   assert.ok(!html.includes('<script>'));
   assert.ok(html.includes('&lt;script&gt;'));
   assert.ok(!html.includes('alt="a" onerror='));
+});
+
+test('token text preserves nested formatting, entities, image labels and literal code',()=>{
+  const tokens=marked.Lexer.lexInline('**Policy *checks*** &amp; &copy; &#x4e2d; [Runs](runs.md) ![diagram](x.png) `&lt;code&gt;`');
+  assert.equal(inlineText(tokens),'Policy checks & © 中 Runs diagram &lt;code&gt;');
+  assert.equal(headingId(inlineText(marked.Lexer.lexInline('**Run** `API` &amp; 证据'))),'run-api-证据');
+});
+
+test('raw or entity-encoded markup is text at both description and TOC output boundaries',()=>{
+  for(const input of ['<script','<img src=x onerror=alert(1)>','&lt;img src=x onerror=alert(1)&gt;','&#60;script&#62;alert(1)&#60;/script&#62;','" onmouseover="alert(1)','<scr<script>ipt>']) {
+    const source=`# Guide\n\nText ${input}\n\n## Text ${input}`;
+    const result=renderMarkdown(source,source,options);
+    const toc=result.headings.map(([id,text])=>`<a href="#${escapeHtml(id)}">${escapeHtml(text)}</a>`).join('');
+    const meta=`<meta name="description" content="${escapeHtml(result.description)}">`;
+    assert.ok(!toc.includes('<script')&&!toc.includes('<img'));
+    assert.ok(!meta.includes('<script')&&!meta.includes('<img'));
+    assert.ok(!meta.includes('content="Text " onmouseover='));
+    for(const [id] of result.headings)assert.doesNotMatch(id,/[<>"'&]/);
+  }
 });

@@ -73,6 +73,10 @@ normal GitHub Pages domain verification process. Do not add an unverified domain
 - `src/style.css`: shared responsive visual system and documentation styles.
 - `src/demo.mjs`: deterministic illustration of the two cleanup checks.
 - `src/site.js`: illustration, copy controls, mobile menu and accessible tabs.
+- `src/downloads.mjs`: platform keys mapped to fixed release assets; DOM values
+  never supply a download URL.
+- `src/text.mjs`: Markdown token text and contextual HTML encoding. Entity
+  decoding is a build-time dependency; extracted text is escaped on output.
 - `build.mjs`: HTML generation, Markdown rendering and repository link rewriting.
 
 The browser illustration never calls the service, submits evidence or operates

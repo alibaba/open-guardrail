@@ -25,6 +25,5 @@ export const contributorDocs = [
 ];
 
 export function headingId(text) {
-  return text.toLowerCase().replace(/<[^>]+>/g, '').replace(/&[^;]+;/g, '')
-    .replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s+/g, '-');
+  return text.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s+/g, '-');
 }

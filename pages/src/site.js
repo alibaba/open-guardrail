@@ -1,5 +1,6 @@
 import { assessRequest } from './demo.mjs';
 import { copy } from './copy.mjs';
+import { downloadForPlatform } from './downloads.mjs';
 
 const t = copy[document.body.dataset.locale] || copy.en;
 const menuButton = document.querySelector('.menu-button');
@@ -55,7 +56,10 @@ tabs.forEach((tab,index) => {
 if (tabs.length) selectTab(0);
 
 document.querySelector('#download-platform')?.addEventListener('change', event => {
-  document.querySelector('#download-native').href = event.target.value;
+  const link = document.querySelector('#download-native');
+  const url = downloadForPlatform(event.currentTarget.value);
+  if (url && link) link.href = url;
+  else link?.removeAttribute('href');
 });
 
 document.querySelector('.copy-button')?.addEventListener('click', async () => {

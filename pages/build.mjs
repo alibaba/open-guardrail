@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { renderMarkdown } from './src/markdown.mjs';
 import { copy } from './src/copy.mjs';
 import { release } from './src/release.mjs';
+import { nativePlatforms } from './src/downloads.mjs';
+import { escapeHtml as esc } from './src/text.mjs';
 import { docs } from './src/docs.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -12,7 +14,6 @@ const dist = path.join(root, 'dist');
 const base = `/${(process.env.SITE_BASE_PATH || '').replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
 const origin = process.env.SITE_ORIGIN?.replace(/\/$/, '');
 const github = 'https://github.com/alibaba/open-guardrail';
-const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const asset = value => `${base}assets/${value}`;
 const home = locale => `${base}${locale === 'zh' ? 'zh/' : ''}`;
 const doc = (locale, slug = '') => `${home(locale)}docs/${slug ? `${slug}/` : ''}`;
@@ -43,16 +44,11 @@ const sourceCommands = 'git clone https://github.com/alibaba/open-guardrail.git\
 
 function quickstart(locale) {
   const t = copy[locale];
-  const platforms = [
-    ['darwin-arm64', 'macOS · Apple Silicon'],
-    ['darwin-amd64', 'macOS · Intel'],
-    ['linux-amd64', 'Linux · amd64'],
-    ['linux-arm64', 'Linux · arm64'],
-  ].map(([platform,label]) => ({label,asset:release.assets.find(a=>a.name.endsWith(`-${platform}.tar.gz`))}));
+  const platforms = nativePlatforms;
   const checksum = release.assets.find(a=>a.name==='SHA256SUMS');
   const plugin = release.assets.find(a=>a.name.endsWith('-install.tar.gz'));
   return `<section class="section quickstart" id="quickstart"><div class="container quickstart-grid"><div class="section-heading"><p class="eyebrow">${release.tag}</p><h2>${t.quickTitle}</h2><p class="prereq">${t.prereq}</p><a class="inline-link" href="${doc(locale,'native-install')}">${t.fullGuide} ${arrow}</a></div><div class="quickstart-panel"><div class="code-tabs" role="tablist" aria-label="${t.quickNavigation}">${t.quickTabs.map((s,i)=>`<button id="quick-tab-${i}" type="button" role="tab" aria-selected="${i === 0}" aria-controls="quick-panel-${i}" ${i ? 'tabindex="-1"' : ''}>${s}</button>`).join('')}<button class="copy-button" type="button" aria-label="${t.copy}" title="${t.copy}" hidden>⧉</button></div>
-    <div id="quick-panel-0" class="quick-panel download-panel" role="tabpanel" aria-labelledby="quick-tab-0"><p class="download-version">${release.tag} · Linux / macOS</p><label for="download-platform">${t.platform}</label><div class="download-controls"><select id="download-platform">${platforms.map(p=>`<option value="${p.asset.url}">${p.label}</option>`).join('')}</select><a id="download-native" class="button" href="${platforms[0].asset.url}">${t.downloadArchive} ↓</a></div><div class="download-links"><a href="${checksum.url}">SHA256SUMS ↗</a><a href="${doc(locale,'native-install')}">${t.installGuide} →</a></div><p class="quick-note">${t.quickHints[0]}</p><noscript><a class="inline-link" href="${release.url}">${t.releaseDownloads} ↗</a></noscript></div>
+    <div id="quick-panel-0" class="quick-panel download-panel" role="tabpanel" aria-labelledby="quick-tab-0"><p class="download-version">${release.tag} · Linux / macOS</p><label for="download-platform">${t.platform}</label><div class="download-controls"><select id="download-platform">${platforms.map(p=>`<option value="${p.key}">${p.label}</option>`).join('')}</select><a id="download-native" class="button" href="${platforms[0].url}">${t.downloadArchive} ↓</a></div><div class="download-links"><a href="${checksum.url}">SHA256SUMS ↗</a><a href="${doc(locale,'native-install')}">${t.installGuide} →</a></div><p class="quick-note">${t.quickHints[0]}</p><noscript><a class="inline-link" href="${release.url}">${t.releaseDownloads} ↗</a></noscript></div>
     <div id="quick-panel-1" class="quick-panel" role="tabpanel" aria-labelledby="quick-tab-1" hidden><pre><code>${sourceCommands.split('\n').map(s=>`<span class="command-line"><span class="syntax-comment" aria-hidden="true">$ </span>${esc(s)}</span>`).join('')}</code></pre><p>${t.quickHints[1]}</p></div>
     <div id="quick-panel-2" class="quick-panel plugin-panel" role="tabpanel" aria-labelledby="quick-tab-2" hidden><p>${t.pluginIntro}</p><a class="button" href="${doc(locale,'plugin-trial')}">${t.pluginGuide} →</a><a class="inline-link" href="${plugin.url}">${t.downloadPlugin} ↗</a><p class="quick-note">${t.quickHints[2]}</p></div>
   </div></div></section>`;
@@ -118,12 +114,12 @@ async function renderDoc(locale, item) {
     source, locale, rewriteLink:(href, image = false) => rewriteLink(href, source, locale, image),
   });
   const title = item[locale==='zh'?3:2];
-  return shell(locale, `<main id="main" class="container docs-layout">${docNav(locale,item[0])}<article class="doc-article"><div class="doc-breadcrumb"><a href="${doc(locale)}">${t.docsTitle}</a><span>/</span><span>${title}</span></div><div class="markdown-body" lang="${t.lang}">${html}</div><div class="doc-end"><a href="${github}/blob/main/${source}">${t.edit} ${arrow}</a><a href="${doc(locale)}">${t.back} →</a></div></article><aside class="docs-toc"><p class="eyebrow">${t.onPage}</p><nav aria-label="${t.onPage}">${headings.map(([id,text])=>`<a href="#${esc(id)}">${text}</a>`).join('')}</nav></aside></main>`,{route:`docs/${item[0]}/`,title:`${title} — OpenGuardrail`,description,toc:true});
+  return shell(locale, `<main id="main" class="container docs-layout">${docNav(locale,item[0])}<article class="doc-article"><div class="doc-breadcrumb"><a href="${doc(locale)}">${t.docsTitle}</a><span>/</span><span>${title}</span></div><div class="markdown-body" lang="${t.lang}">${html}</div><div class="doc-end"><a href="${github}/blob/main/${source}">${t.edit} ${arrow}</a><a href="${doc(locale)}">${t.back} →</a></div></article><aside class="docs-toc"><p class="eyebrow">${t.onPage}</p><nav aria-label="${t.onPage}">${headings.map(([id,text])=>`<a href="#${esc(id)}">${esc(text)}</a>`).join('')}</nav></aside></main>`,{route:`docs/${item[0]}/`,title:`${title} — OpenGuardrail`,description,toc:true});
 }
 
 await rm(dist, {recursive:true,force:true});
 await mkdir(path.join(dist,'assets'),{recursive:true});
-for (const file of ['style.css','noscript.css','site.js','demo.mjs','copy.mjs','favicon.svg','social-preview.png','social-preview-zh.png']) await cp(path.join(root,'src',file),path.join(dist,'assets',file));
+for (const file of ['style.css','noscript.css','site.js','demo.mjs','copy.mjs','downloads.mjs','release.mjs','favicon.svg','social-preview.png','social-preview-zh.png']) await cp(path.join(root,'src',file),path.join(dist,'assets',file));
 await cp(path.join(repo,'docs/images'),path.join(dist,'assets/images'),{recursive:true});
 const routes=[];
 async function save(route, content, index = true) {
