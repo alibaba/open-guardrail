@@ -13,7 +13,6 @@ func TestAuditPaginationIsolationAndHistoricalDetails(t *testing.T) {
 	for _, backend := range registeredDrivers() {
 		t.Run(backend.name, func(t *testing.T) {
 			store := identityStore(t, backend.name)
-			seedBindingScope(t, store)
 			ctx := context.Background()
 			scope := audit.Scope{WorkspaceID: "default", ProjectID: "default"}
 			insert := func(raw any, scoped bool) {
@@ -86,7 +85,6 @@ func TestAuditDetailByteBoundInDatabase(t *testing.T) {
 	for _, backend := range registeredDrivers() {
 		t.Run(backend.name, func(t *testing.T) {
 			store := identityStore(t, backend.name)
-			seedBindingScope(t, store)
 			ctx := context.Background()
 			cases := []struct {
 				name, body  string

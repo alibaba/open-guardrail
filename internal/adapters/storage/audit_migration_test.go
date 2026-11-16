@@ -24,7 +24,6 @@ func TestAuditIndexUpgradePreservesHistoryAndAvoidsPageSort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seedBindingScope(t, old)
 	if _, err := old.db.ExecContext(ctx, `INSERT INTO audit_event(event_type,actor_id,workspace_id,project_id,occurred_at,details_json) VALUES('legacy','admin',(SELECT id FROM workspace WHERE workspace_id='default'),(SELECT id FROM project WHERE project_id='default'),100,'{"before":"unchanged"}')`); err != nil {
 		t.Fatal(err)
 	}

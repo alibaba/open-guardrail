@@ -95,20 +95,8 @@ func (t *identityTx) SaveUser(u identity.User) error {
 	return safe(err)
 }
 func (t *identityTx) Initialize(u identity.User) error {
-	statements := []struct {
-		q    string
-		args []any
-	}{
-		{"INSERT INTO workspace(workspace_id,name) VALUES ($1,$2)", []any{u.WorkspaceID, "Default"}},
-		{"INSERT INTO project(project_id,workspace_id,name) VALUES ($1,(SELECT id FROM workspace WHERE workspace_id=$2),$3)", []any{u.ProjectID, u.WorkspaceID, "Default"}},
-		{"INSERT INTO local_user(user_id,username,workspace_id,project_id,password_hash) VALUES ($1,$2,(SELECT id FROM workspace WHERE workspace_id=$3),(SELECT id FROM project WHERE project_id=$4),$5)", []any{u.ID, u.Username, u.WorkspaceID, u.ProjectID, u.PasswordHash}},
-	}
-	for _, st := range statements {
-		if _, err := t.tx.ExecContext(t.ctx, st.q, st.args...); err != nil {
-			return safe(err)
-		}
-	}
-	return nil
+	_, err := t.tx.ExecContext(t.ctx, "INSERT INTO local_user(user_id,username,workspace_id,project_id,password_hash) VALUES ($1,$2,(SELECT id FROM workspace WHERE workspace_id=$3),(SELECT id FROM project WHERE project_id=$4),$5)", u.ID, u.Username, u.WorkspaceID, u.ProjectID, u.PasswordHash)
+	return safe(err)
 }
 func (t *identityTx) Session(hash string) (identity.Session, error) {
 	var s identity.Session

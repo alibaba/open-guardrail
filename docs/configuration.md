@@ -40,6 +40,12 @@ remote bootstrap-token flow even when the backend listener is loopback.
 the HTTP listener. `external` requires that schema and initialization version to
 be prepared in advance and does not create tables. A missing or different schema
 version fails startup.
+
+In both modes, opening storage automatically creates the default workspace and
+project if missing, independently of administrator setup. Existing IDs and names
+are preserved; no manual initialization SQL or workspace/project configuration is
+required. The database account needs permission to insert these records when absent.
+
 Both modes require the current schema for readiness. See the
 [runtime storage design](architecture.md#storage).
 

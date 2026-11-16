@@ -32,8 +32,8 @@ func openWithMigrations(ctx context.Context, c config.Config, migrationFiles fs.
 	return openDatabase(ctx, c, migrationFiles, false)
 }
 
-// OpenExisting opens a schema maintained outside the process. It neither initializes
-// nor migrates storage and rejects schemas that are missing or at the wrong version.
+// OpenExisting requires an externally maintained, current schema. It does not run
+// migrations, but prepares the default workspace/project just like Open.
 func OpenExisting(ctx context.Context, c config.Config) (*Store, error) {
 	return openDatabase(ctx, c, migrations.Files, true)
 }
@@ -108,6 +108,9 @@ func openDatabase(ctx context.Context, c config.Config, migrationFiles fs.FS, ex
 	s := &Store{db: db, provider: p, expected: expected, storage: driver.capability, driver: driver}
 	if err = s.Ready(ctx); err != nil {
 		return nil, err
+	}
+	if err = s.ensureDefaultProject(ctx); err != nil {
+		return nil, errors.New("cannot prepare default workspace/project; verify database data and write permissions")
 	}
 	opened = true
 	return s, nil

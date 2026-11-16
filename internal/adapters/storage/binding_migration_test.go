@@ -21,7 +21,6 @@ func TestBindingMigrationPreservesExistingPolicyAndRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seedBindingScope(t, old)
 	scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
 	initial, _, err := spec.New(old.Specs()).InitializeScene(ctx, scope, "recovery", "Recovery", "default", sampleSpec, "init")
 	if err != nil {

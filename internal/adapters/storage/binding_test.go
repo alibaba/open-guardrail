@@ -17,7 +17,6 @@ func TestBindingSelectionAndRunIsolation(t *testing.T) {
 		t.Run(backend.name, func(t *testing.T) {
 			store := identityStore(t, backend.name)
 			ctx := context.Background()
-			seedBindingScope(t, store)
 			scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
 			specs := spec.New(store.Specs())
 			initial, _, err := specs.InitializeScene(ctx, scope, "recovery", "Recovery", "default", sampleSpec, "init")
@@ -158,18 +157,5 @@ func TestBindingSelectionAndRunIsolation(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-// Keep fixture initialization independent of optional authentication modes.
-func seedBindingScope(t *testing.T, store *Store) {
-	t.Helper()
-	for _, query := range []string{
-		"INSERT INTO workspace(workspace_id,name) VALUES('default','Default')",
-		"INSERT INTO project(project_id,workspace_id,name) VALUES('default',(SELECT id FROM workspace WHERE workspace_id='default'),'Default')",
-	} {
-		if _, err := store.db.ExecContext(context.Background(), query); err != nil {
-			t.Fatal(err)
-		}
 	}
 }
