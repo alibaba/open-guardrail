@@ -198,9 +198,9 @@ func bootstrapRollback(t *testing.T, s *Store) {
 	if err != nil || initialized {
 		t.Fatal("failed bootstrap changed initialized state")
 	}
-	for _, table := range []string{"workspace", "project", "local_user", "project_api_key"} {
+	for table, expected := range map[string]int{"workspace": 1, "project": 1, "local_user": 0, "project_api_key": 0} {
 		var count int
-		if err = s.db.QueryRow("SELECT count(*) FROM " + table).Scan(&count); err != nil || count != 0 {
+		if err = s.db.QueryRow("SELECT count(*) FROM " + table).Scan(&count); err != nil || count != expected {
 			t.Fatalf("partial initialization in %s: count=%d error=%v", table, count, err)
 		}
 	}
@@ -251,9 +251,9 @@ func localSetupSession(t *testing.T, s *Store) {
 	if initialized, err := svc.Status(ctx); err != nil || initialized {
 		t.Fatal("failed session creation left an administrator initialized")
 	}
-	for _, table := range []string{"local_user", "admin_session", "workspace", "project", "project_api_key", "audit_event"} {
+	for table, expected := range map[string]int{"workspace": 1, "project": 1, "local_user": 0, "admin_session": 0, "project_api_key": 0, "audit_event": 0} {
 		var count int
-		if err := s.db.QueryRow("SELECT count(*) FROM " + table).Scan(&count); err != nil || count != 0 {
+		if err := s.db.QueryRow("SELECT count(*) FROM " + table).Scan(&count); err != nil || count != expected {
 			t.Fatalf("partial writes in %s", table)
 		}
 	}

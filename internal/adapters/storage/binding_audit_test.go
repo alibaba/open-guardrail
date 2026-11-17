@@ -14,7 +14,6 @@ func TestBindingAuditRecordsOnlyActualChanges(t *testing.T) {
 		t.Run(backend.name, func(t *testing.T) {
 			store := identityStore(t, backend.name)
 			ctx := context.Background()
-			seedBindingScope(t, store)
 			scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
 			specs := spec.New(store.Specs())
 			initial, _, err := specs.InitializeScene(ctx, scope, "recovery", "Recovery", "default", sampleSpec, "init")
