@@ -9,6 +9,7 @@ var (
 	ErrNotFound            = errors.New("Run or Scene not found")
 	ErrSpecNotPublished    = errors.New("Scene has no active Policy Revision")
 	ErrIdempotencyConflict = errors.New("idempotency key was already used for another request")
+	ErrBusinessIDConflict  = errors.New("business ID was already used for another Run request")
 	ErrCompleted           = errors.New("Run is already finished")
 	ErrExpired             = errors.New("Run has expired")
 	ErrUnauthorized        = errors.New("Run credential rejected")

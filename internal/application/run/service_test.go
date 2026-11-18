@@ -70,9 +70,9 @@ func TestCreateCanonicalIdentityAndCredentialLifetime(t *testing.T) {
 	service := New(repository)
 	service.now = func() time.Time { return time.Unix(1000, 0) }
 	service.newToken = func() string { return "ogrt_synthetic" }
-	first := CreateInput{SceneKey: "recovery", ChangeSet: json.RawMessage(`{"b":2,"a":1}`), IdempotencyKey: "retry"}
+	first := CreateInput{SceneKey: "recovery", BusinessID: "release/1001", ChangeSet: json.RawMessage(`{"b":2,"a":1}`), IdempotencyKey: "retry"}
 	_, created, token, err := service.Create(context.Background(), Scope{}, first)
-	if err != nil || !created || token != "ogrt_synthetic" || repository.input.Now != 1000 || repository.input.SubmissionTokenHash != hashString(token) {
+	if err != nil || !created || token != "ogrt_synthetic" || repository.input.BusinessID != first.BusinessID || repository.input.Now != 1000 || repository.input.SubmissionTokenHash != hashString(token) {
 		t.Fatalf("created=%v token=%q err=%v", created, token, err)
 	}
 	digest := repository.input.RequestDigest

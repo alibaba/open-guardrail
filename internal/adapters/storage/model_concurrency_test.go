@@ -133,6 +133,37 @@ func TestModelConcurrentIdempotency(t *testing.T) {
 			if _, _, err := store.Runs().CreatePolicyRun(ctx, runScope, conflict); !errors.Is(err, runapp.ErrIdempotencyConflict) {
 				t.Fatalf("conflicting create replay: %v", err)
 			}
+			businessInput := createInput
+			businessInput.BusinessID = "deployment-42"
+			businessOutcomes := make(chan createOutcome, 8)
+			candidate.Store(0)
+			burst(func() error {
+				input := businessInput
+				n := candidate.Add(1)
+				input.IdempotencyKey = fmt.Sprintf("business-%d", n)
+				input.SubmissionTokenHash = fmt.Sprintf("%064d", 200+n)
+				run, created, err := store.Runs().CreatePolicyRun(ctx, runScope, input)
+				if err == nil {
+					businessOutcomes <- createOutcome{run.ID, created, input.SubmissionTokenHash}
+				}
+				return err
+			})
+			close(businessOutcomes)
+			businessRunID, businessCreatedCount := "", 0
+			for outcome := range businessOutcomes {
+				if businessRunID == "" {
+					businessRunID = outcome.runID
+				}
+				if outcome.runID != businessRunID {
+					t.Fatalf("same business ID returned different Runs: %s / %s", businessRunID, outcome.runID)
+				}
+				if outcome.created {
+					businessCreatedCount++
+				}
+			}
+			if businessCreatedCount != 1 {
+				t.Fatalf("business ID created %d Runs, want exactly one", businessCreatedCount)
+			}
 			for i := 0; i < 10; i++ {
 				tokenHash := fmt.Sprintf("%064d", i)
 				run, _, err := store.Runs().CreatePolicyRun(ctx, runScope, runapp.PolicyRunCreateInput{SceneKey: "recovery", ChangeSetJSON: "{}", ChangeSetDigest: digest, RequestDigest: digest, SubmissionTokenHash: tokenHash, IdempotencyKey: fmt.Sprint("run-", i), Now: 1000})

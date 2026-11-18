@@ -14,21 +14,25 @@ import (
 	specdomain "github.com/alibaba/open-guardrail/internal/domain/spec"
 )
 
-const policyRunColumns = "gr.run_id,gr.scene_key,p.policy_id,pr.policy_revision_id,gr.spec_digest,gr.status,gr.change_set_json,gr.change_set_digest,gr.run_ttl_seconds,gr.deadline_at,gr.latest_submission_no,fs.submission_id,gr.created_at,gr.finished_at,gr.expired_at,gr.result_verdict,gr.decision_verdict,gr.decision_expires_at,gr.selection_json"
+const policyRunColumns = "gr.run_id,gr.business_id,gr.scene_key,p.policy_id,pr.policy_revision_id,gr.spec_digest,gr.status,gr.change_set_json,gr.change_set_digest,gr.run_ttl_seconds,gr.deadline_at,gr.latest_submission_no,fs.submission_id,gr.created_at,gr.finished_at,gr.expired_at,gr.result_verdict,gr.decision_verdict,gr.decision_expires_at,gr.selection_json"
 const policyRunFrom = " FROM guardrail_run gr JOIN policy p ON p.id=gr.policy_id JOIN policy_revision pr ON pr.id=gr.policy_revision_id LEFT JOIN submission fs ON fs.id=gr.final_submission_id"
 
 func scanPolicyRun(row scanner) (runapp.PolicyRun, error) {
 	var run runapp.PolicyRun
 	var changeSet string
+	var businessID sql.NullString
 	var selection sql.NullString
 	var finalID, result, decision sql.NullString
 	var finished, expired, expiresAt sql.NullInt64
-	err := row.Scan(&run.ID, &run.SceneKey, &run.PolicyID, &run.PolicyRevisionID, &run.SpecDigest, &run.Status, &changeSet, &run.ChangeSetDigest, &run.RunTTLSeconds, &run.DeadlineAt, &run.LatestSubmissionNo, &finalID, &run.CreatedAt, &finished, &expired, &result, &decision, &expiresAt, &selection)
+	err := row.Scan(&run.ID, &businessID, &run.SceneKey, &run.PolicyID, &run.PolicyRevisionID, &run.SpecDigest, &run.Status, &changeSet, &run.ChangeSetDigest, &run.RunTTLSeconds, &run.DeadlineAt, &run.LatestSubmissionNo, &finalID, &run.CreatedAt, &finished, &expired, &result, &decision, &expiresAt, &selection)
 	if err != nil {
 		return runapp.PolicyRun{}, runError(err)
 	}
 	if selection.Valid && json.Unmarshal([]byte(selection.String), &run.Selection) != nil {
 		return runapp.PolicyRun{}, runapp.ErrUnavailable
+	}
+	if businessID.Valid {
+		run.BusinessID = &businessID.String
 	}
 	run.ChangeSetJSON = json.RawMessage(changeSet)
 	if finalID.Valid {
@@ -51,14 +55,18 @@ func scanPolicyRun(row scanner) (runapp.PolicyRun, error) {
 
 func scanPolicyRunSummary(row scanner) (runapp.PolicyRunSummary, error) {
 	var run runapp.PolicyRunSummary
+	var businessID sql.NullString
 	var finalID, result, decision sql.NullString
 	var finished, expired, expiresAt sql.NullInt64
-	err := row.Scan(&run.ID, &run.SceneKey, &run.PolicyID, &run.PolicyRevisionID, &run.SpecDigest, &run.Status, &run.ChangeSetDigest, &run.RunTTLSeconds, &run.DeadlineAt, &run.LatestSubmissionNo, &finalID, &run.CreatedAt, &finished, &expired, &result, &decision, &expiresAt)
+	err := row.Scan(&run.ID, &businessID, &run.SceneKey, &run.PolicyID, &run.PolicyRevisionID, &run.SpecDigest, &run.Status, &run.ChangeSetDigest, &run.RunTTLSeconds, &run.DeadlineAt, &run.LatestSubmissionNo, &finalID, &run.CreatedAt, &finished, &expired, &result, &decision, &expiresAt)
 	if err != nil {
 		return runapp.PolicyRunSummary{}, runError(err)
 	}
 	if finalID.Valid {
 		run.FinalSubmissionID = &finalID.String
+	}
+	if businessID.Valid {
+		run.BusinessID = &businessID.String
 	}
 	if finished.Valid {
 		run.FinishedAt = &finished.Int64
@@ -83,6 +91,16 @@ func (s *Runs) GetPolicyRun(ctx context.Context, scope runapp.Scope, id string) 
 func findPolicyRunByKey(ctx context.Context, q rowQueryer, scope runapp.Scope, key string) (runapp.PolicyRun, string, error) {
 	var digest, id string
 	err := q.QueryRowContext(ctx, "SELECT run_id,request_digest FROM guardrail_run WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND project_id=(SELECT id FROM project WHERE project_id=$2) AND idempotency_key=$3", scope.WorkspaceID, scope.ProjectID, key).Scan(&id, &digest)
+	if err != nil {
+		return runapp.PolicyRun{}, "", runError(err)
+	}
+	run, err := policyRunByID(ctx, q, scope, id)
+	return run, digest, err
+}
+
+func findPolicyRunByBusinessID(ctx context.Context, q rowQueryer, scope runapp.Scope, sceneKey, businessID string) (runapp.PolicyRun, string, error) {
+	var digest, id string
+	err := q.QueryRowContext(ctx, "SELECT run_id,request_digest FROM guardrail_run WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND project_id=(SELECT id FROM project WHERE project_id=$2) AND scene_key=$3 AND business_id=$4", scope.WorkspaceID, scope.ProjectID, sceneKey, businessID).Scan(&id, &digest)
 	if err != nil {
 		return runapp.PolicyRun{}, "", runError(err)
 	}
@@ -123,6 +141,18 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	}
 	if n == 0 {
 		return runapp.PolicyRun{}, false, runapp.ErrNotFound
+	}
+	if input.BusinessID != "" {
+		if existing, digest, lookupErr := findPolicyRunByBusinessID(ctx, tx, scope, input.SceneKey, input.BusinessID); lookupErr == nil {
+			if digest != input.RequestDigest {
+				return runapp.PolicyRun{}, false, runapp.ErrBusinessIDConflict
+			}
+			_ = tx.Rollback()
+			refreshed, refreshErr := s.RefreshPolicyRun(ctx, scope, existing.ID, input.Now)
+			return refreshed, false, refreshErr
+		} else if !errors.Is(lookupErr, runapp.ErrNotFound) {
+			return runapp.PolicyRun{}, false, lookupErr
+		}
 	}
 	selectedPolicy, selectedRevision := "", input.PolicyRevisionID
 	var selection *runapp.Selection
@@ -203,11 +233,18 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 		}
 		selectionJSON = string(data)
 	}
+	var businessID any
+	if input.BusinessID != "" {
+		businessID = input.BusinessID
+	}
 	run := runapp.PolicyRun{Selection: selection, ID: identity.RandomToken("run_"), SceneKey: input.SceneKey, PolicyID: policyID, PolicyRevisionID: revisionID, SpecDigest: digest, Status: "OPEN", ChangeSetJSON: json.RawMessage(input.ChangeSetJSON), ChangeSetDigest: input.ChangeSetDigest, RunTTLSeconds: ttl, DeadlineAt: input.Now + ttl, CreatedAt: input.Now}
-	insert := `INSERT INTO guardrail_run(run_id,workspace_id,project_id,scene_key,policy_id,policy_revision_id,spec_digest,status,change_set_json,change_set_digest,idempotency_key,request_digest,run_ttl_seconds,deadline_at,decision_ttl_seconds,created_by,created_at,selection_json)
-  VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,(SELECT id FROM policy WHERE policy_id=$5),(SELECT id FROM policy_revision WHERE policy_revision_id=$6 AND status='PUBLISHED'),$7,'OPEN',$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`
+	if input.BusinessID != "" {
+		run.BusinessID = &input.BusinessID
+	}
+	insert := `INSERT INTO guardrail_run(run_id,business_id,workspace_id,project_id,scene_key,policy_id,policy_revision_id,spec_digest,status,change_set_json,change_set_digest,idempotency_key,request_digest,run_ttl_seconds,deadline_at,decision_ttl_seconds,created_by,created_at,selection_json)
+  VALUES($1,$2,(SELECT id FROM workspace WHERE workspace_id=$3),(SELECT id FROM project WHERE project_id=$4),$5,(SELECT id FROM policy WHERE policy_id=$6),(SELECT id FROM policy_revision WHERE policy_revision_id=$7 AND status='PUBLISHED'),$8,'OPEN',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`
 	insert += s.driver.conflictClause("workspace_id,project_id,idempotency_key")
-	result, err := tx.ExecContext(ctx, insert, run.ID, scope.WorkspaceID, scope.ProjectID, run.SceneKey, run.PolicyID, run.PolicyRevisionID, run.SpecDigest, input.ChangeSetJSON, run.ChangeSetDigest, input.IdempotencyKey, input.RequestDigest, run.RunTTLSeconds, run.DeadlineAt, decisionTTL, scope.ActorID, run.CreatedAt, selectionJSON)
+	result, err := tx.ExecContext(ctx, insert, run.ID, businessID, scope.WorkspaceID, scope.ProjectID, run.SceneKey, run.PolicyID, run.PolicyRevisionID, run.SpecDigest, input.ChangeSetJSON, run.ChangeSetDigest, input.IdempotencyKey, input.RequestDigest, run.RunTTLSeconds, run.DeadlineAt, decisionTTL, scope.ActorID, run.CreatedAt, selectionJSON)
 	duplicate := s.driver.isDuplicate(err)
 	if err != nil && !duplicate {
 		return runapp.PolicyRun{}, false, runError(err)
@@ -222,6 +259,23 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	if n == 0 {
 		existing, existingDigest, lookupErr := findPolicyRunByKey(ctx, tx, scope, input.IdempotencyKey)
 		if lookupErr != nil {
+			if duplicate && errors.Is(lookupErr, runapp.ErrNotFound) && input.BusinessID != "" {
+				// MySQL REPEATABLE READ can retain the snapshot established by
+				// the initial idempotency lookup while waiting for the Scene lock.
+				// End that snapshot before resolving the business-key winner.
+				_ = tx.Rollback()
+				businessRun, businessDigest, businessErr := findPolicyRunByBusinessID(ctx, s.db, scope, input.SceneKey, input.BusinessID)
+				if businessErr == nil {
+					if businessDigest != input.RequestDigest {
+						return runapp.PolicyRun{}, false, runapp.ErrBusinessIDConflict
+					}
+					refreshed, refreshErr := s.RefreshPolicyRun(ctx, scope, businessRun.ID, input.Now)
+					return refreshed, false, refreshErr
+				}
+				if !errors.Is(businessErr, runapp.ErrNotFound) {
+					return runapp.PolicyRun{}, false, businessErr
+				}
+			}
 			if duplicate && errors.Is(lookupErr, runapp.ErrNotFound) {
 				// A different unique key (for example, the generated run ID)
 				// may have caused the duplicate-key error.
@@ -489,19 +543,20 @@ func (s *Runs) RotatePolicySubmissionCredential(ctx context.Context, scope runap
 // ListPolicyRuns pages by (created_at,id); overdue OPEN rows are selected as
 // EXPIRED and then persisted before a page is returned. Ordinary pages use
 // one read query; overdue rows share one transaction for their transitions.
-func (s *Runs) ListPolicyRuns(ctx context.Context, scope runapp.Scope, sceneKey, status string, limit int, cursorAt int64, cursorID string, now int64) ([]runapp.PolicyRunSummary, bool, error) {
+func (s *Runs) ListPolicyRuns(ctx context.Context, scope runapp.Scope, sceneKey, businessID, status string, limit int, cursorAt int64, cursorID string, now int64) ([]runapp.PolicyRunSummary, bool, error) {
 	if limit < 1 || limit > 100 {
 		return nil, false, runapp.ErrInvalid
 	}
 	// Use one argument per placeholder occurrence for positional-binding adapters.
-	rows, err := s.db.QueryContext(ctx, `SELECT gr.run_id,gr.scene_key,p.policy_id,pr.policy_revision_id,gr.spec_digest,gr.status,
+	rows, err := s.db.QueryContext(ctx, `SELECT gr.run_id,gr.business_id,gr.scene_key,p.policy_id,pr.policy_revision_id,gr.spec_digest,gr.status,
  gr.change_set_digest,gr.run_ttl_seconds,gr.deadline_at,gr.latest_submission_no,
  fs.submission_id,gr.created_at,gr.finished_at,gr.expired_at,gr.result_verdict,gr.decision_verdict,gr.decision_expires_at`+policyRunFrom+`
  WHERE gr.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND gr.project_id=(SELECT id FROM project WHERE project_id=$2)
  AND ($3='' OR gr.scene_key=$4)
- AND ($5='' OR (CASE WHEN gr.status='OPEN' AND gr.deadline_at<=$6 THEN 'EXPIRED' ELSE gr.status END)=$7)
- AND ($8=0 OR gr.created_at<$9 OR (gr.created_at=$10 AND gr.run_id<$11))
- ORDER BY gr.created_at DESC,gr.run_id DESC LIMIT $12`, scope.WorkspaceID, scope.ProjectID, sceneKey, sceneKey, status, now, status, cursorAt, cursorAt, cursorAt, cursorID, limit+1)
+ AND ($5='' OR gr.business_id=$6)
+ AND ($7='' OR (CASE WHEN gr.status='OPEN' AND gr.deadline_at<=$8 THEN 'EXPIRED' ELSE gr.status END)=$9)
+ AND ($10=0 OR gr.created_at<$11 OR (gr.created_at=$12 AND gr.run_id<$13))
+ ORDER BY gr.created_at DESC,gr.run_id DESC LIMIT $14`, scope.WorkspaceID, scope.ProjectID, sceneKey, sceneKey, businessID, businessID, status, now, status, cursorAt, cursorAt, cursorAt, cursorID, limit+1)
 	if err != nil {
 		return nil, false, runError(err)
 	}

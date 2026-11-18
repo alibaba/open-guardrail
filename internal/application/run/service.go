@@ -28,6 +28,7 @@ func New(repository Repository) *Service {
 type CreateInput struct {
 	Resources      []resource.Reference
 	SceneKey       string
+	BusinessID     string
 	ChangeSet      json.RawMessage
 	RevisionID     *string
 	IdempotencyKey string
@@ -42,7 +43,11 @@ func (s *Service) Create(ctx context.Context, scope Scope, input CreateInput) (P
 	if input.RevisionID != nil {
 		revisionID, mode = *input.RevisionID, "revision"
 	}
-	requestDigest := hashString(input.SceneKey + "\n" + string(canonical) + "\n" + mode + "\n" + revisionID)
+	requestIdentity := input.SceneKey + "\n" + string(canonical) + "\n" + mode + "\n" + revisionID
+	if input.BusinessID != "" {
+		requestIdentity += "\nbusinessId:" + input.BusinessID
+	}
+	requestDigest := hashString(requestIdentity)
 	var refs []resource.Reference
 	if len(input.Resources) > 0 {
 		if input.RevisionID != nil {
@@ -64,6 +69,7 @@ func (s *Service) Create(ctx context.Context, scope Scope, input CreateInput) (P
 	token := s.newToken()
 	run, created, err := s.Repository.CreatePolicyRun(ctx, scope, PolicyRunCreateInput{
 		SceneKey:            input.SceneKey,
+		BusinessID:          input.BusinessID,
 		PolicyRevisionID:    revisionID,
 		CanSelectRevision:   scope.CanSelectRevision,
 		Resources:           refs,
@@ -93,8 +99,8 @@ func (s *Service) Rotate(ctx context.Context, scope Scope, id string) (PolicyRun
 func (s *Service) Get(ctx context.Context, scope Scope, id string) (PolicyRun, error) {
 	return s.Repository.RefreshPolicyRun(ctx, scope, id, s.now().Unix())
 }
-func (s *Service) List(ctx context.Context, scope Scope, scene, status string, limit int, cursorAt int64, cursorID string) ([]PolicyRunSummary, bool, error) {
-	return s.Repository.ListPolicyRuns(ctx, scope, scene, status, limit, cursorAt, cursorID, s.now().Unix())
+func (s *Service) List(ctx context.Context, scope Scope, scene, businessID, status string, limit int, cursorAt int64, cursorID string) ([]PolicyRunSummary, bool, error) {
+	return s.Repository.ListPolicyRuns(ctx, scope, scene, businessID, status, limit, cursorAt, cursorID, s.now().Unix())
 }
 func hashString(value string) string {
 	sum := sha256.Sum256([]byte(value))

@@ -826,7 +826,9 @@ type CreatePolicyRequest struct {
 
 // CreatePolicyRunRequest defines model for CreatePolicyRunRequest.
 type CreatePolicyRunRequest struct {
-	ChangeSet json.RawMessage `json:"changeSet"`
+	// BusinessId Optional caller-owned immutable business correlation ID. Unique within the authenticated Project and Scene and permanently bound to one Run, including after FINISHED or EXPIRED. Use a new value for a new Run attempt. Leading or trailing whitespace is rejected.
+	BusinessId *string         `json:"businessId,omitempty"`
+	ChangeSet  json.RawMessage `json:"changeSet"`
 
 	// PolicyRevisionRef Privileged override requiring runs:create-with-revision and bypassing resource bindings. Grant only to trusted override operators.
 	PolicyRevisionRef *struct {
@@ -962,6 +964,7 @@ type PolicyRevisionPage struct {
 
 // PolicyRun defines model for PolicyRun.
 type PolicyRun struct {
+	BusinessId         *string         `json:"businessId,omitempty"`
 	ChangeSet          json.RawMessage `json:"changeSet"`
 	ChangeSetDigest    string          `json:"changeSetDigest"`
 	CreatedAt          int64           `json:"createdAt"`
@@ -1002,6 +1005,7 @@ type PolicyRunPage struct {
 
 // PolicyRunSummary Bounded Run list item. Read the Run detail endpoint for changeSet.
 type PolicyRunSummary struct {
+	BusinessId         *string                `json:"businessId,omitempty"`
 	ChangeSetDigest    string                 `json:"changeSetDigest"`
 	CreatedAt          int64                  `json:"createdAt"`
 	DeadlineAt         int64                  `json:"deadlineAt"`
@@ -1271,6 +1275,9 @@ type CSRF string
 // IdempotencyKey defines model for IdempotencyKey.
 type IdempotencyKey = string
 
+// RunBusinessIDFilter defines model for RunBusinessIDFilter.
+type RunBusinessIDFilter = string
+
 // RunCursor defines model for RunCursor.
 type RunCursor = string
 
@@ -1454,6 +1461,9 @@ type ListManagedPolicyRunsParams struct {
 	// SceneKey Optional exact Scene key.
 	SceneKey *RunSceneFilter `form:"sceneKey,omitempty" json:"sceneKey,omitempty"`
 
+	// BusinessId Optional exact caller-owned business correlation ID, permanently bound to one Run. Combine with sceneKey for one Run.
+	BusinessId *RunBusinessIDFilter `form:"businessId,omitempty" json:"businessId,omitempty"`
+
 	// Limit Maximum number of Runs returned.
 	Limit *RunLimit `form:"limit,omitempty" json:"limit,omitempty"`
 
@@ -1540,6 +1550,9 @@ type ListPolicyRunsParams struct {
 
 	// SceneKey Optional exact Scene key.
 	SceneKey *RunSceneFilter `form:"sceneKey,omitempty" json:"sceneKey,omitempty"`
+
+	// BusinessId Optional exact caller-owned business correlation ID, permanently bound to one Run. Combine with sceneKey for one Run.
+	BusinessId *RunBusinessIDFilter `form:"businessId,omitempty" json:"businessId,omitempty"`
 
 	// Limit Maximum number of Runs returned.
 	Limit *RunLimit `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1928,19 +1941,19 @@ type ClientInterface interface {
 
 	// ListPolicyRuns performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 	//
-	// Requires runs:read.
+	// Requires runs:read. sceneKey and businessId together select at most one Run.
 	ListPolicyRuns(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreatePolicyRunWithBody performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	CreatePolicyRunWithBody(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreatePolicyRun performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	CreatePolicyRun(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPolicyRun performs a GET /runtime/v1alpha1/runs/{runId} (the `GetPolicyRun` operationId) request.
@@ -2787,7 +2800,7 @@ func (c *Client) GetMachineIdentity(ctx context.Context, reqEditors ...RequestEd
 
 // ListPolicyRuns performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 //
-// Requires runs:read.
+// Requires runs:read. sceneKey and businessId together select at most one Run.
 func (c *Client) ListPolicyRuns(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListPolicyRunsRequest(c.Server, params)
 	if err != nil {
@@ -2803,7 +2816,7 @@ func (c *Client) ListPolicyRuns(ctx context.Context, params *ListPolicyRunsParam
 // CreatePolicyRunWithBody performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 // with any type of body and a specified content type.
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 func (c *Client) CreatePolicyRunWithBody(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRunRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
@@ -2819,7 +2832,7 @@ func (c *Client) CreatePolicyRunWithBody(ctx context.Context, params *CreatePoli
 // CreatePolicyRun performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 func (c *Client) CreatePolicyRun(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRunRequest(c.Server, params, body)
 	if err != nil {
@@ -4201,6 +4214,18 @@ func NewListManagedPolicyRunsRequest(server string, params *ListManagedPolicyRun
 
 		}
 
+		if params.BusinessId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "businessId", *params.BusinessId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Limit != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
@@ -5142,6 +5167,18 @@ func NewListPolicyRunsRequest(server string, params *ListPolicyRunsParams) (*htt
 
 		}
 
+		if params.BusinessId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "businessId", *params.BusinessId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Limit != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
@@ -5844,7 +5881,7 @@ type ClientWithResponsesInterface interface {
 
 	// ListPolicyRunsWithResponse performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 	//
-	// Requires runs:read.
+	// Requires runs:read. sceneKey and businessId together select at most one Run.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListPolicyRunsWithResponse(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*ListPolicyRunsResponse, error)
@@ -5852,7 +5889,7 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyRunWithBodyWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	CreatePolicyRunWithBodyWithResponse(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error)
@@ -5860,7 +5897,7 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyRunWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	CreatePolicyRunWithResponse(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error)
 
 	// GetPolicyRunWithResponse performs a GET /runtime/v1alpha1/runs/{runId} (the `GetPolicyRun` operationId) request.
@@ -9649,7 +9686,7 @@ func (c *ClientWithResponses) GetMachineIdentityWithResponse(ctx context.Context
 
 // ListPolicyRunsWithResponse performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 //
-// Requires runs:read.
+// Requires runs:read. sceneKey and businessId together select at most one Run.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ListPolicyRunsWithResponse(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*ListPolicyRunsResponse, error) {
@@ -9663,7 +9700,7 @@ func (c *ClientWithResponses) ListPolicyRunsWithResponse(ctx context.Context, pa
 // CreatePolicyRunWithBodyWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 // with any type of body and a specified content type.
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) CreatePolicyRunWithBodyWithResponse(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error) {
@@ -9677,7 +9714,7 @@ func (c *ClientWithResponses) CreatePolicyRunWithBodyWithResponse(ctx context.Co
 // CreatePolicyRunWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key replays without reissuing the credential.
+// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 func (c *ClientWithResponses) CreatePolicyRunWithResponse(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error) {
 	rsp, err := c.CreatePolicyRun(ctx, params, body, reqEditors...)
 	if err != nil {
@@ -13901,6 +13938,19 @@ func (siw *ServerInterfaceWrapper) ListManagedPolicyRuns(w http.ResponseWriter, 
 		return
 	}
 
+	// ------------- Optional query parameter "businessId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "businessId", r.URL.Query(), &params.BusinessId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "businessId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "businessId", Err: err})
+		}
+		return
+	}
+
 	// ------------- Optional query parameter "limit" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
@@ -14694,6 +14744,19 @@ func (siw *ServerInterfaceWrapper) ListPolicyRuns(w http.ResponseWriter, r *http
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sceneKey"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sceneKey", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "businessId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "businessId", r.URL.Query(), &params.BusinessId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "businessId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "businessId", Err: err})
 		}
 		return
 	}

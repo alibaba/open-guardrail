@@ -197,6 +197,46 @@ func TestModelHTTPFlow(t *testing.T) {
 	if creation.Run.PolicyRevisionID == "" || creation.SubmissionCredential.Token == "" {
 		t.Fatal("missing revision or credential")
 	}
+	for name, invalid := range map[string]string{
+		"leading-space":  " release-1001",
+		"trailing-space": "release-1001 ",
+		"control":        "release-\x01-1001",
+		"too-long":       strings.Repeat("x", 129),
+	} {
+		response := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-invalid-"+name, map[string]any{"sceneKey": "recovery", "businessId": invalid, "changeSet": map[string]any{"target": "business"}})
+		expect(response, 400)
+	}
+	businessBody := map[string]any{"sceneKey": "recovery", "businessId": "release-1001", "changeSet": map[string]any{"target": "business"}}
+	businessCreated := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-create", businessBody)
+	expect(businessCreated, 201)
+	var businessCreation struct {
+		Run runapp.PolicyRun `json:"run"`
+	}
+	if err := json.Unmarshal(businessCreated.Body.Bytes(), &businessCreation); err != nil || businessCreation.Run.BusinessID == nil || *businessCreation.Run.BusinessID != "release-1001" {
+		t.Fatalf("invalid business Run: %s: %v", businessCreated.Body.String(), err)
+	}
+	businessReplay := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-replay", businessBody)
+	expect(businessReplay, 200)
+	var replayedBusinessRun runapp.PolicyRun
+	if err := json.Unmarshal(businessReplay.Body.Bytes(), &replayedBusinessRun); err != nil || replayedBusinessRun.ID != businessCreation.Run.ID {
+		t.Fatalf("invalid business replay: %s: %v", businessReplay.Body.String(), err)
+	}
+	businessConflict := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-conflict", map[string]any{"sceneKey": "recovery", "businessId": "release-1001", "changeSet": map[string]any{"target": "different"}})
+	expect(businessConflict, 409)
+	var businessProblem struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(businessConflict.Body.Bytes(), &businessProblem); err != nil || businessProblem.Code != "BUSINESS_ID_CONFLICT" {
+		t.Fatalf("unexpected business conflict: %s: %v", businessConflict.Body.String(), err)
+	}
+	businessList := call("GET", "/runtime/v1alpha1/runs?sceneKey=recovery&businessId=release-1001", key.APIKey, "", nil)
+	expect(businessList, 200)
+	var businessPage struct {
+		Items []runapp.PolicyRunSummary `json:"items"`
+	}
+	if err := json.Unmarshal(businessList.Body.Bytes(), &businessPage); err != nil || len(businessPage.Items) != 1 || businessPage.Items[0].ID != businessCreation.Run.ID {
+		t.Fatalf("invalid business list: %s: %v", businessList.Body.String(), err)
+	}
 	snapshot := map[string]any{}
 	if err := json.Unmarshal([]byte(`{"baseSubmissionNo":0,"finishRun":false,"verdict":"PASS","summary":"healthy","checks":[{"checkId":"readiness","verdict":"PASS","summary":"healthy","evidence":[{"requirementId":"health","observedAt":"2026-10-26T00:00:00Z","querySummary":"queried health","resultSummary":"healthy"}]}]}`), &snapshot); err != nil {
 		t.Fatal(err)

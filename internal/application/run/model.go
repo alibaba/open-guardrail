@@ -16,6 +16,7 @@ var (
 type PolicyRun struct {
 	Selection          *Selection      `json:"selection,omitempty"`
 	ID                 string          `json:"id"`
+	BusinessID         *string         `json:"businessId,omitempty"`
 	SceneKey           string          `json:"sceneKey"`
 	PolicyID           string          `json:"policyId"`
 	PolicyRevisionID   string          `json:"policyRevisionId"`
@@ -39,6 +40,7 @@ type PolicyRun struct {
 // The potentially large ChangeSet is available only from the Run detail API.
 type PolicyRunSummary struct {
 	ID                 string  `json:"id"`
+	BusinessID         *string `json:"businessId,omitempty"`
 	SceneKey           string  `json:"sceneKey"`
 	PolicyID           string  `json:"policyId"`
 	PolicyRevisionID   string  `json:"policyRevisionId"`
@@ -59,7 +61,7 @@ type PolicyRunSummary struct {
 
 func (r PolicyRun) Summary() PolicyRunSummary {
 	return PolicyRunSummary{
-		ID: r.ID, SceneKey: r.SceneKey, PolicyID: r.PolicyID, PolicyRevisionID: r.PolicyRevisionID,
+		ID: r.ID, BusinessID: r.BusinessID, SceneKey: r.SceneKey, PolicyID: r.PolicyID, PolicyRevisionID: r.PolicyRevisionID,
 		SpecDigest: r.SpecDigest, Status: r.Status, ChangeSetDigest: r.ChangeSetDigest,
 		RunTTLSeconds: r.RunTTLSeconds, DeadlineAt: r.DeadlineAt, LatestSubmissionNo: r.LatestSubmissionNo,
 		FinalSubmissionID: r.FinalSubmissionID, CreatedAt: r.CreatedAt, FinishedAt: r.FinishedAt,
@@ -70,6 +72,7 @@ func (r PolicyRun) Summary() PolicyRunSummary {
 type PolicyRunCreateInput struct {
 	Resources           []resource.Reference
 	SceneKey            string
+	BusinessID          string
 	PolicyRevisionID    string // Empty selects bindings or the Scene default active Revision.
 	CanSelectRevision   bool   // Granted only by a dedicated machine scope.
 	ChangeSetJSON       string
