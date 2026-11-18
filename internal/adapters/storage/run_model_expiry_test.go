@@ -106,7 +106,7 @@ func testPolicyRunExpiryAndCredentialRotationBackend(t *testing.T, store *Store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, more, err := store.Runs().ListPolicyRuns(ctx, scope, "", "EXPIRED", 100, 0, "", 1061)
+	page, more, err := store.Runs().ListPolicyRuns(ctx, scope, "", "", "EXPIRED", 100, 0, "", 1061)
 	if err != nil || more || len(page) != 3 {
 		t.Fatalf("expired page=%+v more=%v err=%v", page, more, err)
 	}
@@ -119,7 +119,7 @@ func testPolicyRunExpiryAndCredentialRotationBackend(t *testing.T, store *Store)
 	cursorAt, cursorID := int64(0), ""
 	seen := map[string]bool{}
 	for i := 0; i < 3; i++ {
-		items, hasMore, err := store.Runs().ListPolicyRuns(ctx, scope, "recovery", "EXPIRED", 1, cursorAt, cursorID, 1062)
+		items, hasMore, err := store.Runs().ListPolicyRuns(ctx, scope, "recovery", "", "EXPIRED", 1, cursorAt, cursorID, 1062)
 		if err != nil || len(items) != 1 || hasMore != (i < 2) {
 			t.Fatalf("cursor page %d: %+v more=%v err=%v", i, items, hasMore, err)
 		}
@@ -129,7 +129,7 @@ func testPolicyRunExpiryAndCredentialRotationBackend(t *testing.T, store *Store)
 		seen[items[0].ID] = true
 		cursorAt, cursorID = items[0].CreatedAt, items[0].ID
 	}
-	if _, _, err := store.Runs().ListPolicyRuns(ctx, scope, "", "EXPIRED", 100, 0, "", 1062); err != nil {
+	if _, _, err := store.Runs().ListPolicyRuns(ctx, scope, "", "", "EXPIRED", 100, 0, "", 1062); err != nil {
 		t.Fatal(err)
 	}
 	for _, id := range []string{run.ID, submitting.ID, listing.ID} {

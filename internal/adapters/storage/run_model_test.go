@@ -37,12 +37,13 @@ func testPolicyRunSubmissionTransactionsBackend(t *testing.T, store *Store) {
 	exec("INSERT INTO policy_revision(policy_revision_id,policy_id,revision_number,yaml,canonical_json,digest,published_at,published_by,status,updated_by,updated_at) VALUES('rev-1',(SELECT id FROM policy WHERE policy_id='pol-1'),1,$1,$2,$3,1000,'admin','PUBLISHED','admin',1000)", sampleSpec, canonical, specDigest)
 	exec("UPDATE policy SET active_revision_id=(SELECT id FROM policy_revision WHERE policy_revision_id='rev-1') WHERE policy_id='pol-1'")
 	exec("UPDATE scene SET default_policy_id=(SELECT id FROM policy WHERE policy_id='pol-1') WHERE scene_key='recovery'")
-	in := runapp.PolicyRunCreateInput{SceneKey: "recovery", ChangeSetJSON: "{}", ChangeSetDigest: digest, IdempotencyKey: "create-1", RequestDigest: digest, SubmissionTokenHash: digest, Now: 1000}
+	in := runapp.PolicyRunCreateInput{SceneKey: "recovery", BusinessID: "release/1001", ChangeSetJSON: "{}", ChangeSetDigest: digest, IdempotencyKey: "create-1", RequestDigest: digest, SubmissionTokenHash: digest, Now: 1000}
 	run, created, err := store.Runs().CreatePolicyRun(ctx, scope, in)
-	if err != nil || !created || run.PolicyRevisionID != "rev-1" || run.DeadlineAt != 87400 {
+	if err != nil || !created || run.BusinessID == nil || *run.BusinessID != in.BusinessID || run.PolicyRevisionID != "rev-1" || run.DeadlineAt != 87400 {
 		t.Fatalf("run=%+v created=%v err=%v", run, created, err)
 	}
 	explicit := in
+	explicit.BusinessID = ""
 	explicit.PolicyRevisionID = "rev-1"
 	explicit.CanSelectRevision = true
 	explicit.IdempotencyKey = "create-explicit"
@@ -59,6 +60,17 @@ func testPolicyRunSubmissionTransactionsBackend(t *testing.T, store *Store) {
 	changed.RequestDigest = strings.Repeat("b", 64)
 	if _, _, err := store.Runs().CreatePolicyRun(ctx, scope, changed); !errors.Is(err, runapp.ErrIdempotencyConflict) {
 		t.Fatalf("conflicting create: %v", err)
+	}
+	businessReplay := in
+	businessReplay.IdempotencyKey = "create-by-business-id"
+	businessReplay.SubmissionTokenHash = strings.Repeat("c", 64)
+	if replay, created, err := store.Runs().CreatePolicyRun(ctx, scope, businessReplay); err != nil || created || replay.ID != run.ID {
+		t.Fatalf("business replay=%+v created=%v err=%v", replay, created, err)
+	}
+	businessConflict := businessReplay
+	businessConflict.RequestDigest = strings.Repeat("d", 64)
+	if _, _, err := store.Runs().CreatePolicyRun(ctx, scope, businessConflict); !errors.Is(err, runapp.ErrBusinessIDConflict) {
+		t.Fatalf("conflicting business ID: %v", err)
 	}
 	submissionScope := scope
 	submissionScope.SubmissionCredentialHash = digest
@@ -126,8 +138,12 @@ func testPolicyRunSubmissionTransactionsBackend(t *testing.T, store *Store) {
 	if err := store.db.QueryRowContext(ctx, "SELECT result_verdict,decision_verdict FROM guardrail_run WHERE run_id=$1", run.ID).Scan(&result, &decision); err != nil || result != "PASS" || decision != "ALLOW" {
 		t.Fatalf("result=%s decision=%s err=%v", result, decision, err)
 	}
-	page, more, err := store.Runs().ListPolicyRuns(ctx, scope, "recovery", "FINISHED", 10, 0, "", 1005)
+	page, more, err := store.Runs().ListPolicyRuns(ctx, scope, "recovery", "", "FINISHED", 10, 0, "", 1005)
 	if err != nil || more || len(page) != 1 || page[0].ID != run.ID || page[0].Decision == nil || *page[0].Decision != "ALLOW" {
 		t.Fatalf("finished page=%+v more=%v err=%v", page, more, err)
+	}
+	byBusinessID, more, err := store.Runs().ListPolicyRuns(ctx, scope, "recovery", in.BusinessID, "", 10, 0, "", 1005)
+	if err != nil || more || len(byBusinessID) != 1 || byBusinessID[0].ID != run.ID || byBusinessID[0].BusinessID == nil || *byBusinessID[0].BusinessID != in.BusinessID {
+		t.Fatalf("business page=%+v more=%v err=%v", byBusinessID, more, err)
 	}
 }
