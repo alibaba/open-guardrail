@@ -8,13 +8,12 @@ observations and execution workflow.
 
 | Starting point | Checks to define | Where to start |
 | --- | --- | --- |
-| File cleanup | Exact target files, temporary-file scope and batch size | The real-file cleanup example in [Getting started](getting-started.md) |
-| An application delivery step | The target application and environment, required test or health observations | The [integration guide](../integrations/README.md), including synthetic delivery examples |
+| File cleanup | Exact target files, temporary-file scope and batch size | [Optional file cleanup](getting-started.md#optional-file-cleanup-without-a-model) |
+| An application delivery step | The target application and environment, required test or health observations | [First-batch check](getting-started.md#run-the-first-batch-check) and [delivery integrations](../integrations/README.md) |
 | A configuration or data operation | Intended resource scope and observations required by your business rules | The [GuardrailSpec reference](guardrailspec-reference.md) and [HTTP API](api.md) |
 
 For your first integration, choose checks whose observations your tools can
-collect and whose evidence your execution tool can verify. The file cleanup demo
-provides a complete local example to inspect before connecting another system.
+collect and whose evidence your execution tool can verify.
 
 ## Connect three responsibilities
 

@@ -29,14 +29,16 @@ make build
 python3 examples/cleanup-demo/demo.py --binaries "$PWD/bin"
 ```
 
-Choose a password at the hidden prompts. The script starts an isolated SQLite
-service and prints two loopback URLs:
+The script starts an isolated SQLite service with an auto-generated temporary
+console password and prints two loopback URLs:
 
 - **Demo:** open this first. No login is required to run the limited cleanup
   task or inspect its Run details.
-- **Console:** sign in as `demo` with the password chosen at startup. Select
-  **Runs** to inspect the same Run IDs in the regular management UI. Another
-  browser requires its own login.
+- **Console:** sign in as `demo` using the temporary password file printed at
+  startup. Select **Runs** to inspect the same Run IDs in the regular management
+  UI. Another browser requires its own login.
+
+Pass `--prompt-password` if you prefer to choose a console password interactively.
 
 Use the printed `127.0.0.1` URLs as-is. This local demo does not accept
 `localhost` or other hostnames.

@@ -11,6 +11,7 @@ export const docs = [
   ['resource-bindings', 'examples/resource-bindings/README.md', 'Resource bindings', '资源绑定', 1, 'examples/resource-bindings/README.zh-CN.md'],
   ['api', 'docs/api.md', 'HTTP API', 'HTTP API', 1, 'docs/i18n/api.zh-CN.md'],
   ['cli', 'cmd/guardrailctl/README.md', 'guardrailctl CLI', 'guardrailctl CLI', 1, 'docs/i18n/cli.zh-CN.md'],
+  ['audit-and-reports', 'docs/audit-and-reports.md', 'Audit queries and Run reports', '审计查询与 Run 排障报告', 2, 'docs/i18n/audit-and-reports.zh-CN.md'],
   ['configuration', 'docs/configuration.md', 'Configuration and storage', '配置与存储', 2, 'docs/i18n/configuration.zh-CN.md'],
   ['docker', 'docs/docker.md', 'Docker deployment', 'Docker 部署', 2, 'docs/i18n/docker.zh-CN.md'],
   ['local-administrator', 'docs/local-administrator.md', 'Administrator guide', '管理员指南', 2, 'docs/i18n/local-administrator.zh-CN.md'],

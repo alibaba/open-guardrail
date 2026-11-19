@@ -1,25 +1,43 @@
 # Recovery Agent demo
 
-Start with [Getting started](../../docs/getting-started.md) if you need a local
-service, administrator account or CLI session. The
-[documentation index](../../docs/README.md) links the full set of guides.
+Replay the [first-batch review](../../docs/media/first-batch-run.mp4), then run it in your checkout. The launcher sets up the local service, account and Run.
 
-This demo lets an Agent evaluate three synthetic health observations against the
-published Recovery Spec. The observation files contain no verdicts or prepared
-Submissions. The Agent creates three independent Runs and supplies its own Check
-summaries and Evidence; the server produces the final Decisions.
+## Try it with your coding agent
 
-## Try it with Codex
+Open this checkout in your coding agent (such as Claude Code, Cursor, Codex, or Antigravity) with Make, Python 3.9+ and the Go version in `go.mod` available. Ask:
 
-This is the **first-time, no-Jenkins path**: one local service, one CLI login,
-then one instruction to the Agent. Jenkins, public-key encryption and a
+> Use $open-guardrail-demo to check the first batch and tell me whether the next batch can proceed.
+
+The agent starts the local trial, reads the frozen [Spec](first-batch.yaml), shows its queries and reports the recorded decision in chat. If the host does not discover skills, ask it to follow [First-batch recovery](../../.agents/skills/open-guardrail-demo/SKILL.md#first-batch-recovery).
+
+The telemetry comes from a [synthetic local recording](first-batch-data.json).
+The query tool filters by the recorded window and first-batch instances.
+The monitoring and alert snapshots also contain an instance outside that batch.
+The agent should investigate a write error by correlating its handler with the
+candidate change and its order ID with a read-only record lookup. The query
+tool returns observations; the agent chooses the verdict. The local CLI creates the Run. Submission and decision readback use the service's HTTP API.
+
+In the default case, payment for `order-42` was captured while its state is still `pending`. Expect `BLOCKED / DENY`. The final command prints the Run ID, decision and `recordPath`. Open that file to see the service's diagnostic report and the accepted synthetic observations. Each Run has its own file under `data/first-batch-reports/` in the checkout or extracted archive. It remains available after Ctrl-C removes the temporary database and credentials. If export fails, leave the launcher running and retry the same submission. For optional browser inspection, run `python3 examples/agent-demo/first_batch.py start --console` in your own terminal. Paste the printed Run instruction into your coding agent. Open the printed local URL and use the temporary login file to inspect the [Run report](../../docs/audit-and-reports.md#run-report). Ctrl-C in that terminal removes its database and credentials.
+
+To compare different inputs, start a fresh trial with `--case clean` or
+`--case logs-unavailable`. Check whether the agent distinguishes an empty
+log result from a log source that could not be queried. This walkthrough is
+available from this checkout or a native archive containing `first_batch.py`.
+
+## Original three health observations
+
+The three JSON health observations below exercise the Recovery Spec shared
+by the Jenkins and Argo examples. They can also be assessed independently.
+
+This path uses one local service, one CLI login,
+and one instruction to the Agent. Jenkins, public-key encryption and a
 deployment pipeline are not involved.
 
 Start the local service and make `guardrailctl` available (from a release archive
 or by building this repository). Initialize the administrator if this is a new
 service. Sign in to the CLI once with `guardrailctl auth login --username <name>`;
 the password is entered through its hidden prompt. The browser session does not
-authenticate the CLI. Then ask Codex, from the checkout or extracted release:
+authenticate the CLI. Then ask your coding agent, from the checkout or extracted release:
 
 > Use `$open-guardrail-demo` to evaluate all three observations in
 > `examples/agent-demo/`. Create and submit three Runs, show me their Run IDs and

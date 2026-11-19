@@ -1,12 +1,22 @@
 # 快速开始
 
-运行一次受护栏约束的文件清理任务，或按下面的步骤发布策略、创建 Run，并在浏览器检查证据。这两种方式都不需要 AI 模型。
+首批机器上线后，让你的 AI 编程助手按 Spec 依次排查监控、日志和告警，再决定下一批能否继续发布。[观看 30 秒回放](../media/first-batch-run.mp4)
+
+## 跑一遍首批检查
+
+在你的 AI 编程助手（如 Claude Code、Cursor、Codex、Antigravity 等）中打开包含 `examples/agent-demo/first_batch.py` 的仓库目录（需提前备好 Make、Python 3.9+ 及 `go.mod` 指定的 Go 版本），直接发送下面这句话：
+
+> 用 $open-guardrail-demo 跑一遍首批检查，告诉我下一批能不能发。
+
+Agent 会自动拉起本地临时服务，按 Spec 排查首批实例的监控、日志与告警，并在对话中给出排查过程和最终裁决。默认模拟数据里，订单 `order-42` 已扣款但状态仍停留在 `pending`，预期结果为 `BLOCKED / DENY`（全程无需登录控制台）。
+
+检查完成后，Agent 会生成一个本地 JSON 报告链接，里面保留了服务端诊断记录与采信的观测证据；哪怕随后关掉临时服务、清理了临时库和凭据，这份报告依然可以随时打开回看。如果想在 Web 控制台查看详情，在启动时告诉它开启即可。
 
 ## 评估流程
 
 [![OpenGuardrail 评估流程：发布并激活策略，创建 Run，提交完整评估，读取 Run 和最终 Submission，由调用系统应用决策。](../images/overview.zh-CN.png)](../images/overview.zh-CN.svg)
 
-点击流程图可以查看完整 SVG。策略、评估和决策模型见[核心概念](../concepts.md)。
+点击流程图可以查看完整 SVG。策略、评估和决策模型见[核心概念](concepts.zh-CN.md)。
 
 ## 前置条件
 
@@ -20,7 +30,7 @@
 
 如果使用预览版二进制归档，先完成[归档校验](../releases.md#check-and-try-a-downloaded-archive)，再从解压根目录执行命令。用 `./open-guardrail` 和 `./guardrailctl` 替换源码构建的 `./bin/` 路径；运行二进制不需要 Go、Node.js 或 Python。
 
-## 方式一：运行受护栏约束的清理任务
+## 可选：不用模型运行文件清理
 
 准备好 Python 3.9+ 后，在源码或归档根目录运行下列命令。从源码运行还需要 Go：
 
@@ -28,7 +38,7 @@
 python3 examples/cleanup-demo/demo.py
 ```
 
-在隐藏提示中，为临时管理员 `demo` 设置控制台密码。脚本会从源码构建命令，或使用归档中的二进制，然后启动临时本地服务和受控文件清理工具。首次从源码构建可能下载 Go 依赖。Demo 需要 Python 3.9+；发布组装和维护者验证脚本另需 Python 3.12+。
+脚本会从源码构建命令，或使用归档中的二进制，并使用自动生成的临时密码启动本地服务和受控文件清理工具。首次从源码构建可能下载 Go 依赖。Demo 需要 Python 3.9+；发布组装和维护者验证脚本另需 Python 3.12+。
 
 先打开终端输出的 **Demo** URL。清理任务和 Run 详情不需要登录。保留默认选择，点击 **Run cleanup task（运行清理任务）**：
 
@@ -37,13 +47,13 @@ python3 examples/cleanup-demo/demo.py
 3. 删除工具重新读取 Run 和已接受证据，核验身份与有效期，只删除批准的临时文件。
 4. 在页面检查两个 Run。恢复文件、修改选择或批次上限，再次运行以比较实际结果。
 
-Runner 是不使用模型的预定义代码，服务调用和文件操作均真实执行。[Demo 指南](../../examples/cleanup-demo/README.md)说明执行核验与限制。需要在常规 UI 查看同一批记录时，打开输出的 **Console** URL，使用 `demo` 和本次设置的密码登录，选择 **Runs**。
+Runner 是不使用模型的预定义代码，服务调用和文件操作均真实执行。[Demo 指南](../../examples/cleanup-demo/README.md)说明执行核验与限制。需要在常规 UI 查看同一批记录时，打开输出的 **Console** URL，使用 `demo` 和输出路径 `console-login.json` 中的自动生成密码（或通过 `--prompt-password` 自行设置的密码）登录，选择 **Runs**。
 
 检查记录时保持终端开启。Ctrl-C 停止服务，移除临时数据和凭据。原始 Recovery 契约自检命令为 `python3 examples/agent-demo/smoke.py`，默认立即退出并清理；加上 `--keep-running` 可保留记录供浏览器查看，直到按 Ctrl-C。需要持久数据或自己的策略时，使用下述操作流程。
 
 自动化启动清理 Demo 时，`--password-stdin` 从标准输入读取设置的密码。不要把密码放在命令参数或提交到仓库的脚本中。仅限源码使用的 `make demo` 等价于上面的交互命令。
 
-## 方式二：创建并检查第一个 Run
+## 手动创建并检查一个 Run
 
 ### 1. 启动服务
 
@@ -58,7 +68,7 @@ make build
 
 打开 <http://127.0.0.1:8080>，创建名为 `admin` 的管理员并自行设置密码。初始化后自动登录浏览器，没有默认密码。
 
-无引导令牌的本地初始化要求直接回环连接。远程或容器部署见 [Docker 部署](../docker.md)及[管理员初始化](../local-administrator.md)。
+无引导令牌的本地初始化要求直接回环连接。远程或容器部署见 [Docker 部署](docker.zh-CN.md)及[管理员初始化](local-administrator.zh-CN.md)。
 
 ### 2. 登录 CLI
 
@@ -87,7 +97,7 @@ export OPEN_GUARDRAIL_SESSION_FILE="$guardrail_demo_dir/session.json"
 
 策略要求一项 `readiness` 检查和 `health` 证据。命令发布并激活该修订；临时 Project 密钥有效期为一小时。
 
-策略编辑和发布见[场景与策略](../scenes-and-specs.md)。
+策略编辑和发布见[场景与策略](scenes-and-specs.zh-CN.md)。
 
 ### 4. 创建 Run
 
@@ -118,7 +128,7 @@ guardrail_demo_run_id=run_REPLACE_WITH_RETURNED_ID
 
 Run 冻结策略修订、调用方定义的 `changeSet` 和截止时间。提交凭据私密保存，CLI 不打印令牌。
 
-在 Run 截止前完成下一步。创建结果不确定时，保留相同操作 ID，先检查状态再重试。初始凭据只返回一次，见[凭据恢复](../runs.md)。
+在 Run 截止前完成下一步。创建结果不确定时，保留相同操作 ID，先检查状态再重试。初始凭据只返回一次，见[凭据恢复](runs.zh-CN.md)。
 
 ### 5. 提交合成的通过评估
 
@@ -164,7 +174,7 @@ JSON
 
 在浏览器打开 **Runs**，选择返回的 Run ID，检查冻结的策略引用、评估上下文、提交证据及决策。
 
-真实集成必须核验权威 Run、决策有效期及其依赖的观测。见 [Run 与 Submission](../runs.md)及[集成方案](../../integrations/README.md)。
+真实集成必须核验权威 Run、决策有效期及其依赖的观测。见 [Run 与 Submission](runs.zh-CN.md)及[集成方案](integrations.zh-CN.md)。
 
 ## 问题排查
 
@@ -175,10 +185,10 @@ JSON
 | 服务退出或未就绪 | 清理 Demo 报告安全的错误分类，并尽可能提供命令退出码。从源码运行 `./bin/open-guardrail serve`，或从归档运行 `./open-guardrail serve` 查看启动诊断，检查数据目录、原生二进制和端口。 |
 | Demo 地址返回 403 | 精确打开输出的 `http://127.0.0.1:<port>`，清理 Demo 不接受 `localhost` 或其他主机名。 |
 | 来不及打开 Runs，Recovery 自检就退出 | 运行 `python3 examples/agent-demo/smoke.py --keep-running` 并保持终端开启。默认 Recovery 自检会清理临时记录，清理 Demo 则会持续运行。 |
-| 浏览器登录失败 | 使用 `demo` 和本次启动选择的密码。手动流程的 `admin` 账号及已有服务与其相互独立。 |
+| 浏览器登录失败 | 使用 `demo` 和输出路径 `console-login.json` 中的自动生成密码（或通过 `--prompt-password` / `smoke.py --keep-running` 自行设置的密码）。手动流程的 `admin` 账号及已有服务与其相互独立。 |
 | 隐藏密码提示要求终端 | 交互运行，或在自动化中传 `--password-stdin`。查看 Recovery 自检的临时记录还需 `--keep-running`。 |
 
-Demo 不打印密码或捕获到的含凭据命令输出。报告问题时提供步骤、退出码、版本和平台，密码、会话文件和机器凭据文件应保密。
+Demo 不会在终端打印密码本身（默认仅输出 `console-login.json` 凭据文件路径），也不会输出捕获到的含凭据命令内容。报告问题时提供步骤、退出码、版本和平台，密码、会话文件和机器凭据文件应保密。
 
 ## 清理或继续探索
 
@@ -212,6 +222,6 @@ rmdir "$guardrail_demo_dir"
 unset OPEN_GUARDRAIL_SESSION_FILE
 ```
 
-删除机器密钥文件不等于撤销密钥。撤销和秘密轮换已经实现；撤销立即阻止后续密钥认证，但不取消已通过认证的请求。有效期、轮换和恢复规则见 [Project 机器密钥](../local-administrator.md#project-machine-keys)。请在本地评估服务上使用本流程。
+删除机器密钥文件不等于撤销密钥。撤销和秘密轮换已经实现；撤销立即阻止后续密钥认证，但不取消已通过认证的请求。有效期、轮换和恢复规则见 [Project 机器密钥](local-administrator.zh-CN.md#project-机器密钥)。请在本地评估服务上使用本流程。
 
-接下来可以体验 [Agent 驱动的示例](../../examples/agent-demo/README.md)，配置 [PostgreSQL 或远程访问](../configuration.md)，或阅读[贡献指南](../../CONTRIBUTING.md)。
+接下来可以体验 [Agent 驱动的示例](../../examples/agent-demo/README.md)，配置 [PostgreSQL 或远程访问](configuration.zh-CN.md)，或阅读[贡献指南](../../CONTRIBUTING.md)。

@@ -1,0 +1,31 @@
+{
+  "changeSet": {
+    "service": "checkout", "environment": "local-replay", "candidate": "checkout-v2",
+    "batch": 1, "instances": ["checkout-01", "checkout-02"],
+    "from": "2026-01-12T09:00:00Z", "to": "2026-01-12T09:10:00Z"
+  },
+  "windows": [
+    {
+      "service": "checkout", "environment": "local-replay", "from": "2026-01-12T09:00:00Z", "to": "2026-01-12T09:10:00Z",
+      "metrics": [
+        {"instance":"checkout-01","errorRatePercent":0.1}, {"instance":"checkout-02","errorRatePercent":0.2},
+        {"instance":"checkout-03","errorRatePercent":4.7}
+      ],
+      "logs": [
+        {"instance":"checkout-02","at":"2026-01-12T09:04:31Z","event":"write_rejected","handler":"persistCapture","orderId":"order-42"},
+        {"instance":"checkout-03","at":"2026-01-12T09:05:18Z","event":"write_rejected","handler":"syncAddress","orderId":"order-19"}
+      ],
+      "alerts": [
+        {"instance":"checkout-01","active":[]}, {"instance":"checkout-02","active":[]},
+        {"instance":"checkout-03","active":[{"severity":"critical","rule":"write-error-rate"}]}
+      ]
+    }
+  ],
+  "changes": [
+    {"service":"checkout","candidate":"checkout-v2","handler":"persistCapture","before":"UPDATE orders SET state='paid' WHERE id=?","after":"UPDATE orders SET state='paid' WHERE id=? AND state='authorized'"}
+  ],
+  "records": [
+    {"service":"checkout","environment":"local-replay","orderId":"order-42","asOf":"2026-01-12T09:10:00Z","payment":"captured","state":"pending"},
+    {"service":"checkout","environment":"local-replay","orderId":"order-19","asOf":"2026-01-12T09:10:00Z","payment":"authorized","state":"authorized"}
+  ]
+}

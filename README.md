@@ -1,8 +1,21 @@
+<div align="center">
+
+<img src="pages/src/favicon.svg" width="56" alt="">
+
 # OpenGuardrail
 
 English | [简体中文](docs/i18n/README.zh-CN.md)
 
-**Evidence-based action guardrails for AI agents.**
+### Evidence-based action guardrails for AI agents
+
+[![Go 1.27+](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)](go.mod)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+[See it in action](#see-it-in-action) · [Quickstart](#quickstart) · [How it works](#how-it-works) · [Reference integrations](#reference-integrations)
+
+</div>
+
+## Overview
 
 OpenGuardrail is a standalone guardrail service for AI agents that operate real
 systems.
@@ -19,9 +32,6 @@ for verification and audit. Agents and tools use the HTTP API or the
 **Status: development preview.** The API is `v1alpha1`. See
 [current capabilities and limits](#current-capabilities-and-limits) for details.
 
-[![Go 1.27+](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)](go.mod)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-
 [![OpenGuardrail overview: an AI agent submits checks and evidence; OpenGuardrail records an ALLOW or DENY decision with a validity window and audit trail; the execution tool verifies the decision before acting.](docs/images/readme-hero.png)](docs/images/readme-hero.svg)
 
 *The agent proposes; the gate decides. OpenGuardrail validates the structure and
@@ -35,15 +45,53 @@ decision.*
 
 ## See it in action
 
-A predefined Python runner asks to delete four files: two temporary files, plus
-`orders.csv` and `config.yaml`. The broad request is blocked because it includes
-protected files and exceeds the batch limit. The runner narrows the request; the
-second Run passes and the execution tool deletes only the two temporary files.
+**The first batch is live. Can the next batch proceed?**
 
-[![OpenGuardrail live cleanup demo: the first check is DENY because the request includes orders and configuration; the second check is ALLOW after the runner narrows it to two temporary files.](docs/images/cleanup-demo.png)](examples/cleanup-demo/README.md)
+Production rollouts happen in batches. Once the first batch is live, the on-call engineer checks its metrics, error logs and alerts before deciding whether to roll out the second batch. At Alibaba, we already use Guardrail for this check in production.
 
-*Predefined runner, real service and files; this demo does not use an AI model. Start it with
-`python3 examples/cleanup-demo/demo.py`.*
+The local walkthrough uses synthetic data for a `checkout` service rollout. The new version changes how an order is marked as paid after payment is captured. The application owner writes the release criteria into the Spec. Alongside metrics and alerts, the agent must check the error logs from the first batch. If an order write fails, it checks whether the rollout changed the failing code, then looks up the order ID from the log to see whether payment was captured while the order was still pending.
+
+| Evidence source | What the agent finds |
+| --- | --- |
+| Metrics and alerts | The agent checks the error rate and active alerts for the first batch. The error rate is within the threshold and there are no active alerts. |
+| Error logs | New write errors appear on those same instances after deployment. |
+| Code and data | The diff touches the failing write path. A read-only query shows that payment for `order-42` was captured while the order is still `pending`. |
+
+The agent submits the observation window, affected instances, redacted findings and references for review. The confirmed impact on business data yields `BLOCKED`. The local Guardrail records `DENY`. The example runs offline from any release system. In a live rollout, the execution tool applies the decision to pause or resume. If required logs are unavailable and the other evidence is inconclusive, the agent submits `UNKNOWN`, identifies the missing evidence and Guardrail records `DENY`.
+
+[![First-batch Run replay. Metrics and alerts are clear, but a rejected write leaves a captured order pending. The agent submits BLOCKED and Guardrail returns DENY.](docs/media/first-batch-run.gif)](docs/media/first-batch-run.mp4)
+
+[Watch the 30-second run with playback controls (MP4)](docs/media/first-batch-run.mp4)
+
+## Quickstart
+
+With Make, Python 3.9+ and the Go version in `go.mod` installed, open the checkout containing `examples/agent-demo/first_batch.py` in your coding agent (such as Claude Code, Cursor, Codex, or Antigravity) and send this message.
+
+> Use $open-guardrail-demo to check the first batch and tell me whether the next batch can proceed.
+
+The agent starts a temporary service, checks metrics, logs and alerts against the Spec, and shows its findings and the recorded decision in chat. In the default synthetic data, payment for `order-42` was captured while its state is still `pending`. Expect `BLOCKED / DENY`. No OpenGuardrail console login is needed. (If your host does not auto-discover `.agents/skills/`, ask it to follow `.agents/skills/open-guardrail-demo/SKILL.md`.)
+
+The agent links a local JSON file with the Run report and the observations behind its decision. You can reopen it after the temporary service, database and credentials are removed. To inspect the live console, ask for it when starting the trial.
+
+Send either follow-up in the same chat to start a fresh run.
+
+```text
+Run it again with healthy data.
+```
+
+```text
+What if the logs are unavailable?
+```
+
+With healthy data, expect `PASS / ALLOW`. If the required logs cannot be read, the agent identifies the missing evidence. Expect `UNKNOWN / DENY`.
+
+To get the source, run `git clone https://github.com/alibaba/open-guardrail.git`.
+
+[How to inspect a Run report in the console](docs/audit-and-reports.md#run-report) · [Read the first-batch Spec](examples/agent-demo/first-batch.yaml) · [Try healthy or missing-log observations](examples/agent-demo/README.md#try-it-with-your-coding-agent)
+
+**Optional file cleanup without a model.** From the checkout root, run `python3 examples/cleanup-demo/demo.py` and open the printed Demo URL (no login or password prompt is needed). Click **Run cleanup task** to see a request that includes an order file denied, then watch the narrower request delete just two temporary files. [File cleanup guide](examples/cleanup-demo/README.md)
+
+**Protect your own agent or pipeline.** Start with a `PreToolUse` hook / host adapter (see [Agent plugins](integrations/agent-plugins/README.md)) so your agent automatically creates a Run, attaches evidence, and blocks unsafe tool calls before execution, or add a checkpoint in [CI/CD delivery](integrations/README.md).
 
 ## Why OpenGuardrail?
 
@@ -111,50 +159,9 @@ An unfinished Run can expire, and a completed decision has its own validity
 window. Integrations must check the authoritative Run, its deadline and decision
 validity. See [Runs and submissions](docs/runs.md).
 
-## Quickstart
+## Integration and deployment
 
-Run the same workflow locally and watch a guarded tool act on real files in a
-disposable directory. This trial needs no model account, Jenkins, Docker or
-separate database.
-
-### Run a guarded task
-
-Published native previews appear in [GitHub Releases](https://github.com/alibaba/open-guardrail/releases).
-Choose the native archive for your platform and `SHA256SUMS`; plugin users also
-choose the complete `-install.tar.gz` plugin archive.
-Follow [archive verification](docs/releases.md) before extracting and running the
-same cleanup demo with Python 3.9+; the native path needs no Go installation.
-For a model-driven pi/DeepSeek Harness trial, use the separate
-[plugin installation guide](docs/plugin-trial.md). The commands below build from source.
-
-Install Git, the Go version specified in `go.mod` and Python 3.9+:
-
-```sh
-git clone https://github.com/alibaba/open-guardrail.git
-cd open-guardrail
-python3 examples/cleanup-demo/demo.py
-```
-
-Choose a console password at the hidden prompts. The script builds both commands
-from source, then prints a **Demo** URL and a **Console** URL. Open the Demo first;
-it needs no login.
-
-Click **Run cleanup task**. The initial request includes temporary files, orders
-and configuration. A predefined runner submits the observed file state and gets
-a real `DENY`. It narrows the request, creates another Run and gets `ALLOW`.
-The controlled tool verifies that Run and its evidence before deleting only the
-temporary files. Orders and configuration remain on disk.
-
-Change the selected files, disable automatic revision or lower the batch limit,
-then run again. Expand a Run to inspect its frozen policy and accepted evidence.
-The runner uses no model; the service calls and file operations are real.
-See the [demo guide](examples/cleanup-demo/README.md) for the workflow and limits.
-
-Keep the terminal open. Ctrl-C stops both services and removes their temporary
-data and credentials. The separate Console uses username `demo` and the password
-chosen at startup; its **Runs** page contains the same Run IDs. For the original
-four-case Recovery contract self-check, run
-`python3 examples/agent-demo/smoke.py`.
+[Install a native preview](docs/native-install.md) · [Install the pi / DeepSeek Harness plugin](docs/plugin-trial.md)
 
 ### Start a persistent service
 
@@ -250,6 +257,7 @@ Start with the [documentation index](docs/README.md) for reading paths, or read
 | Configure storage or a remote service | [Configuration and storage](docs/configuration.md), [Docker deployment](docs/docker.md) |
 | Manage administrators and credentials | [Administrator guide](docs/local-administrator.md) |
 | Write and publish a GuardrailSpec | [GuardrailSpec YAML reference](docs/guardrailspec-reference.md), [Scenes and Specs](docs/scenes-and-specs.md) |
+| Trace a decision | [Audit queries and Run reports](docs/audit-and-reports.md) |
 | Create Runs and submit evidence | [Runs and submissions](docs/runs.md) |
 | Call the API or automate with the CLI | [API overview](docs/api.md), [CLI guide](cmd/guardrailctl/README.md) |
 | Understand the implementation or extension plans | [Architecture](docs/architecture.md), [extension boundaries](docs/extensions.md) |

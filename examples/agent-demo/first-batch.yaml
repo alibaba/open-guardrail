@@ -1,0 +1,32 @@
+apiVersion: guardrail.open/v1alpha1
+kind: GuardrailSpec
+metadata:
+  name: first-batch-recovery
+spec:
+  description: Decide whether a paused code rollout can resume after its first batch.
+  instructions: Use the application, environment, instances, candidate and archived observation window in this Run's ChangeSet. Use read-only queries.
+  validForSeconds: 900
+  checks:
+    - id: batch-health
+      displayName: First-batch health
+      description: Check metrics, error logs and active alerts. Investigate failed writes before deciding.
+      instructions: |
+        Query metrics, logs and alerts separately for the frozen scope. Metrics and alert snapshots must cover every target instance.
+        The sample application's error-rate limit is 1 percent. Look for active critical alerts.
+        If a write error appears, inspect the candidate's change and look up the record ID from that error.
+        The payment handler must persist a captured payment as paid. Correlate the handler, instance and record before attributing impact.
+        Save each query's scope, timestamp and returned observations, including empty results or a source failure.
+      criteria:
+        pass: All required sources are available and cover the window, error rates are below the limit, there are no critical alerts and no unresolved write errors.
+        block: The error-rate limit is reached, a critical alert is active, or the changed write path is confirmed to have left a captured payment in the wrong state.
+        unknown: No blocking condition is confirmed and a required source, target observation or write correlation is missing.
+      evidenceRequirements:
+        - id: metrics
+          description: Per-instance error rates over the observation window.
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]
+        - id: logs
+          description: Scoped log query and any follow-up change and record lookups used to interpret a write error.
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]
+        - id: alerts
+          description: Per-instance active alert snapshots or source failure.
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]

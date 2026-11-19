@@ -107,6 +107,8 @@ def smoke(archive):
         with tarfile.open(archive, "r:gz") as package:
             package.extractall(extracted, filter="data")
         for name in ("open-guardrail", "guardrailctl", "examples/agent-demo/smoke.py",
+                     "examples/agent-demo/first_batch.py", "examples/agent-demo/first-batch.yaml",
+                     "examples/agent-demo/first-batch-data.json",
                      "examples/cleanup-demo/demo.py", "scenarios/file-cleanup/runtime.py",
                      "scenarios/file-cleanup/worker.py", "scenarios/file-cleanup/scenario.mjs",
                      "scenarios/file-cleanup/policy.yaml",

@@ -16,7 +16,7 @@
 python3 examples/cleanup-demo/demo.py
 ```
 
-设置密码，打开终端输出的 Demo URL。预定义 Runner 不使用模型，服务调用和临时文件操作均真实执行。
+打开终端输出的 Demo URL。预定义 Runner 不使用模型，服务调用和临时文件操作均真实执行。
 
 ## 启动持久服务
 

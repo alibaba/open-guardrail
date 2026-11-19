@@ -1,8 +1,16 @@
 # Getting started
 
-Run a guarded file cleanup task, or follow the walkthrough to publish a policy,
-create a Run and inspect its evidence in the browser.
-Neither option requires an AI model.
+After the first batch deploys, have your coding agent follow the Spec and inspect metrics, logs and alerts before the next batch proceeds. [Watch the 30-second run](media/first-batch-run.mp4)
+
+## Run the first-batch check
+
+With Make, Python 3.9+ and the Go version in `go.mod` installed, open the checkout containing `examples/agent-demo/first_batch.py` in your coding agent (such as Claude Code, Cursor, Codex, or Antigravity) and send this message.
+
+> Use $open-guardrail-demo to check the first batch and tell me whether the next batch can proceed.
+
+The agent starts a temporary service, checks metrics, logs and alerts against the Spec, and shows its findings and the recorded decision in chat. In the default synthetic data, payment for `order-42` was captured while its state is still `pending`. Expect `BLOCKED / DENY`. No OpenGuardrail console login is needed.
+
+The agent links a local JSON file with the Run report and the observations behind its decision. You can reopen it after the temporary service, database and credentials are removed. To inspect the live console, ask for it when starting the trial.
 
 ## Evaluation flow
 
@@ -28,7 +36,7 @@ Run commands from its extraction root. Use `./open-guardrail` and
 `./guardrailctl` in place of the source build's `./bin/` paths; running the
 binaries needs no Go, Node.js or Python.
 
-## Option 1: run a guarded cleanup task
+## Optional file cleanup without a model
 
 With Python 3.9+ available, run the following command from the source checkout
 or archive root. A source checkout also needs Go:
@@ -37,9 +45,8 @@ or archive root. A source checkout also needs Go:
 python3 examples/cleanup-demo/demo.py
 ```
 
-Choose a console password for the temporary `demo` administrator at the hidden prompts.
 The script builds the commands from source or uses the binaries in an archive.
-It starts a temporary local service and a controlled file cleanup tool. Source builds can download Go
+It starts a temporary local service with an auto-generated console password and a controlled file cleanup tool. Source builds can download Go
 dependencies on their first run. The demo needs Python 3.9+; release assembly
 and the maintainer verification scripts separately require Python 3.12+.
 
@@ -58,8 +65,9 @@ or its Run details. Leave the default selection and click **Run cleanup task**:
 The runner is predefined code without a model. Its service calls and file
 operations are real. The [demo guide](../examples/cleanup-demo/README.md)
 explains the execution checks and limits. To inspect the same records in the
-regular UI, open the printed **Console** URL, sign in as `demo` with the chosen
-password, and select **Runs**.
+regular UI, open the printed **Console** URL, sign in as `demo` using the
+temporary password in the printed `console-login.json` file (or the password you
+chose with `--prompt-password`), and select **Runs**.
 
 Leave the terminal open while inspecting the records. Ctrl-C stops the service
 and removes its temporary data and credentials. The original Recovery contract
@@ -73,7 +81,7 @@ when starting the cleanup demo. Do not put passwords in command-line
 arguments or committed scripts. The source-only `make demo` target is equivalent
 to the interactive demo command above.
 
-## Option 2: create and inspect your first Run
+## Manual walkthrough: create and inspect your first Run
 
 ### 1. Start the service
 
@@ -222,10 +230,10 @@ observations it relies on. See [Runs and submissions](runs.md) and the
 | Server exits or does not become ready | The cleanup demo reports a safe error category and the command's exit code when available. Run `./bin/open-guardrail serve` from source or `./open-guardrail serve` from an archive for detailed startup diagnostics. Check the data directory, native binaries and port. |
 | Demo address returns 403 | Open exactly the printed `http://127.0.0.1:<port>` address. The cleanup demo does not accept `localhost` or other hostnames. |
 | Recovery self-check exits before you can open Runs | Run `python3 examples/agent-demo/smoke.py --keep-running` and keep that terminal open. The default Recovery self-check deliberately removes its temporary records; the cleanup demo already stays running. |
-| Browser login fails | Use username `demo` and the password you chose for this invocation. The walkthrough's `admin` account and an existing service are separate. |
+| Browser login fails | Use username `demo` and the temporary password in the printed `console-login.json` file (or the password you chose with `--prompt-password` / `smoke.py --keep-running`). The walkthrough's `admin` account and an existing service are separate. |
 | Hidden password prompt needs a terminal | Run interactively, or pass `--password-stdin` for automation. The Recovery self-check additionally needs `--keep-running` when you want to inspect its temporary records. |
 
-The demo never prints its password or captured credential-bearing command output.
+The demo never prints its password to stdout (by default it writes the auto-generated password to `console-login.json` and prints only that file path) or captured credential-bearing command output.
 When reporting a problem, include the step, exit code, version and platform.
 Keep passwords, session files and machine credential files private.
 

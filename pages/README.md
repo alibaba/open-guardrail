@@ -80,7 +80,7 @@ normal GitHub Pages domain verification process. Do not add an unverified domain
 - `build.mjs`: HTML generation, Markdown rendering and repository link rewriting.
 
 The browser illustration never calls the service, submits evidence or operates
-files. Its label remains visible beside the output. The quickstart links to the
-real cleanup demo and documents its prerequisites. Roadmap items and synthetic
+files. Its label remains visible beside the output. The quickstart runs the first-batch check from source with your coding agent. The optional
+file illustration links to the real cleanup demo. Roadmap items and synthetic
 integrations are labeled, and the page states the verification and execution
 boundaries of the current development preview.

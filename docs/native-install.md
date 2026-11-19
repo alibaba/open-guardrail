@@ -21,7 +21,7 @@ From the extraction directory:
 python3 examples/cleanup-demo/demo.py
 ```
 
-Choose a password and open the printed Demo URL. The predefined runner uses no
+Open the printed Demo URL. The predefined runner uses no
 model; the service and disposable file operations are real.
 
 ## Start a persistent service

@@ -17,9 +17,8 @@ Your tool can verify the record before acting; your team can inspect it afterwar
 
 ## Try it
 
-Start with a [native download](native-install.md) and run the cleanup demo,
-or try the [Agent plugin](plugin-trial.md) in pi or DeepSeek Harness.
-The downloaded cleanup demo opens locally in your browser and uses a predefined
-runner; the plugin uses your host's model.
+[Run the first-batch check with your coding agent](getting-started.md#run-the-first-batch-check). Follow the failed write to a captured order still marked `pending`, and inspect the evidence behind the decision to hold the next batch.
+
+For file cleanup without a model, use the [native download](native-install.md). To try the [Agent plugin](plugin-trial.md), use pi or DeepSeek Harness.
 
 Ready to connect your tool? Read the [integration guide](../integrations/README.md).

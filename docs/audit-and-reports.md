@@ -5,6 +5,8 @@ the console or through `guardrailctl audit list`. A Run's detail page also offer
 **Export diagnostic report**. Reports are diagnostic records, not execution
 permissions or proof that an external action took place.
 
+These commands and reports are available in builds from the main branch after `v0.1.0-alpha.1`.
+
 ## Audit query and export
 
 Use an administrator CLI session created by `guardrailctl auth login`:

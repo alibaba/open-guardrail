@@ -1,9 +1,49 @@
 ---
 name: open-guardrail-demo
-description: "Run the local OpenGuardrail Recovery demo as an Agent: interpret three synthetic health observations, submit independent Runs, and verify PASS/ALLOW, BLOCKED/DENY and UNKNOWN/DENY. Use when someone asks to try the Agent workflow in a checkout or an extracted release."
+description: "Inspect a paused first-batch Run using metrics, logs and alerts, or run the three original synthetic Recovery observations when requested."
 ---
 
 # OpenGuardrail Agent demo
+
+## First-batch recovery
+
+When asked to reopen a completed trial, open the saved `recordPath` from the
+conversation, or look up `data/first-batch-reports/<runId>.json` in this checkout.
+It contains the service report and the accepted synthetic observations.
+
+If the user supplies a Run directory, reuse it and leave their launcher running.
+Otherwise, from this checkout start `python3 examples/agent-demo/first_batch.py start`
+in a persistent terminal session you control. Keep it alive while you investigate.
+When the user asks to try healthy data or asks what happens if logs are unavailable,
+start a fresh Run with `--case clean` or `--case logs-unavailable`, respectively.
+Use the new Run directory for all subsequent queries and the assessment.
+Wait for the Run ID and take the exact Run directory from the printed instruction.
+Set `WORK` to that directory. Show the scope and findings of each query in chat.
+Only add `--console` if the user asks to inspect the Run in a browser.
+
+1. Read the frozen Spec and Run scope:
+   `python3 examples/agent-demo/first_batch.py spec --work-dir "$WORK"`.
+2. Query each required source separately:
+   `python3 examples/agent-demo/first_batch.py query --work-dir "$WORK" metrics`.
+   Repeat for `logs` and `alerts`. Inspect the returned values. An unavailable
+   source differs from a completed query with empty results.
+3. When a write error warrants investigation, query `changes` and then
+   `records --record-id ID` with the ID from that batch's log. Connect the
+   changed handler and observed record state before judging business impact.
+4. Decide using the frozen criteria. Submit your own verdict and a short
+   explanation with `python3 examples/agent-demo/first_batch.py submit
+   --work-dir "$WORK" --verdict VERDICT --summary "YOUR FINDINGS"` (one line).
+   The tool attaches the actual query results and reads back the final Run and
+   accepted evidence. Link the returned `recordPath` with the Run ID, decision and
+   findings. Explain that stopping the temporary service removes its database
+   and credentials while the linked record stays available offline.
+   If submission or export fails, keep the launcher running and retry the same
+   submission after addressing the error. A finished Run can be exported this
+   way without a second submission. Stop your own launcher after successful export.
+   For browser inspection, start with `--console` and leave that session running
+   until the user finishes. Leave user-owned launchers under their control.
+
+## Original three health observations
 
 Use this skill for the synthetic, local Recovery example in
 `examples/agent-demo/`. Read its [README](../../../examples/agent-demo/README.md)
