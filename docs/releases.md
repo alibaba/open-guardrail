@@ -41,10 +41,11 @@ For an interactive trial from the extraction root:
 python3 examples/cleanup-demo/demo.py
 ```
 
-Choose a console password, then open the printed Demo URL. The predefined runner
+Open the printed Demo URL. The predefined runner
 uses the packaged service and CLI to create real Runs, while the controlled tool
 acts on files in an isolated temporary directory. The demo page needs no login;
-the separate Console uses username `demo` and the chosen password. Keep the
+the separate Console uses username `demo` and the temporary password in the printed
+`console-login.json` file (or a password you choose with `--prompt-password`). Keep the
 terminal open; Ctrl-C stops both services and removes temporary state. See the
 [cleanup guide](../examples/cleanup-demo/README.md) for checks and limits.
 

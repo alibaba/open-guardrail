@@ -2,6 +2,8 @@
 
 管理员可在控制台“审计事件”中查询当前项目的变更，在 Run 详情下载排障报告。报告用于排障和关联查询，不代表已执行外部操作。
 
+这些命令和报告随 `v0.1.0-alpha.1` 之后的主干源码提供。
+
 ## 查询与导出
 
 ```sh
@@ -41,9 +43,13 @@ guardrailctl run report --server http://127.0.0.1:8080 \
 
 ## 接口与验收
 
-- 管理员：`GET /api/v1alpha1/audit-events`，`redacted=true` 返回脱敏页，`from`/`to` 使用 Unix 秒。
-- 管理员：`GET /api/v1alpha1/runs/{runId}/report`。
-- 具有 `runs:read` 的项目密钥：`GET /runtime/v1alpha1/runs/{runId}/report`。
+| 接口 | 身份凭据 |
+| --- | --- |
+| `GET /api/v1alpha1/audit-events` | 管理员会话 |
+| `GET /api/v1alpha1/runs/{runId}/report` | 管理员会话 |
+| `GET /runtime/v1alpha1/runs/{runId}/report` | 具有 `runs:read` 的项目密钥 |
+
+审计查询使用 Unix 秒传递 `from` 和 `to`，指定 `redacted=true` 可返回脱敏页。
 
 运行 `make smoke-bindings` 启动隔离的真实服务，完成绑定增改删、审计分页与脱敏导出，再提交拒绝结果，核对报告中的策略和证据指纹。结束后清理临时服务与文件。
 
