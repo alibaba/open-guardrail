@@ -35,7 +35,7 @@ CLI 也接受 `OPEN_GUARDRAIL_URL` 和 `OPEN_GUARDRAIL_TOKEN`。它使用根据�
 | 端点 | 用途 |
 | --- | --- |
 | `GET /livez` | 检查进程存活，不依赖数据库可用性 |
-| `GET /readyz` | 检查数据库连接和结构就绪，失败返回 503 |
+| `GET /readyz` | 检查数据库连接，失败返回 503 |
 | `GET /api/v1alpha1/meta/version` | 公开产品版本，不包含提交元数据 |
 | `GET /api/v1alpha1/meta/capabilities` | API / CLI 兼容性、特性及非敏感存储运行边界 |
 | `GET /openapi.yaml` | 公开 OpenAPI 契约 |

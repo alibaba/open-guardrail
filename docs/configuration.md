@@ -36,17 +36,17 @@ remote bootstrap-token flow even when the backend listener is loopback.
 
 ### Schema migration mode
 
-`auto` connects to storage and applies bundled schema migrations before opening
-the HTTP listener. `external` requires that schema and initialization version to
-be prepared in advance and does not create tables. A missing or different schema
-version fails startup.
+`auto` applies bundled schema migrations and maintains their execution history
+before opening the HTTP listener. `external` uses tables prepared through an
+external process; it does not run migrations or require migration-version records.
 
 In both modes, opening storage automatically creates the default workspace and
 project if missing, independently of administrator setup. Existing IDs and names
 are preserved; no manual initialization SQL or workspace/project configuration is
 required. The database account needs permission to insert these records when absent.
 
-Both modes require the current schema for readiness. See the
+Readiness checks database connectivity. In `external` mode, apply schema changes
+through your database change process. See the
 [runtime storage design](architecture.md#storage).
 
 ### Docker behind HTTPS

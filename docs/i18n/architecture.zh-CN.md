@@ -20,9 +20,9 @@
 
 内置持久化基础设施位于 `internal/adapters/storage`。显式驱动注册表选择后端，记录迁移方言、支持级别及当前多实例保证，并为启动和现有数据库维护提供独立连接入口。根包负责迁移 / 就绪检查，并实现共享身份和 Spec 仓储 SQL；后端子包负责数据库专属连接及方言行为。可移植的仓储 SQL 保持共享，只有行为存在差异时才隔离后端操作。仓储和事务接口归属于消费它们的应用用例；领域与应用包不能导入存储适配器。
 
-初始结构创建全部 15 张业务表，包括身份、Policy、Revision、Run、Submission、Evidence 和限定范围的凭据。最终结果和决策保存在 Run 字段上。各数据库各有一个初始化脚本，版本一致。服务会拒绝结构版本不同的数据库。
+初始结构创建全部 15 张业务表，包括身份、Policy、Revision、Run、Submission、Evidence 和限定范围的凭据。最终结果和决策保存在 Run 字段上。各数据库各有一个初始化脚本；自动迁移会记录执行历史。
 
-配置 `database.migrations: auto` 时，启动会安装内置结构；使用 `external` 时，结构和初始化版本必须预先存在。见[数据库初始化](../configuration.md#schema-migration-mode)。
+配置 `database.migrations: auto` 时，启动会安装内置结构；使用 `external` 时，业务表必须预先存在。见[数据库初始化](../configuration.md#schema-migration-mode)。
 
 当前预览版每个数据库只支持一个服务实例。引入相应功能时，需要验证 PostgreSQL 多实例协调及 SQLite 业务写入竞争。单个 SQLite 连接可以减少本地竞争，但未来业务正确性仍须由事务、条件写入和约束保证。因此，公开能力响应对所有当前适配器都报告 `multiInstance: false`。它只暴露支持级别和经过验证的运行边界，不暴露所选驱动、连接串、文件路径或数据库拓扑。
 
