@@ -276,10 +276,11 @@ selection evidence stays absent. The migration regression covers a version-1
 SQLite database with an existing Policy, Revision and Run. PostgreSQL migration
 and binding behavior also require the backend CI with a disposable database.
 
-In `external` mode, storage must already have the exact bundled schema version.
-A newer database is rejected by an older server in both modes. This is not a
-promise to convert arbitrary historical development schemas. Switching drivers
-or database URLs does not transfer data.
+In `external` mode, prepare the business schema before startup; the server does
+not require migration-version records or run migrations. In `auto` mode, an older
+server rejects a database whose recorded migration version is newer than its
+bundled migrations. This is not a promise to convert arbitrary historical
+development schemas. Switching drivers or database URLs does not transfer data.
 
 Before upgrading, stop writers and take a consistent backup of the database.
 For SQLite, account for its WAL state; for PostgreSQL, use a consistent backup

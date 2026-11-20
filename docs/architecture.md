@@ -64,11 +64,11 @@ consume them. Domain and application packages must not import storage adapters.
 
 The initial schema creates all 15 business tables, including identity, Policy,
 Revision, Run, Submission, Evidence and scoped credentials. Final results and
-decisions are fields on Run. Each database has one initialization script and the
-same version. The server rejects a database with a different schema version.
+decisions are fields on Run. Each database has one initialization script;
+automatic migrations record their execution history.
 
 With `database.migrations: auto`, startup installs the bundled schema. With
-`external`, the schema and initialization version must already exist. See
+`external`, the business schema must already exist. See
 [database initialization](configuration.md#schema-migration-mode).
 
 The current preview supports one service instance per database. PostgreSQL multi-instance
