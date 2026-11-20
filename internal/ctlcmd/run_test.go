@@ -20,6 +20,10 @@ func TestRunListRejectsInvalidLocalFilters(t *testing.T) {
 		{"run", "list", "--key-file", "unused", "--limit", "0"},
 		{"run", "list", "--key-file", "unused", "--limit", "101"},
 		{"run", "list", "--key-file", "unused", "--status", "DONE"},
+		{"run", "list", "--key-file", "unused", "--business-id", ""},
+		{"run", "list", "--key-file", "unused", "--business-id", " release"},
+		{"run", "create", "--business-id", "release\n42"},
+		{"run", "list", "--key-file", "unused", "--business-id", strings.Repeat("中", 43)},
 	} {
 		if err := run(args, &bytes.Buffer{}); err == nil || commandExitCode(err) != exitUsage {
 			t.Fatalf("args=%v err=%v", args, err)
@@ -38,8 +42,8 @@ func TestRunReadCommandsUseGeneratedContract(t *testing.T) {
 		{name: "submission", command: "submission", path: "/runtime/v1alpha1/runs/run_1/submissions/sub_1",
 			response: `{"id":"sub_1","runId":"run_1"}`, extra: []string{"--submission-id", "sub_1"}},
 		{name: "list", command: "list", path: "/runtime/v1alpha1/runs", response: `{"items":[]}`,
-			extra: []string{"--status", "OPEN", "--scene", "recovery", "--limit", "7", "--cursor", "cursor_1"},
-			query: map[string]string{"status": "OPEN", "sceneKey": "recovery", "limit": "7", "cursor": "cursor_1"}},
+			extra: []string{"--status", "OPEN", "--scene", "recovery", "--limit", "7", "--cursor", "cursor_1", "--business-id", "发布/42 %?# +"},
+			query: map[string]string{"status": "OPEN", "sceneKey": "recovery", "limit": "7", "cursor": "cursor_1", "businessId": "发布/42 %?# +"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -30,7 +30,7 @@ var validRunResourceID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$
 type runOptions struct {
 	server, keyFile, tokenFile, scene, status, cursor, changeSetFile, submissionFile, operationID, runID, submissionID string
 	limit                                                                                                              int
-	resourcesFile, reportFile                                                                                          string
+	resourcesFile, reportFile, businessID                                                                              string
 	waitTimeout                                                                                                        time.Duration
 	waitInterval                                                                                                       time.Duration
 }
@@ -143,6 +143,9 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	if command != "submit" {
 		flags.StringVar(&opts.keyFile, "key-file", "", "private Project key file")
 	}
+	if command == "create" || command == "list" {
+		flags.StringVar(&opts.businessID, "business-id", "", "optional exact business ID, unique within the project and scene")
+	}
 	if command == "create" {
 		flags.StringVar(&opts.scene, "scene", "", "Scene key")
 		flags.StringVar(&opts.resourcesFile, "resources", "", "optional JSON array file of trusted resource references (kind/id)")
@@ -183,8 +186,11 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	} else if flags.NArg() != 0 {
 		return opts, usageError("unexpected positional arguments")
 	}
-	resourcesProvided := false
+	resourcesProvided, businessProvided := false, false
 	flags.Visit(func(current *flag.Flag) {
+		if current.Name == "business-id" {
+			businessProvided = true
+		}
 		if current.Name == "resources" {
 			resourcesProvided = true
 		}
@@ -197,6 +203,9 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	})
 	if outputEmpty {
 		return opts, usageError("--output cannot be empty")
+	}
+	if businessProvided && !runapp.ValidBusinessID(opts.businessID) {
+		return opts, usageError("--business-id must contain 1-128 UTF-8 bytes, without surrounding whitespace or control characters")
 	}
 	if resourcesProvided && opts.resourcesFile == "" {
 		return opts, usageError("--resources cannot be empty")
@@ -250,6 +259,10 @@ func listRuns(opts runOptions, client *apiClient, out io.Writer) error {
 	if opts.scene != "" {
 		scene := contract.RunSceneFilter(opts.scene)
 		params.SceneKey = &scene
+	}
+	if opts.businessID != "" {
+		businessID := contract.RunBusinessIDFilter(opts.businessID)
+		params.BusinessId = &businessID
 	}
 	if opts.cursor != "" {
 		cursor := contract.RunCursor(opts.cursor)
@@ -447,6 +460,9 @@ func createRun(opts runOptions, client *apiClient, out io.Writer) error {
 		return usageError("changeSet must contain valid JSON")
 	}
 	request := contract.CreatePolicyRunJSONRequestBody{SceneKey: opts.scene, ChangeSet: json.RawMessage(changeSet)}
+	if opts.businessID != "" {
+		request.BusinessId = &opts.businessID
+	}
 	if opts.resourcesFile != "" {
 		refs, err := readRunResources(opts.resourcesFile)
 		if err != nil {
@@ -476,7 +492,19 @@ func createRun(opts runOptions, client *apiClient, out io.Writer) error {
 			return credentialFile{}, responseErr
 		}
 		if result.StatusCode() == http.StatusOK {
-			return credentialFile{}, &commandError{kind: exitServerRejected, message: "Run already exists and its plaintext Submission Credential cannot be replayed; inspect any saved credential file or rotate the credential"}
+			if result.JSON200 == nil || !validRunResourceID.MatchString(result.JSON200.Id) {
+				return credentialFile{}, internalError("invalid replayed Run response")
+			}
+			message := "Run " + result.JSON200.Id + " already exists; inspect the saved Submission Credential"
+			if result.JSON200.Status == contract.PolicyRunStatusOPEN {
+				message += " or use run rotate-credential for this OPEN Run"
+			} else {
+				message += "; use run get or run report to inspect its recorded result"
+			}
+			if opts.businessID != "" {
+				message += "; use a new business ID for a new attempt"
+			}
+			return credentialFile{}, &commandError{kind: exitServerRejected, message: message}
 		}
 		if result.JSON201 == nil || result.JSON201.Run.Id == "" || result.JSON201.SubmissionCredential.Token == "" ||
 			result.JSON201.SubmissionCredential.RunId != result.JSON201.Run.Id {

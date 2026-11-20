@@ -78,17 +78,6 @@ func (s *server) decodeModel(w http.ResponseWriter, r *http.Request, dst any, li
 func modelKey(r *http.Request) string { return r.Header.Get("Idempotency-Key") }
 func validModelKey(key string) bool   { return modelID.MatchString(key) }
 
-func validBusinessID(value string) bool {
-	if value == "" || len(value) > 128 || !utf8.ValidString(value) || strings.TrimSpace(value) != value {
-		return false
-	}
-	for _, r := range value {
-		if r < 0x20 || r == 0x7f {
-			return false
-		}
-	}
-	return true
-}
 func (s *server) modelSpecError(w http.ResponseWriter, r *http.Request, err error) {
 	var validation *specdomain.ValidationError
 	if errors.As(err, &validation) {
@@ -470,7 +459,7 @@ func (s *server) modelRunRoute(w http.ResponseWriter, r *http.Request) {
 		}
 		businessID := ""
 		if in.BusinessId != nil {
-			if !validBusinessID(*in.BusinessId) {
+			if !runapp.ValidBusinessID(*in.BusinessId) {
 				s.modelRunError(w, r, runapp.ErrInvalid)
 				return
 			}
@@ -611,7 +600,7 @@ func (s *server) modelRunList(w http.ResponseWriter, r *http.Request, scope runa
 		s.modelRunError(w, r, runapp.ErrInvalid)
 		return
 	}
-	if businessID != "" && !validBusinessID(businessID) {
+	if businessID != "" && !runapp.ValidBusinessID(businessID) {
 		s.modelRunError(w, r, runapp.ErrInvalid)
 		return
 	}

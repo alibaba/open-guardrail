@@ -118,10 +118,11 @@ tbody tr:hover { background: #fafafa; }
 .badge.completed { color: var(--status-completed-text); background: var(--status-completed-bg); }
 .badge.finished { color: var(--status-completed-text); background: var(--status-completed-bg); }
 .badge.expired { color: var(--status-expired-text); background: var(--status-expired-bg); }
-.run-filters { display: flex; align-items: end; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #f4f4f5; }
-.run-filters label { display: grid; gap: 7px; margin: 0; min-width: 180px; }
+.run-filters { display: flex; flex-wrap: wrap; align-items: start; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #f4f4f5; }
+.run-business { overflow-wrap: anywhere; }
+.run-filters label { flex: 1; display: grid; gap: 7px; margin: 0; min-width: 180px; }
 .run-filters input, .run-filters select { width: 100%; height: var(--control-height); margin-top: 0; }
-.run-filters button { margin-left: auto; }
+.run-filters button { margin-left: auto; margin-top: 22px; }
 .pagination { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #f4f4f5; }
 #run-message { min-height: 22px; font-size: 13px; }
 #run-message[data-state="loading"] { color: var(--muted); }

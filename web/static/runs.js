@@ -8,6 +8,15 @@
   let historyCursors = [0], historyNext = null, currentSubmission = null, retryEvidence = null;
   const validID = value => typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(value);
 
+  // Match Go's unicode.IsSpace, including NEL and excluding the BOM character.
+  const boundarySpace = /^[\u0009-\u000d \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]|[\u0009-\u000d \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]$/;
+  const validBusinessID = value => !value || (new TextEncoder().encode(value).length <= 128 &&
+    !boundarySpace.test(value) && !/[\x00-\x1f\x7f]/.test(value));
+  function validFilters() {
+    if (validBusinessID(el("run-business-filter").value)) return true;
+    message("invalidBusinessID", "error"); return false;
+  }
+
   const formatTime = value => value == null ? "—" : new Intl.DateTimeFormat(
     document.documentElement.lang || undefined,
     {dateStyle: "medium", timeStyle: "medium"},
@@ -63,6 +72,7 @@
     el("run-detail-content").hidden = true; el("run-detail-message").textContent = "";
     el("run-detail-message").removeAttribute("data-i18n");
     el("run-detail-id").textContent = "";
+    el("run-detail-business").textContent = "";
   }
   function evidenceField(list, key, value, structured = false) {
     const row = node("div"), term = node("dt"), description = node("dd"); setText(term, key);
@@ -165,13 +175,13 @@
     el("run-pagination").hidden = !loaded || items.length === 0;
     const rows = items.map(run => {
       const row = document.createElement("tr");
-      const values = [run.id, run.sceneKey, run.policyRevisionId ? run.policyRevisionId.slice(0, 18) + "…" : "—", run.status,
+      const values = [run.id, text(run.businessId), run.sceneKey, run.policyRevisionId ? run.policyRevisionId.slice(0, 18) + "…" : "—", run.status,
         text(run.result), text(run.decision), formatTime(run.createdAt)];
       values.forEach((value, index) => {
         const cell = document.createElement("td");
-        const content = document.createElement(index < 2 ? "code" : "span");
+        const content = document.createElement(index < 3 ? "code" : "span");
         content.textContent = value;
-        if (index === 3) content.className = "badge " + run.status.toLowerCase();
+        if (index === 4) content.className = "badge " + run.status.toLowerCase();
         cell.append(content); row.append(cell);
       });
       const action = document.createElement("td"), button = document.createElement("button");
@@ -193,6 +203,8 @@
     const scene = el("run-scene-filter").value.trim();
     if (status) values.push("status=" + encodeURIComponent(status));
     if (scene) values.push("sceneKey=" + encodeURIComponent(scene));
+    const business = el("run-business-filter").value;
+    if (business) values.push("businessId=" + encodeURIComponent(business));
     if (cursor) values.push("cursor=" + encodeURIComponent(cursor));
     return "/api/v1alpha1/runs?" + values.join("&");
   }
@@ -202,6 +214,8 @@
     const scene = el("run-scene-filter").value.trim();
     if (scene) values.set("sceneKey", scene);
     if (status) values.set("status", status);
+    const business = el("run-business-filter").value;
+    if (business) values.set("businessId", business);
     const query = values.toString();
     return "runs" + (id ? "/" + encodeURIComponent(id) : "") + (query ? "?" + query : "");
   }
@@ -224,6 +238,7 @@
   }
 
   function load(cursor = "") {
+    if (!validFilters()) return Promise.resolve(false);
     return action(async current => {
       const page = await request(listPath(cursor));
       if (current !== generation) return;
@@ -250,6 +265,7 @@
       visibleRun = run;
       el("export-run-report").hidden = false;
       el("run-detail-id").textContent = run.id;
+      el("run-detail-business").textContent = text(run.businessId);
       el("run-detail-scene").textContent = run.sceneKey;
       el("run-detail-status").textContent = run.status;
       el("run-detail-status").className = "badge " + run.status.toLowerCase();
@@ -290,6 +306,7 @@
       if (signedIn === value) return;
       signedIn = value; generation++; busy = false; loaded = false;
       items = []; nextCursor = ""; cursors = [""];
+      el("run-business-filter").value = "";
       el("run-scene-filter").value = ""; el("run-status-filter").value = "";
       el("run-rows").replaceChildren(); clearMessage();
       showList(); renderList();
@@ -308,11 +325,15 @@
     route(id, params) {
       const scene = params?.get("sceneKey") || "";
       const status = params?.get("status") || "";
-      const changed = scene !== el("run-scene-filter").value || status !== el("run-status-filter").value;
+      const business = params?.get("businessId") || "";
+      const changed = business !== el("run-business-filter").value || scene !== el("run-scene-filter").value || status !== el("run-status-filter").value;
+      el("run-business-filter").value = business;
       el("run-scene-filter").value = scene;
       el("run-status-filter").value = status;
-      if (changed) { loaded = false; items = []; nextCursor = ""; cursors = [""]; renderList(); }
+      if (changed) { generation++; busy = false; loaded = false; items = []; nextCursor = ""; cursors = [""]; renderList(); }
+      // List filters are navigation context, not the identity of a Run detail.
       if (id) return openRun(id);
+      if (!validFilters()) { showList(); return false; }
       this.show();
     },
   };
@@ -342,7 +363,8 @@
   el("newer-submissions").addEventListener("click", () => historyCursors.length > 1 && loadHistory(historyCursors[historyCursors.length - 2], historyCursors.slice(0, -1)));
   el("reload-runs").addEventListener("click", () => load(cursors[cursors.length - 1]));
   el("apply-run-filters").addEventListener("click", () => {
-    cursors = [""]; nextCursor = ""; loaded = false;
+    if (!validFilters()) return;
+    generation++; busy = false; cursors = [""]; nextCursor = ""; loaded = false; items = []; renderList();
     if (window.ConsoleUI) { window.ConsoleUI.go(routePath()); return; }
     return load();
   });

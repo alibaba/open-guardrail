@@ -189,3 +189,6 @@ remove secrets before submission because free-form text screening is not a
 general data-loss prevention system. The management UI lists and inspects Runs
 without exposing credentials or accepting Submissions. See the
 [OpenAPI contract](../api/openapi/openapi.yaml) for fields and error codes.
+
+
+Use `guardrailctl run create|list --business-id ID` or the console Runs filter to find a business attempt. See the [release-order correlation example](../examples/business-id/README.md) for replay, credential and terminal-state handling.

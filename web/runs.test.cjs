@@ -36,7 +36,7 @@ function page() {
     window: {scrollTo() {}},
     setText(node, key) { node.textContent = key; node.dataset.i18n = key; },
     show(name) { if (name === "login") ctx.window.RunUI.setSignedIn(false); },
-    AbortSignal, Date, JSON, URLSearchParams, encodeURIComponent,
+    AbortSignal, Date, JSON, URLSearchParams, encodeURIComponent, TextEncoder,
     fetch: async url => {
       calls.push(url);
       if (url.endsWith("/report")) return state.reportResponse || {ok:true, json:async()=>({format:"openguardrail.run-report.v1",run:{id:run.id}})};
@@ -233,4 +233,82 @@ test("Run report download checks identity and leaves no download after navigatio
   const pending = p.elements.get("export-run-report").handlers.click();p.ctx.window.RunUI.leave();
   resolve({ok:true,json:async()=>({format:"openguardrail.run-report.v1",run:{id:p.run.id}})});await pending;
   assert.equal(downloads.length, 1);assert.equal(p.elements.get("export-run-report").hidden, true);
+});
+
+
+test("business ID survives filtering, pagination, detail and shareable navigation", async () => {
+  const p = page(), business = "发布/42 %?# +<script>";
+  p.run.businessId = business;
+  p.ctx.window.RunUI.setSignedIn(true);
+  p.ctx.window.RunUI.route(null, new URLSearchParams({sceneKey:"recovery", businessId:business}));
+  await settle();
+  assert.equal(new URL(p.calls.at(-1), "http://test").searchParams.get("businessId"), business);
+  assert.equal(p.elements.get("run-rows").children[0].children[1].children[0].textContent, business);
+  await p.elements.get("next-runs").handlers.click();
+  assert.equal(new URL(p.calls.at(-1), "http://test").searchParams.get("businessId"), business);
+  const routes = []; p.ctx.window.ConsoleUI = {go(path) { routes.push(path); }};
+  p.elements.get("run-rows").children[0].children.at(-1).children[0].handlers.click();
+  assert.equal(new URLSearchParams(routes[0].split("?")[1]).get("businessId"), business);
+  await p.ctx.window.RunUI.open(p.run.id);
+  assert.equal(p.elements.get("run-detail-business").textContent, business);
+  p.elements.get("back-runs").handlers.click();
+  assert.equal(new URLSearchParams(routes.at(-1).split("?")[1]).get("businessId"), business);
+  p.ctx.window.RunUI.setSignedIn(false);
+  assert.equal(p.elements.get("run-business-filter").value, "");
+  assert.equal(p.elements.get("run-detail-business").textContent, "");
+});
+
+test("invalid business filters in forms and direct routes reject locally and recover", async () => {
+  for (const business of [" trailing ", "a\n42", "\u0085release", "中".repeat(43)]) {
+    const p = page(); p.ctx.window.RunUI.setSignedIn(true);
+    p.ctx.window.RunUI.route(null, new URLSearchParams({businessId:business}));
+    await settle(); assert.equal(p.calls.length, 0);
+    assert.equal(p.elements.get("run-message").textContent, "invalidBusinessID");
+    p.elements.get("apply-run-filters").handlers.click();
+    assert.equal(p.calls.length, 0);
+    p.elements.get("run-business-filter").value = "release-42";
+    await p.elements.get("apply-run-filters").handlers.click();
+    assert.equal(p.elements.get("run-message").textContent, "runsLoaded");
+  }
+});
+
+test("changing business route discards an older in-flight list", async () => {
+  const p = page(); let resolve;
+  p.state.pending = new Promise(done => {resolve = done;});
+  p.ctx.window.RunUI.setSignedIn(true);
+  p.ctx.window.RunUI.route(null, new URLSearchParams({businessId:"old"}));
+  p.state.pending = null; p.state.page = {items:[],nextCursor:""};
+  p.ctx.window.RunUI.route(null, new URLSearchParams({businessId:"new"})); await settle();
+  resolve({ok:true,json:async()=>({items:[p.run]})}); await settle();
+  assert.equal(p.elements.get("run-rows").children.length, 0);
+  assert.equal(p.elements.get("run-business-filter").value, "new");
+});
+
+
+test("business filter retains BOM characters accepted by the API", async () => {
+  const p = page(); p.ctx.window.RunUI.setSignedIn(true);
+  p.elements.get("run-business-filter").value = "\ufeffrelease";
+  await p.elements.get("apply-run-filters").handlers.click();
+  assert.equal(new URL(p.calls[0],"http://test").searchParams.get("businessId"), "\ufeffrelease");
+});
+
+
+test("an invalid list filter cannot hide a valid Run detail; returning shows a recoverable error", async () => {
+  const p = page(); p.ctx.window.RunUI.setSignedIn(true);
+  const params = new URLSearchParams({businessId:" bad"});
+  await p.ctx.window.RunUI.route(p.run.id, params);
+  assert.equal(p.elements.get("run-detail-content").hidden, false);
+  assert.equal(p.elements.get("run-detail-id").textContent, p.run.id);
+  assert.equal(p.calls.some(url => url.startsWith("/api/v1alpha1/runs?")), false);
+  p.ctx.window.ConsoleUI = {go(path) {
+    const [route, query] = path.split("?");
+    return p.ctx.window.RunUI.route(route.split("/")[1], new URLSearchParams(query));
+  }};
+  p.elements.get("back-runs").handlers.click(); await settle();
+  assert.equal(p.elements.get("run-list-view").hidden, false);
+  assert.equal(p.elements.get("run-message").textContent, "invalidBusinessID");
+  assert.equal(p.calls.some(url => url.startsWith("/api/v1alpha1/runs?")), false);
+  p.elements.get("run-business-filter").value = "release-42";
+  p.elements.get("apply-run-filters").handlers.click(); await settle();
+  assert.equal(p.elements.get("run-message").textContent, "runsLoaded");
 });
