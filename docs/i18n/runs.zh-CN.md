@@ -117,3 +117,6 @@ guardrailctl run submission --key-file "$guardrail_credentials_dir/orchestrator-
 每条 Evidence 最多 16 KiB，每个 Submission 最多 100 条 Evidence，每个请求最多 1 MiB。文本长度按 Unicode 码点计算。具有凭据特征的内容会被拒绝，包括 JSON 摘要、嵌套对象、数组及 JSON 编码字符串中的已知凭据字段；重复 JSON 键和过度复杂的 JSON 结构也会被拒绝。
 
 筛查会保留已接受文本及其重试身份。调用方仍必须在提交前清除秘密，因为自由文本筛查不是通用的数据防泄漏系统。管理 UI 可以列出和检查 Run，不暴露凭据，也不接受 Submission。字段及错误码见 [OpenAPI 契约](../../api/openapi/openapi.yaml)。
+
+
+通过 `guardrailctl run create|list --business-id ID` 或控制台 Runs 筛选关联业务评估。[发布单关联示例](../../examples/business-id/README.zh-CN.md)说明重放、凭据处理和终态查询约束。

@@ -139,6 +139,41 @@ existing Run but cannot recover its one-time plaintext credential. Inspect an ex
 credential file first; if the credential was not saved, use the Project key and
 `run rotate-credential` with a new output path.
 
+## Associate a release order with a Run
+
+Use an optional exact business identifier on creation and lookup:
+
+```sh
+guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+  --scene release-check --business-id 'release-42/batch-1/attempt-1' \
+  --change-set change-set.json --operation-id release-42-create \
+  --submission-credential-file "$guardrail_credentials_dir/release-42.json"
+guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+  --scene release-check --business-id 'release-42/batch-1/attempt-1'
+```
+
+Identifiers contain 1–128 UTF-8 bytes, with no surrounding whitespace or ASCII
+control characters. Matching is exact: quote shell arguments; do not trim or
+normalize identifiers. The identifier is unique within a project and Scene.
+Omitting the flag preserves existing behavior; an explicitly empty value is invalid.
+Listing without `--scene` can return matching identifiers from multiple Scenes.
+
+The same identifier and immutable input replay the original Run, even with a
+new operation ID. A different input returns `BUSINESS_ID_CONFLICT` (exit 5).
+Replay also exits 5 because the one-time Submission Credential is not reissued;
+stderr identifies the existing Run and recovery options. An existing credential
+file is never overwritten. For an OPEN Run, inspect the saved credential first;
+rotate only when it is lost, as rotation invalidates the old credential.
+Completed and expired Runs retain the identifier permanently. Use a new business
+identifier for each new evaluation attempt, and keep the release order in `changeSet`.
+A business identifier is a correlation key, not execution authorization.
+
+The console's Runs page supports exact business-ID filtering, shareable filter
+URLs and display in both the list and detail. Select a matching Run to inspect
+its frozen policy and evidence, or export its diagnostic report. Reports include
+the business identifier; review it before sharing outside the intended audience.
+See the runnable [release-order example](../../examples/business-id/README.md).
+
 ## Transport and compatibility
 
 HTTP commands use the Go client generated from `api/openapi/openapi.yaml`.

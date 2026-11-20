@@ -112,3 +112,23 @@ Jenkins、GitHub Actions 和 Argo 接入方案位于[集成目录](../../integra
 ## 审计与诊断导出
 
 使用管理员会话执行 `guardrailctl audit list|export`，使用具备 `runs:read` 权限的 Project 密钥执行 `guardrailctl run report`。导出范围有界，省略业务正文。筛选、分页、权限和隐私边界见[审计与报告指南](audit-and-reports.zh-CN.md)。
+
+
+## 按业务编号关联 Run
+
+```sh
+guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+  --scene release-check --business-id 'release-42/batch-1/attempt-1' \
+  --change-set change-set.json --operation-id release-42-create \
+  --submission-credential-file "$guardrail_credentials_dir/release-42.json"
+guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+  --scene release-check --business-id 'release-42/batch-1/attempt-1'
+```
+
+`run create --business-id ID` 和 `run list --business-id ID` 可将发布单的一次评估与 Run 关联。配合 `--scene` 查询，避免混淆不同场景的相同编号。控制台 Runs 页面同样支持精确筛选、列表与详情展示，筛选条件保存在页面链接中。
+
+业务编号为 1–128 个 UTF-8 字节，不含首尾空白或 ASCII 控制字符；传参时使用引号，不能自行截断或规范化。省略保留原有行为，显式空值无效。同项目、同场景中，同编号和同内容重放原 Run，不同内容返回 `BUSINESS_ID_CONFLICT`。完成或过期后编号仍保留，新评估使用新编号。
+
+重放时 CLI 返回退出码 5，并提示原 Run ID，不重新签发凭据。检查原凭据文件；只有 OPEN Run 丢失凭据时才轮换，轮换使旧凭据失效。排障报告包含业务编号，分享前检查其中的业务信息。
+
+[发布单关联示例](../../examples/business-id/README.zh-CN.md)提供真实服务验证和接入约束。
