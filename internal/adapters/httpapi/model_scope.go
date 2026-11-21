@@ -21,21 +21,18 @@ func (s *server) runScope(w http.ResponseWriter, r *http.Request) (runapp.Scope,
 		writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Resource not found")
 		return runapp.Scope{}, false
 	}
+	if !s.guard(w, r) {
+		return runapp.Scope{}, false
+	}
 	if s.options.TrustedOperatorNamespace != "" {
 		scope, ok := s.trustedOperatorScope(w, r)
 		return runapp.Scope{WorkspaceID: scope.WorkspaceID, ProjectID: scope.ProjectID,
 			ActorID: scope.ActorID, Operator: scope.Operator, CanSelectRevision: true}, ok
 	}
-	if !s.guard(w, r) {
-		return runapp.Scope{}, false
-	}
 	return runapp.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "local", CanSelectRevision: true}, true
 }
 
 func (s *server) managedRunScope(w http.ResponseWriter, r *http.Request) (runapp.Scope, bool) {
-	if !s.guard(w, r) {
-		return runapp.Scope{}, false
-	}
 	return s.runScope(w, r)
 }
 

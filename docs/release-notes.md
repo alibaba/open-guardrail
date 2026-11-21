@@ -2,13 +2,18 @@
 
 ## Unreleased
 
+- Standalone deployments open directly in the console and CLI without
+  administrator accounts, login sessions or Project API Keys. Per-Run Submission
+  Credentials remain required. Run creation, inspection and credential rotation
+  enforce the configured Host/Origin and write-header protections in both
+  standalone and trusted operator modes.
 - Prepared [v0.1.0-alpha.1](releases/v0.1.0-alpha.1.md): four native archives,
   one complete plugin installation archive and one checksum file form the six
   Release downloads. Installation metadata travels with the plugin. SBOM and
   provenance verification remain release gates and are queried through GitHub,
   rather than published as separate download files.
-- `guardrailctl binding list|put|delete` manages exact resource bindings using
-  administrator sessions. `run create --resources FILE` supplies trusted resource
+- `guardrailctl binding list|put|delete` manages exact resource bindings directly
+  through the API. `run create --resources FILE` supplies trusted resource
   references through the existing API. The bilingual resource-binding walkthrough
   includes a disposable real-service CLI acceptance check.
 
@@ -29,9 +34,8 @@
   Requests and batch limits can be changed and rerun; the original Recovery
   contract self-check remains available separately.
 - The optional Recovery demo can keep its temporary service and four synthetic
-  Runs available for browser inspection with `--keep-running`. Choose the
-  temporary administrator password through hidden prompts or `--password-stdin`;
-  Ctrl-C stops the service and removes its temporary data and credentials.
+  Runs available for browser inspection with `--keep-running`. Ctrl-C stops the
+  service and removes its temporary data and Run credentials.
 - First-use instructions now connect demo results to the Runs page, and the demo
   reports Python/Go requirements, build progress and startup exit codes.
 - The optional local demo supports Python 3.9+, including the default Python on
@@ -53,14 +57,14 @@ this path instead of the earlier temporary `open-guardrail` module name.
 
 - A standalone Go service, the `guardrailctl` HTTP client and an embedded
   management UI.
-- First-administrator setup, browser and CLI sessions, and scoped Project keys
-  with expiry, metadata listing, secret rotation and revocation.
+- Direct console, API and CLI access in the default workspace and project,
+  with network or reverse-proxy access controls for shared deployments.
 - Scenes, editable Draft Revisions, immutable published Revisions and separate
   activation of a published Revision.
 - Runs that freeze the evaluation context, selected policy and deadline;
   complete intermediate and final Submissions; structured evidence; stored
   decisions and expiry.
-- Per-Run Submission Credentials that are separate from Project keys and can be
+- Per-Run Submission Credentials that are separate from management access and can be
   replaced while the Run is open.
 - SQLite and PostgreSQL storage, with one service instance per database.
 - Exact resource bindings and frozen binding selection evidence; the public
