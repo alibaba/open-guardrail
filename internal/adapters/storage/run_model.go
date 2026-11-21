@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/alibaba/open-guardrail/internal/application/identity"
+	pluginresource "github.com/alibaba/open-guardrail/extension/resource"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
+	opaque "github.com/alibaba/open-guardrail/internal/application/token"
 	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 	specdomain "github.com/alibaba/open-guardrail/internal/domain/spec"
@@ -108,9 +109,29 @@ func findPolicyRunByBusinessID(ctx context.Context, q rowQueryer, scope runapp.S
 	return run, digest, err
 }
 
+// ReplayPolicyRun checks request identity before any external business lookup.
+func (s *Runs) ReplayPolicyRun(ctx context.Context, scope runapp.Scope, key, sceneKey, businessID, requestDigest string, now int64) (runapp.PolicyRun, error) {
+	run, digest, err := findPolicyRunByKey(ctx, s.db, scope, key)
+	byBusinessID := false
+	if errors.Is(err, runapp.ErrNotFound) && businessID != "" {
+		run, digest, err = findPolicyRunByBusinessID(ctx, s.db, scope, sceneKey, businessID)
+		byBusinessID = err == nil
+	}
+	if err != nil {
+		return runapp.PolicyRun{}, err
+	}
+	if digest != requestDigest {
+		if byBusinessID {
+			return runapp.PolicyRun{}, runapp.ErrBusinessIDConflict
+		}
+		return runapp.PolicyRun{}, runapp.ErrIdempotencyConflict
+	}
+	return s.RefreshPolicyRun(ctx, scope, run.ID, now)
+}
+
 // CreatePolicyRun freezes the selected revision and Scene TTL in one transaction.
 func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input runapp.PolicyRunCreateInput) (runapp.PolicyRun, bool, error) {
-	if !resource.ValidReferences(input.Resources) {
+	if !resource.ValidReferences(input.Resources) || (len(input.ResourceGroups) > 0 && (len(input.Resources) > 0 || !(pluginresource.Resolution{Groups: input.ResourceGroups}).Valid())) {
 		return runapp.PolicyRun{}, false, runapp.ErrInvalid
 	}
 	if input.PolicyRevisionID != "" && !input.CanSelectRevision {
@@ -157,9 +178,19 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	selectedPolicy, selectedRevision := "", input.PolicyRevisionID
 	var selection *runapp.Selection
 	if selectedRevision == "" {
-		selected, err := selectBinding(ctx, tx, scope, input.SceneKey, input.Resources)
-		if err != nil {
-			return runapp.PolicyRun{}, false, err
+		groups := input.ResourceGroups
+		if len(groups) == 0 && len(input.Resources) > 0 {
+			groups = [][]resource.Reference{input.Resources}
+		}
+		var selected bindingSelection
+		for _, refs := range groups {
+			selected, err = selectBinding(ctx, tx, scope, input.SceneKey, refs)
+			if err != nil {
+				return runapp.PolicyRun{}, false, err
+			}
+			if selected.PolicyID != "" {
+				break
+			}
 		}
 		selectedPolicy, selectedRevision = selected.PolicyID, selected.RevisionID
 		if selectedPolicy != "" {
@@ -237,7 +268,7 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	if input.BusinessID != "" {
 		businessID = input.BusinessID
 	}
-	run := runapp.PolicyRun{Selection: selection, ID: identity.RandomToken("run_"), SceneKey: input.SceneKey, PolicyID: policyID, PolicyRevisionID: revisionID, SpecDigest: digest, Status: "OPEN", ChangeSetJSON: json.RawMessage(input.ChangeSetJSON), ChangeSetDigest: input.ChangeSetDigest, RunTTLSeconds: ttl, DeadlineAt: input.Now + ttl, CreatedAt: input.Now}
+	run := runapp.PolicyRun{Selection: selection, ID: opaque.RandomToken("run_"), SceneKey: input.SceneKey, PolicyID: policyID, PolicyRevisionID: revisionID, SpecDigest: digest, Status: "OPEN", ChangeSetJSON: json.RawMessage(input.ChangeSetJSON), ChangeSetDigest: input.ChangeSetDigest, RunTTLSeconds: ttl, DeadlineAt: input.Now + ttl, CreatedAt: input.Now}
 	if input.BusinessID != "" {
 		run.BusinessID = &input.BusinessID
 	}
@@ -400,7 +431,7 @@ func (s *Runs) SubmitSnapshot(ctx context.Context, scope runapp.Scope, runID str
 	if evaluation.Snapshot.BaseSubmissionNo != current.LatestSubmissionNo {
 		return runapp.SnapshotSubmission{}, false, runapp.ErrBaseSubmissionMismatch
 	}
-	sub := runapp.SnapshotSubmission{ID: identity.RandomToken("sub_"), RunID: runID, SubmissionNo: current.LatestSubmissionNo + 1, BaseSubmissionNo: current.LatestSubmissionNo, Verdict: evaluation.Verdict, Summary: evaluation.Snapshot.Summary, FinishRun: evaluation.Snapshot.FinishRun, CreatedAt: now}
+	sub := runapp.SnapshotSubmission{ID: opaque.RandomToken("sub_"), RunID: runID, SubmissionNo: current.LatestSubmissionNo + 1, BaseSubmissionNo: current.LatestSubmissionNo, Verdict: evaluation.Verdict, Summary: evaluation.Snapshot.Summary, FinishRun: evaluation.Snapshot.FinishRun, CreatedAt: now}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO submission(submission_id,run_id,submission_no,base_submission_no,idempotency_key,request_digest,payload_json,verdict,summary,finish_run,created_by,created_at)
   VALUES($1,(SELECT id FROM guardrail_run WHERE run_id=$2),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, sub.ID, runID, sub.SubmissionNo, sub.BaseSubmissionNo, input.IdempotencyKey, evaluation.RequestDigest, evaluation.CanonicalJSON, sub.Verdict, sub.Summary, sub.FinishRun, scope.ActorID, sub.CreatedAt); err != nil {
 		return runapp.SnapshotSubmission{}, false, runError(err)
@@ -609,7 +640,7 @@ func (s *Runs) ListPolicyRuns(ctx context.Context, scope runapp.Scope, sceneKey,
 
 // GetRunPolicyRevision only exposes the immutable Revision selected by this Run.
 func (s *Runs) GetRunPolicyRevision(ctx context.Context, scope runapp.Scope, runID string) (spec.PolicyRevision, error) {
-	revision, err := scanPolicyRevision(s.db.QueryRowContext(ctx, `SELECT pr.policy_revision_id,p.policy_id,pr.revision_number,pr.yaml,pr.digest,pr.published_at,pr.published_by,pr.status,pr.updated_by,pr.updated_at
+	revision, err := scanPolicyRevision(s.db.QueryRowContext(ctx, `SELECT pr.policy_revision_id,p.policy_id,pr.revision_number,pr.yaml,pr.digest,pr.published_at,pr.published_by,pr.status,pr.updated_by,pr.updated_at,pr.metadata_json
  FROM policy_revision pr JOIN policy p ON p.id=pr.policy_id JOIN guardrail_run gr ON gr.policy_revision_id=pr.id
  WHERE gr.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND gr.project_id=(SELECT id FROM project WHERE project_id=$2) AND gr.run_id=$3`, scope.WorkspaceID, scope.ProjectID, runID))
 	if errors.Is(err, spec.ErrNotFound) {

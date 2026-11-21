@@ -54,6 +54,7 @@ func TestPrecedence(t *testing.T) {
 		t.Fatalf("unexpected config: %+v", c)
 	}
 }
+
 func TestRejectInvalidConfiguration(t *testing.T) {
 	for _, source := range []string{"unknown: true\n", "database:\n  driver: INVALID/NAME\n", "database:\n  migrations: unsupported\n", "---\nlisten: 127.0.0.1:8000\n---\nlisten: 127.0.0.1:9000\n"} {
 		t.Run(source, func(t *testing.T) {
@@ -132,5 +133,33 @@ func TestConfigurationSizeLimit(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestTrustedOperatorRequiresExplicitNamespaceAndAllowsCallerOperators(t *testing.T) {
+	cleanEnv(t)
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	source := "trusted_operator_namespace: example\n"
+	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path, "", "")
+	if err != nil || c.TrustedOperatorNamespace != "example" {
+		t.Fatalf("trusted operator configuration rejected: %v", err)
+	}
+	for _, invalid := range []string{
+		strings.Replace(source, "namespace: example", "namespace: 'bad namespace'", 1),
+		"identity:\n  url: https://plugin.example\n  plugin_id: example\n",
+	} {
+		if err := os.WriteFile(path, []byte(invalid), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load(path, "", ""); err == nil {
+			t.Fatal("invalid or obsolete identity configuration accepted")
+		}
+	}
+	c, err = Load("", "", "")
+	if err != nil || c.TrustedOperatorNamespace != "" {
+		t.Fatalf("unexpected default access mode: %v", err)
 	}
 }

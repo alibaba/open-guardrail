@@ -68,7 +68,12 @@ func (s *server) PutBinding(w http.ResponseWriter, r *http.Request, key, kind, r
 		s.modelSpecError(w, r, spec.ErrInvalid)
 		return
 	}
-	binding, err := s.options.ModelSpecs.PutBinding(r.Context(), scope, key, spec.Binding{Resource: ref, PolicyID: body.PolicyId, PolicyRevisionID: body.PolicyRevisionId})
+	precondition := r.Header.Get("If-None-Match")
+	if precondition != "" && precondition != "*" {
+		s.modelSpecError(w, r, spec.ErrInvalid)
+		return
+	}
+	binding, err := s.options.ModelSpecs.PutBindingWithOptions(r.Context(), scope, key, spec.Binding{Resource: ref, PolicyID: body.PolicyId, PolicyRevisionID: body.PolicyRevisionId}, spec.BindingWriteOptions{CreateOnly: precondition == "*"})
 	if err != nil {
 		s.modelSpecError(w, r, err)
 		return

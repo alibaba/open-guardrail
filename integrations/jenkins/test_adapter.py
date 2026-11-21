@@ -20,7 +20,7 @@ class JenkinsAdapterTest(unittest.TestCase):
             "environment": "test",
             "candidate": "registry.example/checkout@sha256:abc",
             "observation": {"status": "healthy"},
-            "key_file": "/private/jenkins-key.json",
+
             "cli": "guardrailctl",
         }
 

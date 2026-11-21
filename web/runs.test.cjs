@@ -35,7 +35,7 @@ function page() {
     },
     window: {scrollTo() {}},
     setText(node, key) { node.textContent = key; node.dataset.i18n = key; },
-    show(name) { if (name === "login") ctx.window.RunUI.setSignedIn(false); },
+    show(name) { if (name === "login") ctx.window.RunUI.setAvailable(false); },
     AbortSignal, Date, JSON, URLSearchParams, encodeURIComponent, TextEncoder,
     fetch: async url => {
       calls.push(url);
@@ -53,7 +53,7 @@ function page() {
 }
 
 test("filters and cursor navigation use management Run endpoints", async () => {
-  const p = page(); p.ctx.window.RunUI.setSignedIn(true); p.ctx.window.RunUI.show(); await settle();
+  const p = page(); p.ctx.window.RunUI.setAvailable(true); p.ctx.window.RunUI.show(); await settle();
   assert.equal(p.elements.get("run-rows").children.length, 1);
   assert.equal(p.elements.get("next-runs").disabled, false);
   p.elements.get("run-scene-filter").value = "recovery";
@@ -69,7 +69,7 @@ test("filters and cursor navigation use management Run endpoints", async () => {
 test("filters become a reloadable route when the console router is present", async () => {
   const p = page(), routes = [];
   p.ctx.window.ConsoleUI = {go(path) { routes.push(path); }};
-  p.ctx.window.RunUI.setSignedIn(true);
+  p.ctx.window.RunUI.setAvailable(true);
   p.elements.get("run-scene-filter").value = "release.recovery";
   p.elements.get("run-status-filter").value = "FINISHED";
   p.elements.get("apply-run-filters").handlers.click();
@@ -78,7 +78,7 @@ test("filters become a reloadable route when the console router is present", asy
 
 test("empty results show one empty state without pagination", async () => {
   const p = page(); p.state.page = {items: [], nextCursor: ""};
-  p.ctx.window.RunUI.setSignedIn(true); p.ctx.window.RunUI.show(); await settle();
+  p.ctx.window.RunUI.setAvailable(true); p.ctx.window.RunUI.show(); await settle();
   assert.equal(p.elements.get("run-empty").hidden, false);
   assert.equal(p.elements.get("run-pagination").hidden, true);
   assert.equal(p.elements.get("run-message").textContent, "");
@@ -86,7 +86,7 @@ test("empty results show one empty state without pagination", async () => {
 });
 
 test("failed cursor navigation keeps the displayed page state", async () => {
-  const p = page(); p.ctx.window.RunUI.setSignedIn(true); p.ctx.window.RunUI.show(); await settle();
+  const p = page(); p.ctx.window.RunUI.setAvailable(true); p.ctx.window.RunUI.show(); await settle();
   p.state.pending = Promise.resolve({ok: false, status: 503, json: async () => ({})});
   await p.elements.get("next-runs").handlers.click();
   assert.equal(p.elements.get("previous-runs").disabled, true);
@@ -98,7 +98,7 @@ test("failed cursor navigation keeps the displayed page state", async () => {
 });
 
 test("detail renders stored JSON as text and returns to the list", async () => {
-  const p = page(); p.ctx.window.RunUI.setSignedIn(true); p.ctx.window.RunUI.show(); await settle();
+  const p = page(); p.ctx.window.RunUI.setAvailable(true); p.ctx.window.RunUI.show(); await settle();
   const row = p.elements.get("run-rows").children[0];
   row.children.at(-1).children[0].handlers.click(); await settle();
   assert.equal(p.elements.get("run-list-view").hidden, true);
@@ -113,8 +113,8 @@ test("late list responses cannot restore Run data after logout", async () => {
   const p = page();
   let resolve;
   p.state.pending = new Promise(done => { resolve = done; });
-  p.ctx.window.RunUI.setSignedIn(true); p.ctx.window.RunUI.show();
-  p.ctx.window.RunUI.setSignedIn(false);
+  p.ctx.window.RunUI.setAvailable(true); p.ctx.window.RunUI.show();
+  p.ctx.window.RunUI.setAvailable(false);
   assert.equal(Object.hasOwn(p.elements.get("run-message").dataset, "i18n"), false);
   resolve({ok: true, status: 200, json: async () => ({items: [p.run]})});
   await settle();
@@ -130,7 +130,7 @@ function historyFixture(p) {
 
 test("latest evidence is read through the administrator API and rendered as literal text", async () => {
   const p=page(); p.submission.snapshot.checks[0].summary='<img src=x onerror=alert(1)>';
-  p.ctx.window.RunUI.setSignedIn(true); await p.ctx.window.RunUI.open(p.run.id); await settle();
+  p.ctx.window.RunUI.setAvailable(true); await p.ctx.window.RunUI.open(p.run.id); await settle();
   assert.ok(p.calls.includes('/api/v1alpha1/runs/'+p.run.id+'/submissions/'+p.submission.id));
   assert.equal(p.elements.get('run-submission-summary').textContent, 'Healthy');
   const checks=content(p.elements.get('run-checks'));
@@ -140,7 +140,7 @@ test("latest evidence is read through the administrator API and rendered as lite
 });
 
 test("history selection stays local, preserves final decision, and refresh reselects latest", async () => {
-  const p=page(),older=historyFixture(p);p.ctx.window.RunUI.setSignedIn(true);
+  const p=page(),older=historyFixture(p);p.ctx.window.RunUI.setAvailable(true);
   await p.ctx.window.RunUI.open(p.run.id);await settle();
   assert.equal(p.elements.get('run-detail-submission').textContent,'#2');
   assert.equal(p.calls.some(url=>url.endsWith(older.id)),false);
@@ -156,7 +156,7 @@ test("history selection stays local, preserves final decision, and refresh resel
 
 test("history follows bounded server cursors without eagerly fetching evidence", async () => {
   const p=page(),older=historyFixture(p);p.state.history={items:[p.submission],nextBefore:2};
-  p.ctx.window.RunUI.setSignedIn(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
+  p.ctx.window.RunUI.setAvailable(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
   assert.ok(p.calls.some(url=>url.includes('submissions?limit=20&before=3')));
   p.state.history={items:[older]};await p.elements.get('older-submissions').handlers.click();
   assert.ok(p.calls.some(url=>url.includes('submissions?limit=20&before=2')));
@@ -166,7 +166,7 @@ test("history follows bounded server cursors without eagerly fetching evidence",
 });
 
 test("late snapshot responses cannot replace a newer selection", async () => {
-  const p=page(),older=historyFixture(p);let resolve;p.ctx.window.RunUI.setSignedIn(true);
+  const p=page(),older=historyFixture(p);let resolve;p.ctx.window.RunUI.setAvailable(true);
   await p.ctx.window.RunUI.open(p.run.id);await settle();
   p.state.evidenceResponse=url=>url.endsWith(older.id)?new Promise(done=>{resolve=done;}):Promise.resolve({ok:true,json:async()=>p.submission});
   p.elements.get('run-submission-select').value=older.id;
@@ -178,7 +178,7 @@ test("late snapshot responses cannot replace a newer selection", async () => {
 
 test("failed evidence reads can retry and reject snapshots from a different Run", async () => {
   const p=page();p.state.evidenceResponse=Promise.resolve({ok:false,status:503,json:async()=>({})});
-  p.ctx.window.RunUI.setSignedIn(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
+  p.ctx.window.RunUI.setAvailable(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
   assert.equal(p.elements.get('retry-run-submission').hidden,false);
   assert.equal(p.elements.get('run-detail-content').hidden,false);
   p.state.evidenceResponse=null;await p.elements.get('retry-run-submission').handlers.click();
@@ -190,7 +190,7 @@ test("failed evidence reads can retry and reject snapshots from a different Run"
 
 test("empty Runs need no history request; OPEN intermediate submissions are inspectable", async () => {
   const p=page();p.run.latestSubmissionNo=0;p.run.finalSubmissionId=null;p.run.status='OPEN';
-  p.ctx.window.RunUI.setSignedIn(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
+  p.ctx.window.RunUI.setAvailable(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
   assert.equal(p.elements.get('run-submission-state').textContent,'submissionPending');
   assert.equal(p.calls.some(url=>url.includes('/submissions')),false);
   p.run.latestSubmissionNo=1;p.submission.finishRun=false;await p.ctx.window.RunUI.open(p.run.id);await settle();
@@ -201,8 +201,8 @@ test("empty Runs need no history request; OPEN intermediate submissions are insp
 test("leaving the page or logging out prevents late evidence from restoring content", async () => {
   for(const leave of ['logout','list','other-view']){
     const p=page();let resolve;p.state.evidenceResponse=new Promise(done=>{resolve=done;});
-    p.ctx.window.RunUI.setSignedIn(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
-    if(leave==='logout')p.ctx.window.RunUI.setSignedIn(false);else if(leave==='list')p.elements.get('back-runs').handlers.click();else p.ctx.window.RunUI.leave();
+    p.ctx.window.RunUI.setAvailable(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
+    if(leave==='logout')p.ctx.window.RunUI.setAvailable(false);else if(leave==='list')p.elements.get('back-runs').handlers.click();else p.ctx.window.RunUI.leave();
     resolve({ok:true,json:async()=>p.submission});await settle();
     assert.equal(p.elements.get('run-submission-content').hidden,true);
     assert.equal(p.elements.get('run-submission-json').textContent,'');
@@ -210,7 +210,7 @@ test("leaving the page or logging out prevents late evidence from restoring cont
 });
 
 test("failed or superseded detail navigation cannot display the previous decision", async () => {
-  const p=page();p.ctx.window.RunUI.setSignedIn(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
+  const p=page();p.ctx.window.RunUI.setAvailable(true);await p.ctx.window.RunUI.open(p.run.id);await settle();
   p.state.pending=Promise.resolve({ok:false,status:404,json:async()=>({})});
   await p.ctx.window.RunUI.open('run_missing');assert.equal(p.elements.get('run-detail-content').hidden,true);
   assert.equal(p.elements.get('run-detail-message').textContent,'runDetailFailed');
@@ -223,7 +223,7 @@ test("failed or superseded detail navigation cannot display the previous decisio
 test("Run report download checks identity and leaves no download after navigation", async () => {
   const p = page(), downloads = [];
   p.ctx.window.downloadGuardrailJSON = (data, name) => downloads.push({data, name});
-  p.ctx.window.RunUI.setSignedIn(true); await p.ctx.window.RunUI.open(p.run.id); await settle();
+  p.ctx.window.RunUI.setAvailable(true); await p.ctx.window.RunUI.open(p.run.id); await settle();
   assert.equal(p.elements.get("export-run-report").hidden, false);
   await p.elements.get("export-run-report").handlers.click();
   assert.equal(downloads.length, 1); assert.match(p.calls.at(-1), /\/report$/);
@@ -239,7 +239,7 @@ test("Run report download checks identity and leaves no download after navigatio
 test("business ID survives filtering, pagination, detail and shareable navigation", async () => {
   const p = page(), business = "发布/42 %?# +<script>";
   p.run.businessId = business;
-  p.ctx.window.RunUI.setSignedIn(true);
+  p.ctx.window.RunUI.setAvailable(true);
   p.ctx.window.RunUI.route(null, new URLSearchParams({sceneKey:"recovery", businessId:business}));
   await settle();
   assert.equal(new URL(p.calls.at(-1), "http://test").searchParams.get("businessId"), business);
@@ -253,14 +253,14 @@ test("business ID survives filtering, pagination, detail and shareable navigatio
   assert.equal(p.elements.get("run-detail-business").textContent, business);
   p.elements.get("back-runs").handlers.click();
   assert.equal(new URLSearchParams(routes.at(-1).split("?")[1]).get("businessId"), business);
-  p.ctx.window.RunUI.setSignedIn(false);
+  p.ctx.window.RunUI.setAvailable(false);
   assert.equal(p.elements.get("run-business-filter").value, "");
   assert.equal(p.elements.get("run-detail-business").textContent, "");
 });
 
 test("invalid business filters in forms and direct routes reject locally and recover", async () => {
   for (const business of [" trailing ", "a\n42", "\u0085release", "中".repeat(43)]) {
-    const p = page(); p.ctx.window.RunUI.setSignedIn(true);
+    const p = page(); p.ctx.window.RunUI.setAvailable(true);
     p.ctx.window.RunUI.route(null, new URLSearchParams({businessId:business}));
     await settle(); assert.equal(p.calls.length, 0);
     assert.equal(p.elements.get("run-message").textContent, "invalidBusinessID");
@@ -275,7 +275,7 @@ test("invalid business filters in forms and direct routes reject locally and rec
 test("changing business route discards an older in-flight list", async () => {
   const p = page(); let resolve;
   p.state.pending = new Promise(done => {resolve = done;});
-  p.ctx.window.RunUI.setSignedIn(true);
+  p.ctx.window.RunUI.setAvailable(true);
   p.ctx.window.RunUI.route(null, new URLSearchParams({businessId:"old"}));
   p.state.pending = null; p.state.page = {items:[],nextCursor:""};
   p.ctx.window.RunUI.route(null, new URLSearchParams({businessId:"new"})); await settle();
@@ -286,7 +286,7 @@ test("changing business route discards an older in-flight list", async () => {
 
 
 test("business filter retains BOM characters accepted by the API", async () => {
-  const p = page(); p.ctx.window.RunUI.setSignedIn(true);
+  const p = page(); p.ctx.window.RunUI.setAvailable(true);
   p.elements.get("run-business-filter").value = "\ufeffrelease";
   await p.elements.get("apply-run-filters").handlers.click();
   assert.equal(new URL(p.calls[0],"http://test").searchParams.get("businessId"), "\ufeffrelease");
@@ -294,7 +294,7 @@ test("business filter retains BOM characters accepted by the API", async () => {
 
 
 test("an invalid list filter cannot hide a valid Run detail; returning shows a recoverable error", async () => {
-  const p = page(); p.ctx.window.RunUI.setSignedIn(true);
+  const p = page(); p.ctx.window.RunUI.setAvailable(true);
   const params = new URLSearchParams({businessId:" bad"});
   await p.ctx.window.RunUI.route(p.run.id, params);
   assert.equal(p.elements.get("run-detail-content").hidden, false);

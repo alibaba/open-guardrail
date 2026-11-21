@@ -20,6 +20,7 @@ An explicitly empty environment value overrides the file and is validated.
 | Database DSN (PostgreSQL) | `database.url` | `DATABASE_URL` | empty |
 | Database pool size | `database.max_connections` | — | `10` |
 | Schema migration mode | `database.migrations` | `OPEN_GUARDRAIL_DATABASE_MIGRATIONS` | `auto` |
+| API-only trusted operator | `trusted_operator_namespace` | — | empty (disabled) |
 
 `--listen` and `--data-dir` override corresponding settings. `DATABASE_URL`
 requires explicitly selecting `postgres`. Unknown YAML fields fail validation.
@@ -31,8 +32,19 @@ unencrypted backend directly. The default loopback address needs no proxy.
 
 `public_url` must be an HTTPS origin with no path, trailing slash, user information,
 query or fragment. Include a nonstandard port when clients use one, for example
-`https://guardrail.example.com:8443`. Configuring a public origin requires the
-remote bootstrap-token flow even when the backend listener is loopback.
+`https://guardrail.example.com:8443`. No account setup is required for either loopback or proxy access.
+
+### API-only deployment without a local administrator
+
+The service automatically prepares the default workspace/project at startup.
+Set `trusted_operator_namespace: example` to trust the operator
+supplied by callers, without credential verification, an identity SPI or a local
+administrator. Send an operator identifier as the JSON `operator` field or `X-Operator`
+header; its actor ID is `example:<operator>`. This actor becomes the initial Spec
+maintainer, and subsequent writes check each Spec's maintainers. Missing, invalid,
+duplicate or conflicting operators return 400. The management console and local
+identity endpoints stay disabled. Normal CSRF/idempotency headers and Spec
+maintainer checks still apply.
 
 ### Schema migration mode
 
@@ -41,7 +53,7 @@ before opening the HTTP listener. `external` uses tables prepared through an
 external process; it does not run migrations or require migration-version records.
 
 In both modes, opening storage automatically creates the default workspace and
-project if missing, independently of administrator setup. Existing IDs and names
+project if missing, on startup. Existing IDs and names
 are preserved; no manual initialization SQL or workspace/project configuration is
 required. The database account needs permission to insert these records when absent.
 
@@ -52,7 +64,7 @@ through your database change process. See the
 ### Docker behind HTTPS
 
 For a complete Docker Compose deployment with TLS, private backend networking,
-persistent SQLite storage and first-administrator setup, see
+persistent SQLite storage and direct console access, see
 [Docker deployment](docker.md). The image uses UID/GID `65532:65532`, listens
 on `0.0.0.0:8080` inside its private network, and stores data in `/data`. Supply
 `OPEN_GUARDRAIL_PUBLIC_URL`; there is deliberately no built-in public origin.

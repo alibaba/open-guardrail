@@ -3,7 +3,7 @@ package spec
 import (
 	"context"
 
-	"github.com/alibaba/open-guardrail/internal/domain/resource"
+	"github.com/alibaba/open-guardrail/extension/resource"
 )
 
 type Binding struct {
@@ -17,23 +17,31 @@ type BindingPage struct {
 	NextAfter *resource.Reference `json:"nextAfter,omitempty"`
 }
 
+type BindingWriteOptions struct {
+	CreateOnly bool
+}
+
 func (s *Service) PutBinding(ctx context.Context, scope Scope, scene string, binding Binding) (Binding, error) {
+	return s.PutBindingWithOptions(ctx, scope, scene, binding, BindingWriteOptions{})
+}
+
+func (s *Service) PutBindingWithOptions(ctx context.Context, scope Scope, scene string, binding Binding, options BindingWriteOptions) (Binding, error) {
 	if !binding.Resource.Valid() || binding.PolicyID == "" || (binding.PolicyRevisionID != nil && *binding.PolicyRevisionID == "") {
 		return Binding{}, ErrInvalid
 	}
-	return s.Repository.PutBinding(ctx, scope, scene, binding)
+	return s.repository.PutBindingWithOptions(ctx, scope, scene, binding, options)
 }
 
 func (s *Service) DeleteBinding(ctx context.Context, scope Scope, scene string, ref resource.Reference) error {
 	if !ref.Valid() {
 		return ErrInvalid
 	}
-	return s.Repository.DeleteBinding(ctx, scope, scene, ref)
+	return s.repository.DeleteBinding(ctx, scope, scene, ref)
 }
 
 func (s *Service) ListBindings(ctx context.Context, scope Scope, scene string, limit int, after *resource.Reference) (BindingPage, error) {
 	if limit < 1 || limit > 100 || (after != nil && !after.Valid()) {
 		return BindingPage{}, ErrInvalid
 	}
-	return s.Repository.ListBindings(ctx, scope, scene, limit, after)
+	return s.repository.ListBindings(ctx, scope, scene, limit, after)
 }

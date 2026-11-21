@@ -4,11 +4,16 @@ package spec
 import "errors"
 
 var (
+	ErrForbidden   = errors.New("Spec maintainer required")
 	ErrInvalid     = errors.New("invalid Scene or Policy request")
 	ErrNotFound    = errors.New("Scene, Policy or Revision not found")
 	ErrConflict    = errors.New("Policy state changed; reload before retrying")
 	ErrUnavailable = errors.New("Policy storage unavailable")
 )
 
-// Scope is derived from an authenticated administrator, never request fields.
-type Scope struct{ WorkspaceID, ProjectID, ActorID string }
+// Scope is selected by server wiring, never deserialized from request fields.
+type Scope struct {
+	WorkspaceID, ProjectID, ActorID, Operator string
+	// Standalone shares Policies; enterprise retains maintainer checks.
+	Unrestricted bool
+}

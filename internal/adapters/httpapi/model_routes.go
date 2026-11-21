@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	contract "github.com/alibaba/open-guardrail/api/openapi"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 )
 
@@ -127,7 +126,7 @@ func (s *server) SubmitSnapshot(w http.ResponseWriter, r *http.Request, runId st
 }
 
 func (s *server) GetRunPolicyRevision(w http.ResponseWriter, r *http.Request, runId string) {
-	scope, ok := s.runScope(w, r, identity.ScopeRunsRead)
+	scope, ok := s.runScope(w, r)
 	if !ok {
 		return
 	}
@@ -143,7 +142,7 @@ func (s *server) GetRunPolicyRevision(w http.ResponseWriter, r *http.Request, ru
 	writeJSON(w, http.StatusOK, revision)
 }
 func (s *server) GetRunSubmission(w http.ResponseWriter, r *http.Request, runId, submissionId string) {
-	scope, ok := s.runScope(w, r, identity.ScopeRunsRead)
+	scope, ok := s.runScope(w, r)
 	if !ok {
 		return
 	}
@@ -157,4 +156,8 @@ func (s *server) GetRunSubmission(w http.ResponseWriter, r *http.Request, runId,
 		return
 	}
 	writeJSON(w, http.StatusOK, submission)
+}
+
+func (s *server) SetPolicyMaintainers(w http.ResponseWriter, r *http.Request, policyId string, params contract.SetPolicyMaintainersParams) {
+	s.modelPolicyRoute(w, r)
 }

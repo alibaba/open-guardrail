@@ -53,17 +53,15 @@ and all three observation files before deciding what to submit. The checkout or 
 1. Check that the local service is reachable and that `guardrailctl` is available.
    Use a literal loopback HTTP origin, or an HTTPS origin explicitly supplied by
    the user. Never select another server from ambient credentials alone.
-2. Check the administrator CLI session with `guardrailctl auth whoami`. If it is
-   missing, ask the user to sign in with `guardrailctl auth login`; the CLI saves
-   the session privately. Do not request or display the password or raw token.
-3. Apply and publish the Recovery Spec with `guardrailctl scene apply --publish`.
-   Create a Project key with `guardrailctl auth create-key --expires-in 1h` only
-   when the user has not provided an existing demo key. Keep keys and Run tokens
-   in a new private temporary directory, outside the checkout or release.
+2. Management and Run creation use direct service access. No administrator
+   session or Project Key is needed.
+3. Apply and publish the Recovery Spec with guardrailctl scene apply --publish.
+   Save each Run's Submission credential in a new private temporary directory
+   outside the checkout or release.
 4. For each observation file, create a `changeSet` describing this synthetic
    case and a fresh Run with `guardrailctl run create`, saving its private
    credential through `--submission-credential-file`. Read that Run's frozen
-   instructions with `guardrailctl run revision --key-file FILE RUN_ID`; do not
+   instructions with `guardrailctl run revision RUN_ID`; do not
    substitute the Scene's current active Revision. Interpret the observation
    against these instructions before choosing a verdict.
 5. Write a complete Snapshot with `baseSubmissionNo` from the queried Run,
@@ -76,22 +74,17 @@ and all three observation files before deciding what to submit. The checkout or 
    `id/content` format. Call `guardrailctl run submit` with
    `--submission-credential-file FILE`, `--submission SNAPSHOT`, the Run ID and
    a stable operation ID. The fixtures contain observations, not prepared verdicts.
-6. Query each Run with the Project key using `guardrailctl run get`. Confirm all
+6. Query each Run directly using `guardrailctl run get`. Confirm all
    are `FINISHED`: healthy has `PASS / ALLOW`, unhealthy has `BLOCKED / DENY`,
    and unavailable health has `UNKNOWN / DENY`. Query the persisted Snapshot
-   with `guardrailctl run submission --key-file FILE --submission-id ID RUN_ID`
+   with `guardrailctl run submission --submission-id ID RUN_ID`
    using `finalSubmissionId`; its Evidence must reflect the corresponding
    observation. Check `decisionExpiresAt` before treating ALLOW as current.
-   In the administrator Runs page, confirm the records are visible. Report IDs,
+   In the Runs page, confirm the records are visible. Report IDs,
    Check verdicts and Decisions without printing credential contents.
-7. After verification and any requested browser inspection, if you created a
-   temporary Project key, revoke it using its non-secret `keyId` and
-   `guardrailctl auth revoke-key --key-id ID` while the administrator session is
-   active. Revoke that key before deleting its credential file; if revocation
-   fails, retain the file until the error is resolved. Do not revoke a key
-   supplied by the user. Remove only temporary files created by this demo and
-   keep a pre-existing administrator session intact. Deleting a key file does
-   not revoke its key.
+7. After verification and any requested browser inspection, remove only temporary
+   files created by this demo. Keep Run Submission credentials private until
+   the trial is finished. No account session or Project Key cleanup is needed.
 
 Do not retry an uncertain `run create` or `run submit` with a new operation ID.
 Read [Run retry and token recovery](../../../docs/runs.md) and inspect the actual

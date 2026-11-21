@@ -133,7 +133,7 @@ class FileToolTests(unittest.TestCase):
         result = demo.subprocess.CompletedProcess([], 9, stdout=private, stderr=private)
         with patch.object(demo.subprocess, "run", return_value=result):
             with self.assertRaises(demo.CommandFailed) as raised:
-                demo.command("/private/" + private, "run", "--key-file", private)
+                demo.command("/private/" + private, "run")
         detail = demo.public_error(raised.exception, "check")
         self.assertEqual(detail["exitCode"], 9)
         self.assertNotIn(private, json.dumps(detail))
@@ -283,13 +283,6 @@ class FileToolTests(unittest.TestCase):
             app.tool.close()
 
 
-    def test_default_demo_password_is_auto_generated_without_tty(self):
-        import types
-        args = types.SimpleNamespace(password_stdin=False, prompt_password=False)
-        password, generated = demo.resolve_password(args)
-        self.assertTrue(generated)
-        self.assertGreaterEqual(len(password), 6)
-        self.assertLessEqual(len(password.encode("utf-8")), 128)
 
 
 if __name__ == "__main__":

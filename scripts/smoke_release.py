@@ -37,13 +37,13 @@ def smoke_cleanup(extracted, temporary, environment, python=None):
     with log.open("w") as output:
         process = subprocess.Popen(
             [python or sys.executable, str(extracted / "examples/cleanup-demo/demo.py"),
-             "--password-stdin", "--port", "0"],
+             "--port", "0"],
             cwd=temporary, env=environment, stdin=subprocess.PIPE,
             stdout=output, stderr=subprocess.STDOUT, text=True, start_new_session=True,
         )
     ready = False
     try:
-        process.stdin.write(secrets.token_urlsafe(24) + "\n")
+
         process.stdin.close()
         deadline = time.monotonic() + 60
         while True:

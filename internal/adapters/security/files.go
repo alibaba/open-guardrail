@@ -2,10 +2,8 @@ package security
 
 import (
 	"errors"
-	"golang.org/x/term"
 	"io"
 	"os"
-	"strings"
 )
 
 // ReadPrivateFile refuses symlinks, shared files and oversized credential inputs.
@@ -28,23 +26,4 @@ func ReadPrivateFile(path string) ([]byte, error) {
 		return nil, errors.New("cannot read credential file")
 	}
 	return data, nil
-}
-func ReadPassword(stdin bool) (string, error) {
-	if stdin {
-		data, err := io.ReadAll(io.LimitReader(os.Stdin, 131))
-		if err != nil || len(data) > 130 {
-			return "", errors.New("invalid password input")
-		}
-		return strings.TrimSuffix(strings.TrimSuffix(string(data), "\n"), "\r"), nil
-	}
-	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return "", errors.New("use --password-stdin for non-interactive input")
-	}
-	_, _ = os.Stderr.WriteString("Password: ")
-	data, err := term.ReadPassword(int(os.Stdin.Fd()))
-	_, _ = os.Stderr.WriteString("\n")
-	if err != nil {
-		return "", errors.New("cannot read password")
-	}
-	return string(data), nil
 }

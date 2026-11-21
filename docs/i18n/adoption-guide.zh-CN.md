@@ -28,7 +28,7 @@ OpenGuardrail 负责按策略校验证据并落库裁决，观测采集与最终
 | 团队共享与审计留存 | 配置 PostgreSQL 存储，保持每个数据库对应一个服务实例。 |
 | 远程接入与生产托管 | 将服务置于可信 HTTPS 代理之后，并配置好管理员与机器凭据。 |
 
-具体配置参见[配置与存储](configuration.zh-CN.md)、[Docker 部署](docker.zh-CN.md)与[管理员初始化](local-administrator.zh-CN.md)。
+具体配置参见[配置与存储](configuration.zh-CN.md)、[Docker 部署](docker.zh-CN.md)与[管理员初始化](access.zh-CN.md)。
 
 ## 跑通一次完整闭环
 

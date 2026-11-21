@@ -12,9 +12,7 @@ import (
 
 	contract "github.com/alibaba/open-guardrail/api/openapi"
 	"github.com/alibaba/open-guardrail/internal/adapters/httpapi"
-	"github.com/alibaba/open-guardrail/internal/adapters/security"
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
 	"github.com/alibaba/open-guardrail/internal/config"
@@ -27,18 +25,6 @@ func TestBindingCLIRealService(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	ids := identity.New(store.Identity(), security.Passwords{})
-	if _, err := ids.BootstrapLocal(ctx, identity.BootstrapRequest{Username: "admin", Password: "synthetic-password"}); err != nil {
-		t.Fatal(err)
-	}
-	login, err := ids.Login(ctx, identity.LoginRequest{Username: "admin", Password: "synthetic-password", Kind: "cli"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	key, err := ids.CreateAPIKey(ctx, login.Token, "cli", "RUN_ORCHESTRATOR")
-	if err != nil {
-		t.Fatal(err)
-	}
 	specs := spec.New(store.Specs())
 	scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
 	yamlBytes, err := os.ReadFile("../../examples/policies/recovery.yaml")
@@ -63,20 +49,14 @@ func TestBindingCLIRealService(t *testing.T) {
 	}
 	server := httptest.NewUnstartedServer(nil)
 	origin := "http://" + server.Listener.Addr().String()
-	server.Config.Handler = httpapi.New(store, httpapi.Options{Identity: ids, Origin: origin, ModelSpecs: specs, ModelRuns: runapp.New(store.Runs())})
+	server.Config.Handler = httpapi.New(store, httpapi.Options{Origin: origin, ModelSpecs: specs, ModelRuns: runapp.New(store.Runs())})
 	server.Start()
 	defer server.Close()
 	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, server.URL, login.Token)
-	keyFile := filepath.Join(dir, "key.json")
-	keyData, _ := json.Marshal(credentialFile{Server: server.URL, Token: key.APIKey})
-	if err := os.WriteFile(keyFile, keyData, 0600); err != nil {
-		t.Fatal(err)
-	}
 	call := func(args ...string) string {
 		t.Helper()
 		var out bytes.Buffer
-		args = append(args, "--server", server.URL, "--session-file", session, "--scene", "recovery")
+		args = append(args, "--server", server.URL, "--scene", "recovery")
 		if err := run(args, &out); err != nil {
 			t.Fatalf("%v: %v", args[:2], err)
 		}
@@ -107,7 +87,7 @@ func TestBindingCLIRealService(t *testing.T) {
 	}
 	create := func(operation string, refs any, wantFailure bool) contract.PolicyRun {
 		t.Helper()
-		args := []string{"run", "create", "--server", server.URL, "--key-file", keyFile, "--scene", "recovery", "--change-set", change, "--operation-id", operation, "--submission-credential-file", filepath.Join(dir, operation+"-credential.json")}
+		args := []string{"run", "create", "--server", server.URL, "--scene", "recovery", "--change-set", change, "--operation-id", operation, "--submission-credential-file", filepath.Join(dir, operation+"-credential.json")}
 		if refs != nil {
 			data, _ := json.Marshal(refs)
 			file := filepath.Join(dir, "resources.json")
@@ -193,19 +173,14 @@ func TestBindingCLIRealService(t *testing.T) {
 	if afterDelete.PolicyId != initial.Policy.ID {
 		t.Fatal("delete did not remove binding")
 	}
-	// A Project key cannot be used as an administrator session for management.
-	var out bytes.Buffer
-	err = run([]string{"binding", "list", "--server", server.URL, "--session-file", keyFile, "--scene", "recovery"}, &out)
-	if err == nil {
-		t.Fatalf("machine management auth=%v", err)
-	}
+
 }
 
 func TestBindingCLIRejectsInvalidFlags(t *testing.T) {
 	for _, args := range [][]string{
 		{"binding", "put", "--scene", "recovery", "--kind", "repository", "--resource-id", "repo"},
 		{"binding", "list", "--scene", "recovery", "--limit", "101"},
-		{"binding", "list", "--scene", "recovery", "--session-file", ""},
+
 		{"binding", "put", "--scene", "recovery", "--kind", "INVALID", "--resource-id", "repo", "--policy-id", "policy-1"},
 		{"binding", "list", "--scene", "recovery", "--unknown"},
 	} {
@@ -228,7 +203,7 @@ func TestRunResourcesValidation(t *testing.T) {
 }
 
 func TestRunResourcesExplicitEmptyIsRejected(t *testing.T) {
-	_, err := parseRunOptions("create", []string{"--key-file", "key.json", "--scene", "recovery", "--change-set", "change.json", "--submission-credential-file", "credential.json", "--resources", ""}, &bytes.Buffer{})
+	_, err := parseRunOptions("create", []string{"--scene", "recovery", "--change-set", "change.json", "--submission-credential-file", "credential.json", "--resources", ""}, &bytes.Buffer{})
 	if commandExitCode(err) != exitUsage {
 		t.Fatalf("empty resources accepted: %v", err)
 	}

@@ -12,10 +12,9 @@ import (
 	"unicode/utf8"
 
 	contract "github.com/alibaba/open-guardrail/api/openapi"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
+	"github.com/alibaba/open-guardrail/extension/resource"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
-	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 	specdomain "github.com/alibaba/open-guardrail/internal/domain/spec"
 )
@@ -68,6 +67,13 @@ func (s *server) modelRevisionRoute(w http.ResponseWriter, r *http.Request, id s
 	writeJSON(w, http.StatusOK, revision)
 }
 
+func creationRefs(ref *contract.ResourceReference) []resource.Reference {
+	if ref == nil {
+		return nil
+	}
+	return []resource.Reference{{Kind: ref.Kind, ID: ref.Id}}
+}
+
 func (s *server) decodeModel(w http.ResponseWriter, r *http.Request, dst any, limit int64, required ...string) bool {
 	if !decodeJSON(w, r, dst, limit, required...) {
 		writeError(w, r, http.StatusBadRequest, "INVALID_ARGUMENT", "Invalid JSON request")
@@ -85,6 +91,8 @@ func (s *server) modelSpecError(w http.ResponseWriter, r *http.Request, err erro
 		return
 	}
 	switch {
+	case errors.Is(err, spec.ErrForbidden):
+		writeError(w, r, http.StatusForbidden, "PERMISSION_DENIED", "Spec maintainer required")
 	case errors.Is(err, spec.ErrSceneAlreadyInitialized):
 		writeError(w, r, http.StatusConflict, "SCENE_ALREADY_INITIALIZED", "Scene already initialized")
 	case errors.Is(err, spec.ErrNotFound):
@@ -101,7 +109,7 @@ func (s *server) modelSceneRoute(w http.ResponseWriter, r *http.Request) {
 	var scope spec.Scope
 	var ok bool
 	if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/policies") {
-		scope, ok = s.policyPublisherScope(w, r, identity.ScopePoliciesCreate)
+		scope, ok = s.specScope(w, r)
 	} else {
 		scope, ok = s.specScope(w, r)
 	}
@@ -141,7 +149,7 @@ func (s *server) modelSceneRoute(w http.ResponseWriter, r *http.Request) {
 			s.modelSpecError(w, r, spec.ErrInvalid)
 			return
 		}
-		result, created, err := s.options.ModelSpecs.InitializeScene(r.Context(), scope, key, in.Name, in.DefaultPolicyName, in.Yaml, modelKey(r))
+		result, created, err := s.options.ModelSpecs.InitializeSceneWithPlugins(r.Context(), scope, key, in.Name, in.DefaultPolicyName, in.Yaml, modelKey(r), in.Plugins)
 		if err != nil {
 			s.modelSpecError(w, r, err)
 			return
@@ -180,7 +188,7 @@ func (s *server) modelSceneRoute(w http.ResponseWriter, r *http.Request) {
 				s.modelSpecError(w, r, spec.ErrInvalid)
 				return
 			}
-			policy, created, err := s.options.ModelSpecs.CreatePolicy(r.Context(), scope, sceneKey, in.Name, modelKey(r))
+			policy, created, err := s.options.ModelSpecs.CreatePolicy(r.Context(), scope, sceneKey, in.Name, modelKey(r), creationRefs(in.Resource)...)
 			if err != nil {
 				s.modelSpecError(w, r, err)
 				return
@@ -230,7 +238,7 @@ func (s *server) modelSceneRoute(w http.ResponseWriter, r *http.Request) {
 		if !s.decodeModel(w, r, &in, 4096) {
 			return
 		}
-		scene, err := s.options.ModelSpecs.SetSceneTTL(r.Context(), scope, path, in.RunTtlSeconds)
+		scene, err := s.options.ModelSpecs.UpdateScene(r.Context(), scope, path, in.RunTtlSeconds, in.Plugins)
 		if err != nil {
 			s.modelSpecError(w, r, err)
 			return
@@ -244,13 +252,8 @@ func validName(value string) bool {
 	return utf8.ValidString(value) && strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= 100
 }
 func (s *server) modelPolicyRoute(w http.ResponseWriter, r *http.Request) {
-	var scope spec.Scope
-	var ok bool
-	if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/revisions") {
-		scope, ok = s.policyPublisherScope(w, r, identity.ScopeRevisionsPublish)
-	} else {
-		scope, ok = s.specScope(w, r)
-	}
+	scope, ok := s.specScope(w, r)
+
 	if !ok {
 		return
 	}
@@ -294,6 +297,21 @@ func (s *server) modelPolicyRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch parts[1] {
+	case "maintainers":
+		if r.Method != http.MethodPut {
+			break
+		}
+		var in contract.SetPolicyMaintainersRequest
+		if !s.decodeModel(w, r, &in, 16384, "maintainers") {
+			return
+		}
+		p, err := s.options.ModelSpecs.SetPolicyMaintainers(r.Context(), scope, id, in.Maintainers)
+		if err != nil {
+			s.modelSpecError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
+		return
 	case "draft":
 		if r.Method == http.MethodGet {
 			draft, err := s.options.ModelSpecs.GetPolicyDraft(r.Context(), scope, id)
@@ -358,7 +376,11 @@ func (s *server) modelPolicyRoute(w http.ResponseWriter, r *http.Request) {
 		if !s.decodeModel(w, r, &in, 6*specdomain.MaxYAMLBytes+4096, "yaml") {
 			return
 		}
-		rev, created, err := s.options.ModelSpecs.PublishPolicyRevision(r.Context(), scope, id, in.Yaml, modelKey(r), draft)
+		var metadata json.RawMessage
+		if in.Metadata != nil {
+			metadata = *in.Metadata
+		}
+		rev, created, err := s.options.ModelSpecs.PublishPolicyRevisionWithOptions(r.Context(), scope, id, in.Yaml, modelKey(r), draft, spec.PublicationOptions{Metadata: metadata})
 		if err != nil {
 			s.modelSpecError(w, r, err)
 			return
@@ -402,6 +424,8 @@ func (s *server) modelRunError(w http.ResponseWriter, r *http.Request, err error
 		writeError(w, r, http.StatusConflict, "SPEC_NOT_PUBLISHED", "No usable Policy Revision")
 	case errors.Is(err, runapp.ErrBindingConflict):
 		writeError(w, r, http.StatusConflict, "BINDING_CONFLICT", "Resources have incomplete or conflicting Policy bindings")
+	case errors.Is(err, resource.ErrUnavailable):
+		writeError(w, r, http.StatusServiceUnavailable, "RESOURCE_RESOLVER_UNAVAILABLE", "Business resources could not be resolved")
 	case errors.Is(err, runapp.ErrIdempotencyConflict):
 		writeError(w, r, http.StatusConflict, "IDEMPOTENCY_CONFLICT", "Idempotency key has different content")
 	case errors.Is(err, runapp.ErrBusinessIDConflict):
@@ -429,7 +453,7 @@ func (s *server) modelRunRoute(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/runtime/v1alpha1/runs")
 	if path == "" {
 		if r.Method == http.MethodGet {
-			scope, ok := s.runScope(w, r, identity.ScopeRunsRead)
+			scope, ok := s.runScope(w, r)
 			if !ok {
 				return
 			}
@@ -440,7 +464,7 @@ func (s *server) modelRunRoute(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Resource not found")
 			return
 		}
-		scope, ok := s.runScope(w, r, identity.ScopeRunsCreate)
+		scope, ok := s.runScope(w, r)
 		if !ok {
 			return
 		}
@@ -547,7 +571,7 @@ func (s *server) modelRunRoute(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Resource not found")
 			return
 		}
-		scope, ok := s.runScope(w, r, identity.ScopeSubmissionCredentialRotate)
+		scope, ok := s.runScope(w, r)
 		if !ok {
 			return
 		}
@@ -564,7 +588,7 @@ func (s *server) modelRunRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if modelID.MatchString(path) && r.Method == http.MethodGet {
-		scope, ok := s.runScope(w, r, identity.ScopeRunsRead)
+		scope, ok := s.runScope(w, r)
 		if !ok {
 			return
 		}

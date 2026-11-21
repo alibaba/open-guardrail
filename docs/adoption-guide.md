@@ -37,7 +37,7 @@ the real system. See [Runs and submissions](runs.md) for the read and retry flow
 | Provide remote access | Put the service behind a trusted HTTPS proxy and configure administrator and machine credentials. |
 
 See [configuration and storage](configuration.md), [Docker deployment](docker.md)
-and [administrator setup](local-administrator.md) for the required settings.
+and [administrator setup](access.md) for the required settings.
 
 ## Try the complete loop
 

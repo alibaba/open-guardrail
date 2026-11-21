@@ -129,7 +129,7 @@ class RecoveryGateTest(unittest.TestCase):
             change_set={"service": "sample-checkout", "environment": "test",
                         "candidate": "candidate-1"},
             operation_identity="test-pipeline-build-1-checkpoint-1",
-            observation=observation, key_file="secret-file",
+            observation=observation,
         )
         def fake_command(*command, **kwargs):
             if command[0] == "age":
@@ -171,7 +171,7 @@ class RecoveryGateTest(unittest.TestCase):
             gate.private_json(state_dir / "run-credential.json", {"token": "test-only"})
             with mock.patch.object(gate, "command", return_value=json.dumps({"status": "OPEN"})):
                 with self.assertRaisesRegex(RuntimeError, "promotion stopped"):
-                    gate.finalize_gate("guardrailctl", "key-file", state_dir)
+                    gate.finalize_gate("guardrailctl",  state_dir)
             self.assertTrue((state_dir / "run-credential.json").exists())
 
     def test_poll_only_allows_current_pass(self):
@@ -196,10 +196,10 @@ class RecoveryGateTest(unittest.TestCase):
                                          "verdict": result, "finishRun": True, "snapshot": submission})
                     with mock.patch.object(gate, "command", side_effect=[final, final, stored] if allowed else [final, final]):
                         if allowed:
-                            self.assertTrue(gate.poll_gate("cli", "key", state_dir))
+                            self.assertTrue(gate.poll_gate("cli",  state_dir))
                         else:
                             with self.assertRaisesRegex(RuntimeError, "promotion stopped"):
-                                gate.poll_gate("cli", "key", state_dir)
+                                gate.poll_gate("cli",  state_dir)
                     self.assertFalse(state_dir.exists())
 
     def test_poll_rejects_forged_or_missing_snapshot_despite_allow(self):
@@ -216,7 +216,7 @@ class RecoveryGateTest(unittest.TestCase):
                           "verdict": "PASS", "finishRun": True, "snapshot": forged}
                 with mock.patch.object(gate, "command", side_effect=[json.dumps(final), json.dumps(final), json.dumps(stored)]):
                     with self.assertRaisesRegex(RuntimeError, "does not match pipeline observation"):
-                        gate.poll_gate("cli", "key", state_dir)
+                        gate.poll_gate("cli",  state_dir)
                 self.assertTrue((state_dir / "state.json").exists())
 
     def test_decision_expiring_during_snapshot_read_is_rejected(self):
@@ -234,7 +234,7 @@ class RecoveryGateTest(unittest.TestCase):
             with mock.patch.object(gate, "command", side_effect=[json.dumps(final), json.dumps(stored)]), \
                  mock.patch.object(gate.time, "time", side_effect=[100, 300]):
                 with self.assertRaisesRegex(gate.GateStopped, "promotion stopped") as caught:
-                    gate.finalize_gate("cli", "key", state_dir)
+                    gate.finalize_gate("cli",  state_dir)
                 self.assertEqual(caught.exception.reason, "DECISION_EXPIRED")
                 self.assertEqual(caught.exception.business_evidence, "ACCEPTED")
 
@@ -245,24 +245,6 @@ class RecoveryGateTest(unittest.TestCase):
         self.assertIn("archiveArtifacts", pipeline)
         self.assertIn("waitUntil", pipeline)
 
-    def test_jenkinsfile_normalizes_secret_file_permissions(self):
-        pipeline = (gate.ROOT / "integrations/jenkins/Jenkinsfile").read_text()
-        self.assertEqual(pipeline.count('trap \'rm -f "$private_key"\' EXIT'), 2)
-        self.assertEqual(pipeline.count("trap 'exit 1' HUP INT TERM"), 2)
-        self.assertEqual(
-            pipeline.count('mktemp "${TMPDIR:-/tmp}/open-guardrail-key.XXXXXX"'),
-            2,
-        )
-        self.assertEqual(
-            pipeline.count('(umask 077; cp "$GUARDRAIL_KEY_FILE" "$private_key")'),
-            2,
-        )
-        self.assertEqual(pipeline.count('chmod 600 "$private_key"'), 2)
-        self.assertNotIn('$WORKSPACE/.demo-bin/guardrail-key-', pipeline)
-        self.assertEqual(
-            pipeline.count('GUARDRAIL_KEY_FILE="$private_key" python3 -m integrations.jenkins.adapter'),
-            2,
-        )
 
 
 if __name__ == "__main__":

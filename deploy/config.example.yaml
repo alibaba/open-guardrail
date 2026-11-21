@@ -14,3 +14,7 @@ database:
 # external. The service uses existing tables without running migrations or
 # requiring migration-version records.
 # Never put real credentials in this example.
+
+# Explicitly trust caller-supplied operator IDs (no credential check).
+# Send operator in JSON or X-Operator; Spec maintainers use <namespace>:<operator>.
+# trusted_operator_namespace: example

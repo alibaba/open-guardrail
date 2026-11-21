@@ -47,7 +47,7 @@ class Smoke:
         ipaddress.IPv4Address(args.host_ip)
         self.env = {key: value for key, value in os.environ.items()
                     if not key.startswith("OPEN_GUARDRAIL_") and key != "DATABASE_URL"}
-        self.env["OPEN_GUARDRAIL_SESSION_FILE"] = str(self.work / "admin-session.json")
+
         self.cli = str(Path(args.cli).resolve())
         self.server_bin = str(Path(args.server_bin).resolve())
         self.service = self.proxy = self.server_log = None
@@ -182,17 +182,9 @@ class Smoke:
                      "--spec", str(path), "--publish")
 
     def setup(self):
-        password = secrets.token_urlsafe(24)
-        self.command(self.cli, "bootstrap", "init", "--token-file", str(self.work / "data/bootstrap.token"),
-                     "--username", "demo", "--password-stdin", input_text=password + "\n")
-        self.command(self.cli, "auth", "login", "--username", "demo", "--password-stdin", input_text=password + "\n")
         self.publish_spec()
-        self.key_path = self.work / "project-key.json"
-        self.command(self.cli, "auth", "create-key", "--result-file", str(self.key_path))
         # create, rather than apply, refuses to overwrite an existing namespace.
         self.kubectl("create", "namespace", self.namespace)
-        self.apply({"apiVersion": "v1", "kind": "Secret", "metadata": {"name": "open-guardrail-project-key"},
-                    "data": {"project-key.json": base64.b64encode(self.key_path.read_bytes()).decode()}})
         self.apply({"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "guardrail-test-ca"},
                     "data": {"ca.crt": (self.work / "tls.crt").read_text()}})
         self.install_template()
@@ -299,7 +291,7 @@ class Smoke:
             self.status()
         else:
             self.wait(case + " rollout abort", lambda: self.resource("rollout", "guardrail-demo").get("status", {}).get("abort"), 60)
-        final = self.cli_json("run", "get", "--key-file", str(self.key_path), bundle["runId"])
+        final = self.cli_json("run", "get",  bundle["runId"])
         expected_decision = "ALLOW" if case in ("healthy", "forged", "expired") else "DENY" if case in ("unhealthy", "unknown") else None
         assert final.get("decision") == expected_decision, (case, final.get("decision"))
         if case in ("timeout", "unavailable", "pod-loss"):
@@ -318,9 +310,9 @@ class Smoke:
                 "forged": "EVIDENCE_REJECTED", "timeout": "AGENT_TIMEOUT", "expired": "DECISION_EXPIRED", "unavailable": "VERIFICATION_FAILED"}[case]
             assert gate_result["reason"] == expected_reason, (case, gate_result)
             logs = self.kubectl("logs", pod_name, "-c", "guardrail").stdout
-        assert json.loads(self.key_path.read_text())["token"] not in logs
+
         assert bundle["runToken"]["token"] not in logs
-        listed = self.cli_json("run", "list", "--key-file", str(self.key_path), "--limit", "100")
+        listed = self.cli_json("run", "list",  "--limit", "100")
         assert len(listed["items"]) == len(self.results) + 1, "duplicate Run created during recovery"
         result = {"case": case, "runId": bundle["runId"], "runStatus": final["status"], "decision": final.get("decision"),
             "analysisRun": analysis["metadata"]["name"], "analysisPhase": phase, "job": job["metadata"]["name"], "gate": gate_result}

@@ -22,7 +22,7 @@ func TestBindingMigrationPreservesExistingPolicyAndRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 	scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
-	initial, _, err := spec.New(old.Specs()).InitializeScene(ctx, scope, "recovery", "Recovery", "default", sampleSpec, "init")
+	initial, _, err := initializeLegacyPolicy(ctx, old, scope)
 	if err != nil {
 		t.Fatal(err)
 	}

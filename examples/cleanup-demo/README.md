@@ -1,5 +1,7 @@
 # Live file cleanup demo
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](../../docs/access.md).
+
 Run one cleanup task against a real OpenGuardrail service and a controlled file
 tool. The browser shows the files on disk, each Run, the accepted evidence and
 the tool's actual deletions. Change the initial targets or the batch limit and
@@ -29,26 +31,18 @@ make build
 python3 examples/cleanup-demo/demo.py --binaries "$PWD/bin"
 ```
 
-The script starts an isolated SQLite service with an auto-generated temporary
-console password and prints two loopback URLs:
+The script starts an isolated SQLite service and prints two loopback URLs:
 
 - **Demo:** open this first. No login is required to run the limited cleanup
   task or inspect its Run details.
-- **Console:** sign in as `demo` using the temporary password file printed at
-  startup. Select **Runs** to inspect the same Run IDs in the regular management
-  UI. Another browser requires its own login.
-
-Pass `--prompt-password` if you prefer to choose a console password interactively.
+- **Console:** open directly and select **Runs** to inspect the same Run IDs
+  in the regular management UI.
 
 Use the printed `127.0.0.1` URLs as-is. This local demo does not accept
 `localhost` or other hostnames.
 
-Keep the terminal open. Ctrl-C revokes the example's machine key, stops both
-services and removes the temporary directory, credentials and SQLite data.
-The machine key expires after one hour; restart the demo for a longer session.
-For automation, `--password-stdin` reads the chosen password from standard input.
-Do not put passwords in command-line arguments or commit them to the repository.
-Use `--port 57743` if a fixed demo page URL is useful.
+Keep the terminal open. Ctrl-C stops both services and removes the temporary
+directory, Run submission credentials and SQLite data.
 
 ## Try it
 
@@ -108,7 +102,7 @@ uses fixed basenames and directory-relative file descriptors, rejects symlinks
 and hard links, and does not expose a shell or general filesystem endpoint.
 The demo HTTP server binds to `127.0.0.1`, validates Host and Origin, and requires
 a per-process write token. It exposes only this example's state, task and reset
-operations, not the administrator or machine credentials.
+operations, and keeps Run submission credentials private.
 
 This is a reference integration, not an OS sandbox or protection against another
 process running as the same OS user. Deleting multiple files is not an atomic

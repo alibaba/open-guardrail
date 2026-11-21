@@ -5,21 +5,29 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"github.com/alibaba/open-guardrail/extension/resource"
 	"strconv"
 	"time"
 
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
+	opaque "github.com/alibaba/open-guardrail/internal/application/token"
 	specdomain "github.com/alibaba/open-guardrail/internal/domain/spec"
 )
 
 func scanSceneModel(row scanner) (spec.SceneModel, error) {
 	var m spec.SceneModel
 	var defaultID sql.NullString
-	err := row.Scan(&m.Key, &m.Name, &defaultID, &m.RunTTLSeconds)
+	var plugins []byte
+	err := row.Scan(&m.Key, &m.Name, &defaultID, &m.RunTTLSeconds, &plugins)
 	if err != nil {
 		return spec.SceneModel{}, specError(err)
+	}
+	if plugins != nil {
+		if err := json.Unmarshal(plugins, &m.Plugins); err != nil || !m.Plugins.Valid() {
+			return spec.SceneModel{}, spec.ErrUnavailable
+		}
 	}
 	if defaultID.Valid {
 		m.DefaultPolicyID = &defaultID.String
@@ -47,20 +55,25 @@ func (s *Specs) ListSceneModels(ctx context.Context, scope spec.Scope) ([]spec.S
 }
 func scanPolicyModel(row scanner) (spec.Policy, error) {
 	var p spec.Policy
-	var activeID sql.NullString
-	err := row.Scan(&p.ID, &p.SceneKey, &p.Name, &p.LifecycleState, &activeID)
+	var activeID, maintainers sql.NullString
+	err := row.Scan(&p.ID, &p.SceneKey, &p.Name, &p.LifecycleState, &activeID, &maintainers)
 	if err != nil {
 		return spec.Policy{}, specError(err)
 	}
 	if activeID.Valid {
 		p.ActiveRevisionID = &activeID.String
 	}
+	p.Maintainers = []string{}
+	if maintainers.Valid && (json.Unmarshal([]byte(maintainers.String), &p.Maintainers) != nil || !spec.ValidMaintainers(p.Maintainers)) {
+		return spec.Policy{}, spec.ErrUnavailable
+	}
+
 	return p, nil
 }
 
-const policyModelColumns = "p.policy_id,p.scene_key,p.name,p.lifecycle_state,a.policy_revision_id"
+const policyModelColumns = "p.policy_id,p.scene_key,p.name,p.lifecycle_state,a.policy_revision_id,p.maintainers_json"
 const policyModelFrom = " FROM policy p LEFT JOIN policy_revision a ON a.id=p.active_revision_id"
-const sceneModelColumns = "scene_key,name,(SELECT policy_id FROM policy WHERE id=scene.default_policy_id),run_ttl_seconds"
+const sceneModelColumns = "scene_key,name,(SELECT policy_id FROM policy WHERE id=scene.default_policy_id),run_ttl_seconds,plugins_json"
 
 func policyByID(ctx context.Context, q rowQueryer, scope spec.Scope, id string) (spec.Policy, error) {
 	return scanPolicyModel(q.QueryRowContext(ctx, "SELECT "+policyModelColumns+policyModelFrom+" WHERE p.policy_id=$1 AND p.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND p.project_id=(SELECT id FROM project WHERE project_id=$3)", id, scope.WorkspaceID, scope.ProjectID))
@@ -70,14 +83,18 @@ func (s *Specs) GetPolicy(ctx context.Context, scope spec.Scope, id string) (spe
 }
 func scanPolicyRevision(row scanner) (spec.PolicyRevision, error) {
 	var r spec.PolicyRevision
-	err := row.Scan(&r.ID, &r.PolicyID, &r.RevisionNumber, &r.YAML, &r.Digest, &r.PublishedAt, &r.PublishedBy, &r.Status, &r.UpdatedBy, &r.UpdatedAt)
+	var metadata sql.NullString
+	err := row.Scan(&r.ID, &r.PolicyID, &r.RevisionNumber, &r.YAML, &r.Digest, &r.PublishedAt, &r.PublishedBy, &r.Status, &r.UpdatedBy, &r.UpdatedAt, &metadata)
 	if err != nil {
 		return spec.PolicyRevision{}, specError(err)
+	}
+	if metadata.Valid {
+		r.Metadata = json.RawMessage(metadata.String)
 	}
 	return r, nil
 }
 
-const revisionModelColumns = "r.policy_revision_id,p.policy_id,r.revision_number,r.yaml,r.digest,r.published_at,r.published_by,r.status,r.updated_by,r.updated_at"
+const revisionModelColumns = "r.policy_revision_id,p.policy_id,r.revision_number,r.yaml,r.digest,r.published_at,r.published_by,r.status,r.updated_by,r.updated_at,r.metadata_json"
 const revisionModelFrom = " FROM policy_revision r JOIN policy p ON p.id=r.policy_id"
 
 func revisionByID(ctx context.Context, q rowQueryer, scope spec.Scope, id string) (spec.PolicyRevision, error) {
@@ -165,7 +182,10 @@ func lockPolicyModel(ctx context.Context, tx *sql.Tx, scope spec.Scope, id strin
 	}
 	return policyByID(ctx, tx, scope, id)
 }
-func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, name, key string) (spec.Policy, bool, error) {
+func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, name, key string, refs ...resource.Reference) (spec.Policy, bool, error) {
+	if !spec.ValidMaintainers([]string{scope.ActorID}) {
+		return spec.Policy{}, false, spec.ErrInvalid
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return spec.Policy{}, false, specError(err)
@@ -174,7 +194,15 @@ func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, na
 	if err = lockSpecProject(ctx, tx, scope); err != nil {
 		return spec.Policy{}, false, err
 	}
-	requestDigest := modelDigest(sceneKey + "\n" + name)
+	if len(refs) > 1 || (len(refs) == 1 && !refs[0].Valid()) {
+		return spec.Policy{}, false, spec.ErrInvalid
+	}
+	raw := sceneKey + "\n" + name
+	if len(refs) == 1 {
+		encoded, _ := json.Marshal(refs[0])
+		raw += "\nresource\n" + string(encoded)
+	}
+	requestDigest := modelDigest(raw)
 	if digest, id, err := recordByKey(ctx, tx, scope, "policy:create", key); err == nil {
 		if digest != requestDigest {
 			return spec.Policy{}, false, spec.ErrConflict
@@ -195,9 +223,14 @@ func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, na
 	if n == 0 {
 		return spec.Policy{}, false, spec.ErrNotFound
 	}
-	p := spec.Policy{ID: identity.RandomToken("pol_"), SceneKey: sceneKey, Name: name, LifecycleState: "ACTIVE"}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5)", p.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, name); err != nil {
+	p := spec.Policy{ID: opaque.RandomToken("pol_"), SceneKey: sceneKey, Name: name, LifecycleState: "ACTIVE", Maintainers: []string{scope.ActorID}}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name,maintainers_json) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5,$6)", p.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, name, creatorMaintainers(scope)); err != nil {
 		return spec.Policy{}, false, specError(err)
+	}
+	if len(refs) == 1 {
+		if err = s.insertCreationBinding(ctx, tx, scope, sceneKey, p.ID, refs[0]); err != nil {
+			return spec.Policy{}, false, err
+		}
 	}
 	now := time.Now().Unix()
 	if err = insertRecord(ctx, tx, scope, "policy:create", key, requestDigest, "policy", p.ID, now); err != nil {
@@ -226,7 +259,7 @@ func (s *Specs) SavePolicyDraft(ctx context.Context, scope spec.Scope, id, yaml 
 		return spec.PolicyRevision{}, specError(err)
 	}
 	defer tx.Rollback()
-	policy, err := lockPolicyModel(ctx, tx, scope, id)
+	policy, err := lockMaintainedPolicy(ctx, tx, scope, id)
 	if err != nil {
 		return spec.PolicyRevision{}, err
 	}
@@ -236,7 +269,7 @@ func (s *Specs) SavePolicyDraft(ctx context.Context, scope spec.Scope, id, yaml 
 	now := time.Now().Unix()
 	inserted, err := tx.ExecContext(ctx, `INSERT INTO policy_revision(policy_revision_id,policy_id,status,yaml,updated_by,updated_at)
  SELECT $1,id,'DRAFT',$2,$3,$4 FROM policy WHERE policy_id=$5
- AND NOT EXISTS(SELECT 1 FROM policy_revision WHERE policy_id=policy.id AND status='DRAFT')`, identity.RandomToken("rev_"), yaml, scope.ActorID, now, id)
+ AND NOT EXISTS(SELECT 1 FROM policy_revision WHERE policy_id=policy.id AND status='DRAFT')`, opaque.RandomToken("rev_"), yaml, scope.ActorID, now, id)
 	if err != nil {
 		return spec.PolicyRevision{}, specError(err)
 	}
@@ -277,6 +310,10 @@ func (s *Specs) CommitPolicyRevision(ctx context.Context, scope spec.Scope, inpu
 	if err = lockSpecProject(ctx, tx, scope); err != nil {
 		return spec.PolicyRevision{}, false, err
 	}
+	p, err := lockMaintainedPolicy(ctx, tx, scope, policyID)
+	if err != nil {
+		return spec.PolicyRevision{}, false, err
+	}
 	if digest, id, err := recordByKey(ctx, tx, scope, operation, key); err == nil {
 		if digest != requestDigest {
 			return spec.PolicyRevision{}, false, spec.ErrConflict
@@ -284,10 +321,6 @@ func (s *Specs) CommitPolicyRevision(ctx context.Context, scope spec.Scope, inpu
 		r, err := revisionByID(ctx, tx, scope, id)
 		return r, false, err
 	} else if !errors.Is(err, spec.ErrNotFound) {
-		return spec.PolicyRevision{}, false, err
-	}
-	p, err := lockPolicyModel(ctx, tx, scope, policyID)
-	if err != nil {
 		return spec.PolicyRevision{}, false, err
 	}
 	if p.LifecycleState != "ACTIVE" {
@@ -313,16 +346,20 @@ func (s *Specs) CommitPolicyRevision(ctx context.Context, scope spec.Scope, inpu
 		return spec.PolicyRevision{}, false, specError(err)
 	}
 	number, now := last+1, input.Now()
-	revision := spec.PolicyRevision{ID: identity.RandomToken("rev_"), PolicyID: policyID, RevisionNumber: &number, YAML: yaml, Digest: &input.SpecDigest, PublishedAt: &now, PublishedBy: &scope.ActorID, Status: "PUBLISHED", UpdatedBy: scope.ActorID, UpdatedAt: now}
+	revision := spec.PolicyRevision{ID: opaque.RandomToken("rev_"), PolicyID: policyID, RevisionNumber: &number, YAML: yaml, Metadata: input.Metadata, Digest: &input.SpecDigest, PublishedAt: &now, PublishedBy: &scope.ActorID, Status: "PUBLISHED", UpdatedBy: scope.ActorID, UpdatedAt: now}
+	var metadata any
+	if len(input.Metadata) > 0 {
+		metadata = string(input.Metadata)
+	}
 	var result sql.Result
 	if input.FromDraft {
 		revision.ID = draft.ID
 		result, err = tx.ExecContext(ctx, `UPDATE policy_revision SET status='PUBLISHED',revision_number=$1,canonical_json=$2,digest=$3,
- published_at=$4,published_by=$5,updated_at=$6,updated_by=$7
- WHERE policy_revision_id=$8 AND status='DRAFT'`, revision.RevisionNumber, input.CanonicalJSON, input.SpecDigest, revision.PublishedAt, scope.ActorID, revision.UpdatedAt, revision.UpdatedBy, revision.ID)
+ published_at=$4,published_by=$5,updated_at=$6,updated_by=$7,metadata_json=$8
+ WHERE policy_revision_id=$9 AND status='DRAFT'`, revision.RevisionNumber, input.CanonicalJSON, input.SpecDigest, revision.PublishedAt, scope.ActorID, revision.UpdatedAt, revision.UpdatedBy, metadata, revision.ID)
 	} else {
-		result, err = tx.ExecContext(ctx, `INSERT INTO policy_revision(policy_revision_id,policy_id,status,revision_number,yaml,canonical_json,digest,published_at,published_by,updated_at,updated_by)
- VALUES($1,(SELECT id FROM policy WHERE policy_id=$2),'PUBLISHED',$3,$4,$5,$6,$7,$8,$9,$10)`, revision.ID, policyID, revision.RevisionNumber, yaml, input.CanonicalJSON, input.SpecDigest, revision.PublishedAt, scope.ActorID, revision.UpdatedAt, revision.UpdatedBy)
+		result, err = tx.ExecContext(ctx, `INSERT INTO policy_revision(policy_revision_id,policy_id,status,revision_number,yaml,canonical_json,digest,published_at,published_by,updated_at,updated_by,metadata_json)
+ VALUES($1,(SELECT id FROM policy WHERE policy_id=$2),'PUBLISHED',$3,$4,$5,$6,$7,$8,$9,$10,$11)`, revision.ID, policyID, revision.RevisionNumber, yaml, input.CanonicalJSON, input.SpecDigest, revision.PublishedAt, scope.ActorID, revision.UpdatedAt, revision.UpdatedBy, metadata)
 	}
 	if err != nil {
 		return spec.PolicyRevision{}, false, specError(err)
@@ -353,7 +390,7 @@ func (s *Specs) ActivatePolicyRevision(ctx context.Context, scope spec.Scope, po
 		return spec.Policy{}, specError(err)
 	}
 	defer tx.Rollback()
-	p, err := lockPolicyModel(ctx, tx, scope, policyID)
+	p, err := lockMaintainedPolicy(ctx, tx, scope, policyID)
 	if err != nil {
 		return spec.Policy{}, err
 	}
@@ -429,27 +466,39 @@ func (s *Specs) SetDefaultPolicy(ctx context.Context, scope spec.Scope, sceneKey
 	return scene, nil
 }
 func (s *Specs) SetSceneTTL(ctx context.Context, scope spec.Scope, sceneKey string, ttl int64) (spec.SceneModel, error) {
-	if ttl < 1 || ttl > 604800 {
-		return spec.SceneModel{}, spec.ErrInvalid
+	return s.UpdateScene(ctx, scope, sceneKey, &ttl, nil)
+}
+
+func scenePluginsJSON(p *resource.Plugins) any {
+	if p == nil || (p.ChangeSet == nil && p.BindingCandidates == nil) {
+		return nil
 	}
+	data, _ := json.Marshal(p)
+	return string(data)
+}
+
+func (s *Specs) UpdateScene(ctx context.Context, scope spec.Scope, sceneKey string, ttl *int64, plugins *resource.Plugins) (spec.SceneModel, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return spec.SceneModel{}, specError(err)
 	}
 	defer tx.Rollback()
-	result, err := tx.ExecContext(ctx, "UPDATE scene SET run_ttl_seconds=$1 WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND project_id=(SELECT id FROM project WHERE project_id=$3) AND scene_key=$4", ttl, scope.WorkspaceID, scope.ProjectID, sceneKey)
-	if err != nil {
-		return spec.SceneModel{}, specError(err)
+	const where = " WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND project_id=(SELECT id FROM project WHERE project_id=$3) AND scene_key=$4"
+	if ttl != nil {
+		if _, err = tx.ExecContext(ctx, "UPDATE scene SET run_ttl_seconds=$1"+where, *ttl, scope.WorkspaceID, scope.ProjectID, sceneKey); err != nil {
+			return spec.SceneModel{}, specError(err)
+		}
+		if err = specAudit(ctx, tx, scope, "scene_ttl_changed", "scene", sceneKey); err != nil {
+			return spec.SceneModel{}, err
+		}
 	}
-	n, err := result.RowsAffected()
-	if err != nil {
-		return spec.SceneModel{}, specError(err)
-	}
-	if n == 0 {
-		return spec.SceneModel{}, spec.ErrNotFound
-	}
-	if err = specAudit(ctx, tx, scope, "scene_ttl_changed", "scene", sceneKey); err != nil {
-		return spec.SceneModel{}, err
+	if plugins != nil {
+		if _, err = tx.ExecContext(ctx, "UPDATE scene SET plugins_json=$1"+where, scenePluginsJSON(plugins), scope.WorkspaceID, scope.ProjectID, sceneKey); err != nil {
+			return spec.SceneModel{}, specError(err)
+		}
+		if err = specAudit(ctx, tx, scope, "scene_plugins_changed", "scene", sceneKey); err != nil {
+			return spec.SceneModel{}, err
+		}
 	}
 	scene, err := scanSceneModel(tx.QueryRowContext(ctx, "SELECT "+sceneModelColumns+" FROM scene WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND project_id=(SELECT id FROM project WHERE project_id=$2) AND scene_key=$3", scope.WorkspaceID, scope.ProjectID, sceneKey))
 	if err != nil {
@@ -474,7 +523,7 @@ func (s *Specs) SetPolicyArchived(ctx context.Context, scope spec.Scope, id stri
 	if _, err = tx.ExecContext(ctx, "UPDATE scene SET name=name WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND project_id=(SELECT id FROM project WHERE project_id=$2) AND scene_key=$3", scope.WorkspaceID, scope.ProjectID, current.SceneKey); err != nil {
 		return spec.Policy{}, specError(err)
 	}
-	p, err := lockPolicyModel(ctx, tx, scope, id)
+	p, err := lockMaintainedPolicy(ctx, tx, scope, id)
 	if err != nil {
 		return spec.Policy{}, err
 	}
@@ -512,6 +561,9 @@ func (s *Specs) SetPolicyArchived(ctx context.Context, scope spec.Scope, id stri
 // CommitSceneInitialization atomically creates the default Policy and its first active
 // Revision. An existing uninitialized Scene may be initialized once.
 func (s *Specs) CommitSceneInitialization(ctx context.Context, scope spec.Scope, input spec.InitializationInput) (spec.InitializedScene, bool, error) {
+	if !spec.ValidMaintainers([]string{scope.ActorID}) {
+		return spec.InitializedScene{}, false, spec.ErrInvalid
+	}
 	if input.Now == nil {
 		return spec.InitializedScene{}, false, spec.ErrInvalid
 	}
@@ -563,10 +615,10 @@ func (s *Specs) CommitSceneInitialization(ctx context.Context, scope spec.Scope,
 		return spec.InitializedScene{}, false, spec.ErrSceneAlreadyInitialized
 	}
 	now := input.Now()
-	policy := spec.Policy{ID: identity.RandomToken("pol_"), SceneKey: sceneKey, Name: policyName, LifecycleState: "ACTIVE"}
+	policy := spec.Policy{ID: opaque.RandomToken("pol_"), SceneKey: sceneKey, Name: policyName, LifecycleState: "ACTIVE", Maintainers: []string{scope.ActorID}}
 	number := int64(1)
-	revision := spec.PolicyRevision{ID: identity.RandomToken("rev_"), PolicyID: policy.ID, RevisionNumber: &number, YAML: yaml, Digest: &specDigest, PublishedAt: &now, PublishedBy: &scope.ActorID, Status: "PUBLISHED", UpdatedBy: scope.ActorID, UpdatedAt: now}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5)", policy.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, policyName); err != nil {
+	revision := spec.PolicyRevision{ID: opaque.RandomToken("rev_"), PolicyID: policy.ID, RevisionNumber: &number, YAML: yaml, Digest: &specDigest, PublishedAt: &now, PublishedBy: &scope.ActorID, Status: "PUBLISHED", UpdatedBy: scope.ActorID, UpdatedAt: now}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name,maintainers_json) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5,$6)", policy.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, policyName, creatorMaintainers(scope)); err != nil {
 		return spec.InitializedScene{}, false, specError(err)
 	}
 	if _, err = tx.ExecContext(ctx, "INSERT INTO policy_revision(policy_revision_id,policy_id,status,revision_number,yaml,canonical_json,digest,published_at,published_by,updated_at,updated_by) VALUES($1,(SELECT id FROM policy WHERE policy_id=$2),'PUBLISHED',1,$3,$4,$5,$6,$7,$8,$9)", revision.ID, policy.ID, yaml, canonical, specDigest, now, scope.ActorID, revision.UpdatedAt, revision.UpdatedBy); err != nil {
@@ -577,6 +629,16 @@ func (s *Specs) CommitSceneInitialization(ctx context.Context, scope spec.Scope,
 	}
 	if _, err = tx.ExecContext(ctx, "UPDATE scene SET default_policy_id=(SELECT id FROM policy WHERE policy_id=$1) WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND project_id=(SELECT id FROM project WHERE project_id=$3) AND scene_key=$4", policy.ID, scope.WorkspaceID, scope.ProjectID, sceneKey); err != nil {
 		return spec.InitializedScene{}, false, specError(err)
+	}
+	if input.Plugins != nil {
+		value := scenePluginsJSON(input.Plugins)
+		if _, err = tx.ExecContext(ctx, "UPDATE scene SET plugins_json=$1 WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND project_id=(SELECT id FROM project WHERE project_id=$3) AND scene_key=$4", value, scope.WorkspaceID, scope.ProjectID, sceneKey); err != nil {
+			return spec.InitializedScene{}, false, specError(err)
+		}
+		scene.Plugins = nil
+		if value != nil {
+			scene.Plugins = input.Plugins
+		}
 	}
 	if err = insertRecord(ctx, tx, scope, "scene:initialize", key, requestDigest, "policy", policy.ID, now); err != nil {
 		return spec.InitializedScene{}, false, err

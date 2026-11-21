@@ -36,7 +36,6 @@ def verify(binaries):
                                        cwd=work, env=environment, stdout=log, stderr=log)
         try:
             demo.wait_for_service(process, origin)
-            session, key = work / "session.json", work / "key.json"
 
             def cli(*args, input_text=None, expected=0):
                 result = subprocess.run([str(binaries / "guardrailctl"), *args[:2], "--server", origin, *args[2:]],
@@ -47,18 +46,14 @@ def verify(binaries):
                                        str(result.returncode) + "; expected " + str(expected))
                 return json.loads(result.stdout) if result.stdout.strip().startswith("{") else None
 
-            password = secrets.token_urlsafe(24) + "\n"
-            cli("bootstrap", "init", "--username", "demo", "--password-stdin", input_text=password)
-            cli("auth", "login", "--username", "demo", "--password-stdin", "--session-file", str(session), input_text=password)
-            cli("auth", "create-key", "--session-file", str(session), "--expires-in", "1h", "--result-file", str(key))
-            initialized = cli("scene", "apply", "--session-file", str(session), "--key", "binding-demo",
+            initialized = cli("scene", "apply",  "--key", "binding-demo",
                               "--name", "Resource binding demo", "--spec", str(ROOT / "examples/policies/recovery.yaml"), "--publish")
-            admin = json.loads(session.read_text())["token"]
+
 
             def api(method, path, body):
                 request = Request(origin + "/api/v1alpha1/" + path, method=method,
                                   data=json.dumps(body).encode(), headers={"Content-Type": "application/json",
-                                  "Authorization": "Bearer " + admin, "X-Guardrail-CSRF": "1",
+                                  "X-Guardrail-CSRF": "1",
                                   "Idempotency-Key": secrets.token_hex(16)})
                 with urlopen(request, timeout=15) as response:
                     return json.load(response)
@@ -68,7 +63,7 @@ def verify(binaries):
             yaml = (ROOT / "examples/policies/recovery.yaml").read_text()
             first = api("POST", "policies/" + policy["id"] + "/revisions", {"yaml": yaml})
             api("PUT", "policies/" + policy["id"] + "/active-revision", {"policyRevisionId": first["id"]})
-            prefix = ("--session-file", str(session), "--scene", "binding-demo")
+            prefix = ( "--scene", "binding-demo")
             for resource_id in (".", ".."):
                 cli("binding", "put", *prefix, "--kind", "repository", "--resource-id", resource_id, "--policy-id", policy["id"])
                 cli("binding", "delete", *prefix, "--kind", "repository", "--resource-id", resource_id)
@@ -87,7 +82,7 @@ def verify(binaries):
             refs = [{"kind": "repository", "id": resource_id}]
 
             def create(name, resources=None, expected=0):
-                args = ["run", "create", "--key-file", str(key), "--scene", "binding-demo",
+                args = ["run", "create",  "--scene", "binding-demo",
                         "--change-set", str(change), "--operation-id", name,
                         "--submission-credential-file", str(work / (name + ".json"))]
                 if resources is not None:
@@ -107,7 +102,7 @@ def verify(binaries):
             active = create("active", refs)
             cli("binding", "put", *prefix, *target, "--policy-id", policy["id"], "--revision-id", first["id"])
             pinned = create("pinned", refs)
-            frozen = cli("run", "get", "--key-file", str(key), old["id"])
+            frozen = cli("run", "get",  old["id"])
             if (old["policyId"] != policy["id"] or frozen["policyRevisionId"] != first["id"] or
                     active["policyRevisionId"] != second["id"] or second["id"] == first["id"] or
                     active["selection"]["revisionMode"] != "active" or pinned["policyRevisionId"] != first["id"] or
@@ -133,7 +128,7 @@ def verify(binaries):
                 raise RuntimeError("Deleted binding still selected")
             # Audit every binding mutation, including before/after values, then
             # export without the private resource identifiers or stored details.
-            audit_args = ("--session-file", str(session), "--resource-type", "policy-binding", "--limit", "2")
+            audit_args = ( "--resource-type", "policy-binding", "--limit", "2")
             events, cursor = [], None
             while True:
                 page = cli("audit", "list", *audit_args, *(("--cursor", cursor) if cursor else ()))
@@ -164,7 +159,7 @@ def verify(binaries):
             cli("run", "submit", "--submission-credential-file", str(work / "after-delete.json"),
                 "--submission", str(snapshot_path), "--operation-id", "diagnose", removed["id"])
             report_path = work / "run-report.json"
-            cli("run", "report", "--key-file", str(key), "--output", str(report_path), removed["id"])
+            cli("run", "report",  "--output", str(report_path), removed["id"])
             report_text = report_path.read_text()
             report = json.loads(report_text)
             evidence = report["finalSubmission"]["checks"][0]["evidence"][0]

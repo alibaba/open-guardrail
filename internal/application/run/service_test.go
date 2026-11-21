@@ -85,15 +85,15 @@ func TestCreateCanonicalIdentityAndCredentialLifetime(t *testing.T) {
 	revision := "rev_test"
 	first.RevisionID = &revision
 	_, _, _, err = service.Create(context.Background(), Scope{}, first)
-	if err != nil || repository.input.CanSelectRevision || repository.input.PolicyRevisionID != revision || repository.input.RequestDigest == digest {
-		t.Fatal("explicit Revision selection lost authorization or request identity")
+	if !errors.Is(err, ErrUnauthorized) || repository.input.PolicyRevisionID != "" {
+		t.Fatal("unscoped explicit Revision selection reached persistence")
 	}
 	_, _, _, err = service.Create(context.Background(), Scope{CanSelectRevision: true}, first)
-	if err != nil || !repository.input.CanSelectRevision {
+	if err != nil || !repository.input.CanSelectRevision || repository.input.PolicyRevisionID != revision || repository.input.RequestDigest == digest {
 		t.Fatal("scoped Revision selection was not authorized")
 	}
 	repository.err = ErrUnavailable
-	_, _, token, err = service.Create(context.Background(), Scope{}, first)
+	_, _, token, err = service.Create(context.Background(), Scope{CanSelectRevision: true}, first)
 	if !errors.Is(err, ErrUnavailable) || token != "" {
 		t.Fatal("failed create exposed a credential")
 	}

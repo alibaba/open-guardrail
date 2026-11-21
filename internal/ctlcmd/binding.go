@@ -16,13 +16,13 @@ import (
 )
 
 type bindingOptions struct {
-	server, sessionFile, scene, kind, resourceID, policyID, revisionID, after string
-	limit                                                                     int
+	server, scene, kind, resourceID, policyID, revisionID, after string
+	limit                                                        int
 }
 
 func runBinding(args []string, out io.Writer) error {
 	if len(args) == 2 && (args[1] == "--help" || args[1] == "-h") {
-		fmt.Fprintln(out, "Usage: guardrailctl binding list|put|delete [flags]\nManage exact resource bindings with an administrator CLI session. Put without --revision-id follows the Policy active Revision.")
+		fmt.Fprintln(out, "Usage: guardrailctl binding list|put|delete [flags]\nManage exact resource bindings directly in the default project. Put without --revision-id follows the Policy active Revision.")
 		return nil
 	}
 	if len(args) < 2 || (args[1] != "list" && args[1] != "put" && args[1] != "delete") {
@@ -36,11 +36,7 @@ func runBinding(args []string, out io.Writer) error {
 	if err != nil {
 		return usageError(err.Error())
 	}
-	session, err := readSession(identityOptions{server: opts.server, sessionFile: opts.sessionFile})
-	if err != nil {
-		return err
-	}
-	client, err := newSceneClient(opts.server, session.Token)
+	client, err := newSceneClient(opts.server, "")
 	if err != nil {
 		return err
 	}
@@ -98,7 +94,6 @@ func parseBindingOptions(command string, args []string, out io.Writer) (bindingO
 	flags := flag.NewFlagSet("binding "+command, flag.ContinueOnError)
 	flags.SetOutput(out)
 	flags.StringVar(&opts.server, "server", defaultServerURL(), "service origin (HTTPS or literal loopback HTTP)")
-	flags.StringVar(&opts.sessionFile, "session-file", "", "private administrator CLI session file (defaults to the OS user configuration directory)")
 	flags.StringVar(&opts.scene, "scene", "", "Scene key")
 	if command == "list" {
 		flags.IntVar(&opts.limit, "limit", 20, "maximum bindings to return (1-100)")
@@ -125,13 +120,6 @@ func parseBindingOptions(command string, args []string, out io.Writer) (bindingO
 	})
 	if explicitEmpty {
 		return opts, usageError("explicit flag values cannot be empty")
-	}
-	if opts.sessionFile == "" {
-		session, _, err := defaultSessionFile()
-		if err != nil {
-			return opts, err
-		}
-		opts.sessionFile = session
 	}
 	origin, err := parseServer(opts.server)
 	if err != nil || origin.Path != "" {

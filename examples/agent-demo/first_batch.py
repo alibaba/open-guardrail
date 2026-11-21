@@ -70,10 +70,10 @@ def query(work, source, record_id):
 def run_request(work, suffix="", submission=None):
     port = urlsplit(read(work / "connection.json")["server"]).port
     run_id = read(work / "run.json")["id"]
-    credential = "run-key.json" if submission is not None else "project-key.json"
-    headers = {"Authorization": "Bearer " + read(work / credential)["token"]}
+    headers = {}
     body = None
     if submission is not None:
+        headers["Authorization"] = "Bearer " + read(work / "run-key.json")["token"]
         body = json.dumps(submission).encode("utf-8")
         headers.update({"Content-Type": "application/json", "Idempotency-Key": "first-batch-submit"})
     conn = HTTPConnection("127.0.0.1", port, timeout=10)
@@ -161,7 +161,7 @@ def start(case, show_console=False):
         origin = "http://" + address
         env = {k: v for k, v in os.environ.items()
                if not k.startswith("OPEN_GUARDRAIL_") and k != "DATABASE_URL"}
-        env.update(OPEN_GUARDRAIL_URL=origin, OPEN_GUARDRAIL_SESSION_FILE=str(work / "session.json"))
+        env.update(OPEN_GUARDRAIL_URL=origin)
 
         def cli(*args, **kwargs):
             return run(str(cli_bin), *args, env=env, **kwargs)
@@ -172,12 +172,8 @@ def start(case, show_console=False):
                                        stdout=log, stderr=subprocess.STDOUT)
             try:
                 wait_for_service(service, origin)
-                password = secrets.token_urlsafe(20)
-                cli("bootstrap", "init", "--username", "demo", "--password-stdin", input_text=password + "\n")
-                cli("auth", "login", "--username", "demo", "--password-stdin", input_text=password + "\n")
                 cli("scene", "apply", "--key", "first-batch-recovery", "--name", "First batch",
                     "--spec", str(EXAMPLE / "first-batch.yaml"), "--publish")
-                cli("auth", "create-key", "--expires-in", "1h", "--result-file", str(work / "project-key.json"))
                 data = read(EXAMPLE / "first-batch-data.json")
                 scope = data.pop("changeSet")
                 if case == "logs-unavailable":
@@ -188,7 +184,7 @@ def start(case, show_console=False):
                 private_json(work / "observations.json", data)
                 private_json(work / "scope.json", scope)
                 created = json.loads(cli("run", "create", "--scene", "first-batch-recovery",
-                    "--key-file", str(work / "project-key.json"), "--change-set", str(work / "scope.json"),
+                     "--change-set", str(work / "scope.json"),
                     "--operation-id", "first-batch-create", "--submission-credential-file", str(work / "run-key.json")))
                 private_json(work / "run.json", created)
                 private_json(work / "connection.json", {"server": origin})
@@ -197,10 +193,7 @@ def start(case, show_console=False):
                       f"Use $open-guardrail-demo for the first-batch Run in {shlex.quote(tmp)}. "
                       "Show each query and its findings, then submit your assessment.", flush=True)
                 if show_console:
-                    login_file = work / "console-login.json"
-                    private_json(login_file, {"username": "demo", "password": password})
-                    print(f"Optional local console: {origin} (demo). Temporary password is in {login_file}.",
-                          flush=True)
+                    print(f"Optional local console: {origin} — open directly.", flush=True)
                 service.wait()
                 raise RuntimeError("Local service exited before the trial ended.")
             finally:

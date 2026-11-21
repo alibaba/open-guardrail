@@ -1,12 +1,10 @@
 # 创建、提交与查询 Run
 
+页面、CLI 和管理 API 均可直接使用，无需账号或登录；提交评估仍需绑定 Run 的提交凭据。详见[访问指南](access.zh-CN.md)。
+
 Run 冻结其 Scene、策略修订 ID、Spec 摘要、Run TTL，以及调用方通过 `changeSet` 提供的 JSON 上下文。完整示例见[核心概念](../concepts.md)和[快速开始](../getting-started.md)。
 
 ## 创建与查询 Run
-
-机器密钥需要 `runs:create` 来创建 Run，`runs:read` 来列出或读取 Run，`submission-credential:rotate` 来更换提交凭据。先[以管理员登录](../local-administrator.md#project-machine-keys)，再创建 Project 密钥。在源码或解压归档根目录运行示例，并确保 `guardrailctl` 位于 `PATH`。
-
-将 `guardrail_credentials_dir` 设为包含 `orchestrator-key.json` 的私有目录，目录应位于源码或解压归档之外。如果在同一终端完成了管理员指南，该变量已经设置；否则，用实际私有目录路径替换以下占位值：
 
 ```sh
 guardrail_credentials_dir=/absolute/path/to/private/guardrail-credentials
@@ -14,16 +12,16 @@ guardrail_credentials_dir=/absolute/path/to/private/guardrail-credentials
 
 新 Run 凭据保存在这个目录。`change-set.json` 和 `submission.json` 示例见快速开始。
 
-创建时通过资源绑定选择 Policy / Revision；资源全部未绑定时使用 Scene 默认激活修订，操作与规则见[资源绑定](../../examples/resource-bindings/README.zh-CN.md)。具有 `runs:create-with-revision` 的可信 HTTP 调用方可以通过 `policyRevisionRef` 显式选择不可变修订，普通编排器密钥不能这样做。当前 CLI 没有显式修订参数。机器调用方可以在启用集成前，通过 `GET /runtime/v1alpha1/identity` 检查有效权限范围。
+创建时通过资源绑定选择 Policy / Revision；资源全部未绑定时使用 Scene 默认激活修订，操作与规则见[资源绑定](../../examples/resource-bindings/README.zh-CN.md)。HTTP 调用方可以通过 `policyRevisionRef` 显式选择不可变修订。当前 CLI 没有显式修订参数。
 
 ```sh
-guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run create \
   --scene recovery --change-set ./change-set.json \
   --operation-id create-123 \
   --submission-credential-file "$guardrail_credentials_dir/run-credential.json"
-guardrailctl run get --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
-guardrailctl run wait --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
-guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run get run_EXAMPLE
+guardrailctl run wait run_EXAMPLE
+guardrailctl run list \
   --scene recovery --status FINISHED --limit 20
 ```
 
@@ -40,7 +38,7 @@ Run 列表返回有界摘要，包含 `changeSetDigest`，不包含可能很大�
 创建或提交结果不确定时，重试保持相同操作 ID 和输入。重试前检查返回的 Run 及已保存凭据。凭据未保存时，可以在 Run 为 `OPEN` 时轮换。轮换使旧凭据失效，不延长截止时间：
 
 ```sh
-guardrailctl run rotate-credential --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run rotate-credential \
   --submission-credential-file "$guardrail_credentials_dir/replacement-run-credential.json" run_EXAMPLE
 ```
 
@@ -103,20 +101,17 @@ guardrailctl run submit --submission-credential-file "$guardrail_credentials_dir
 Project 编排器无需策略管理权限，即可读取 Run 的 Revision 和 Submission：
 
 ```sh
-guardrailctl run revision --key-file "$guardrail_credentials_dir/orchestrator-key.json" "$RUN_ID"
-guardrailctl run submission --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run revision "$RUN_ID"
+guardrailctl run submission \
   --submission-id "$SUBMISSION_ID" "$RUN_ID"
 ```
 
 它们分别对应 `GET /runtime/v1alpha1/runs/{runId}/policy-revision` 和 `GET /runtime/v1alpha1/runs/{runId}/submissions/{submissionId}`。后者返回 Submission 元数据及已持久化的 `snapshot`。两个读取接口都检查权限范围和 Run 归属，Run 提交凭据不能使用。对于已完成 Run，使用其 `finalSubmissionId` 作为 `SUBMISSION_ID`。Run 元数据不包含完整证据快照。
-
-管理页面默认显示最新接受的 Submission 及证据。管理员可以通过 `GET /api/v1alpha1/runs/{runId}/submissions?limit=20` 的元数据分页选择更早提交，再使用 `GET /api/v1alpha1/runs/{runId}/submissions/{submissionId}` 读取单个快照。将 `nextBefore` 作为下一页的 `before` 参数。选择历史不会改变 Run 的最终结果或决策，Project 密钥运行时读取接口保持不变。
 
 ## 证据限制
 
 每条 Evidence 最多 16 KiB，每个 Submission 最多 100 条 Evidence，每个请求最多 1 MiB。文本长度按 Unicode 码点计算。具有凭据特征的内容会被拒绝，包括 JSON 摘要、嵌套对象、数组及 JSON 编码字符串中的已知凭据字段；重复 JSON 键和过度复杂的 JSON 结构也会被拒绝。
 
 筛查会保留已接受文本及其重试身份。调用方仍必须在提交前清除秘密，因为自由文本筛查不是通用的数据防泄漏系统。管理 UI 可以列出和检查 Run，不暴露凭据，也不接受 Submission。字段及错误码见 [OpenAPI 契约](../../api/openapi/openapi.yaml)。
-
 
 通过 `guardrailctl run create|list --business-id ID` 或控制台 Runs 筛选关联业务评估。[发布单关联示例](../../examples/business-id/README.zh-CN.md)说明重放、凭据处理和终态查询约束。
