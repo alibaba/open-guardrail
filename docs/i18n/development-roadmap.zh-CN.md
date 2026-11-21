@@ -12,7 +12,7 @@
 | 评估 | 独立 Run；不可变的修订引用和上下文；完整的中间 / 最终快照；结构化证据；固定的 Result / Decision 汇总规则；惰性过期处理和决策有效期 |
 | 机器集成 | 根据 OpenAPI 生成的 HTTP 客户端、限定 Run 范围的提交凭据、修订和已存储 Submission 的读取接口、有界 Run 列表及端点范围授权 |
 | 用户界面 | 内置管理员初始化页面、策略管理页面、只读 Run 检查页面、项目审计查询和结构化诊断导出 |
-| 示例与打包 | 使用合成观测的本地 Agent、Jenkins 和 Argo Rollouts 示例；原生二进制归档；可选的 HTTPS 反向代理后 Docker Compose 部署 |
+| 示例与打包 | 使用模拟观测数据的本地 Agent、Jenkins 和 Argo Rollouts 示例；原生二进制归档；可选的 HTTPS 反向代理后 Docker Compose 部署 |
 
 另见[当前限制](../../README.md#current-capabilities-and-limits)和[参考集成状态](../../integrations/README.md)。
 
@@ -23,7 +23,7 @@
 3. **公开组合与 Provider。** 一并交付服务端组合 API、首个可替换的身份 / Provider 契约、默认实现和独立 Go 模块消费示例。当前目录中的设计 README 尚不构成受支持的 Go API。
 4. **共享部署保证。** 在对外承诺多实例运行之前，验证 PostgreSQL 的跨进程并发与恢复能力；继续明确 SQLite 的单实例边界。
 5. **运维完整性。** 扩充审计覆盖、保留策略、可观测性和受支持的导入 / 导出接口，同时提供对应的用户指南和 CLI 入口。
-6. **更多交付示例。** 实现并验证 GitHub Actions 和 Argo CD 同步钩子接入方案；现有 Jenkins 和 Argo Rollouts 示例继续明确标注使用合成观测。
+6. **更多交付示例。** 实现并验证 GitHub Actions 和 Argo CD 同步钩子接入方案；现有 Jenkins 和 Argo Rollouts 示例继续明确标注使用模拟观测数据。
 
 [扩展指南](../extensions.md)定义了预期的 Provider 边界。组织专属适配器应消费公开契约，并保持共同的策略、证据和决策语义。私有 SDK 和部署约定应留在导出的公共核心之外。
 

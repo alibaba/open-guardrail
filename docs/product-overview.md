@@ -17,7 +17,7 @@ Your tool can verify the record before acting; your team can inspect it afterwar
 
 ## Try it
 
-[Run the first-batch check with your coding agent](getting-started.md#run-the-first-batch-check). Follow the failed write to a captured order still marked `pending`, and inspect the evidence behind the decision to hold the next batch.
+[Run the first-batch check with your coding agent](getting-started.md#run-the-first-batch-check). In a simulated checkout service rollout, follow the failed write to a captured order still marked `pending`, and inspect the evidence behind the decision to hold the next batch.
 
 For file cleanup without a model, use the [native download](native-install.md). To try the [Agent plugin](plugin-trial.md), use pi or DeepSeek Harness.
 

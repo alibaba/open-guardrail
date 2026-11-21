@@ -43,7 +43,7 @@ OpenGuardrail 为每次评估记录策略、评估上下文、评估结果和决
 
 ## 当前范围与未来的执行控制
 
-决策的实际应用由调用系统负责。预览版交付示例会等待当前有效的权威决策，并在继续执行之前核验已持久化的证据。这些交付示例使用合成观测。
+决策的实际应用由调用系统负责。预览版交付示例会等待当前有效的权威决策，并在继续执行之前核验已持久化的证据。这些交付示例使用模拟观测数据。
 
 Execution Claims、ActionResults、评估器鉴证和可替换的身份 / Provider API 均在规划中。[目标架构](../../README.md#target-architecture)包含这些未来范围；[快速开始的评估流程](../getting-started.md#evaluation-flow)展示已经实现的评估闭环。剩余工作见[仓库中的中文路线图](development-roadmap.zh-CN.md)（贡献者文档）。
 
