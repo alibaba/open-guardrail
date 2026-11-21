@@ -6,7 +6,8 @@ Status: accepted.
 
 All model tables use generated integer `id` primary keys. The singleton
 `identity_state.id` remains fixed at 1. SQLite uses `INTEGER ... AUTOINCREMENT`;
-PostgreSQL uses `BIGINT ... AS IDENTITY`. Goose records the initialization version.
+PostgreSQL uses `BIGINT ... AS IDENTITY`. In `auto` mode, Goose records the
+migration version.
 
 Public identifiers remain stable unique business columns:
 `workspace.workspace_id`, `project.project_id`, `local_user.user_id`,

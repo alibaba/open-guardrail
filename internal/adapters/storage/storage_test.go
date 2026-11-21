@@ -52,25 +52,34 @@ func testBackend(t *testing.T, c config.Config, expected capability.Storage) {
 	if _, err = s.db.ExecContext(ctx, "DROP TABLE bootstrap_test"); err != nil {
 		t.Fatal(err)
 	}
-	// Tampered/newer migration state must fail readiness and startup.
-	definition, _ := lookupDriver(c.Database.Driver)
-	versionTable := definition.versionTable
-	if versionTable == "" {
-		versionTable = "goose_db_version"
+	// Migration bookkeeping does not gate health or externally managed storage.
+	if c.Database.Migrations != "external" {
+		definition, _ := lookupDriver(c.Database.Driver)
+		versionTable := definition.versionTable
+		if versionTable == "" {
+			versionTable = "goose_db_version"
+		}
+		if _, err = s.db.ExecContext(ctx, "INSERT INTO "+versionTable+" (version_id, is_applied) VALUES (999, true)"); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if _, err = s.db.ExecContext(ctx, "INSERT INTO "+versionTable+" (version_id, is_applied) VALUES (999, true)"); err != nil {
-		t.Fatal(err)
-	}
-	if s.Ready(ctx) == nil {
-		t.Fatal("newer schema reported ready")
+	if err := s.Ready(ctx); err != nil {
+		t.Fatalf("migration bookkeeping blocked readiness: %v", err)
 	}
 	if err = s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if newer, err := Open(ctx, c); err == nil {
-		newer.Close()
-		t.Fatal("newer schema accepted")
+	if c.Database.Migrations != "external" {
+		if newer, err := Open(ctx, c); err == nil {
+			newer.Close()
+			t.Fatal("newer schema accepted by automatic migration mode")
+		}
 	}
+	existing, err := OpenExisting(ctx, c)
+	if err != nil {
+		t.Fatalf("migration bookkeeping blocked external mode: %v", err)
+	}
+	existing.Close()
 }
 func testConfig(t *testing.T, driver string) config.Config {
 	t.Helper()

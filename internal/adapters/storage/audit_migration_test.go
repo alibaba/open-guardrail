@@ -30,9 +30,15 @@ func TestAuditIndexUpgradePreservesHistoryAndAvoidsPageSort(t *testing.T) {
 	if err := old.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if existing, err := OpenExisting(ctx, config); err == nil {
-		existing.Close()
-		t.Fatal("old externally managed schema was silently accepted")
+	existing, err := OpenExisting(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var indexCount int
+	err = existing.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM sqlite_schema WHERE type='index' AND name='audit_event_project_id'").Scan(&indexCount)
+	existing.Close()
+	if err != nil || indexCount != 0 {
+		t.Fatalf("external mode applied an upgrade: %d %v", indexCount, err)
 	}
 	upgraded, err := Open(ctx, config)
 	if err != nil {

@@ -52,7 +52,7 @@ exposing database or credential details.
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /livez` | Process liveness, independent of database availability |
-| `GET /readyz` | Database connection and schema readiness; 503 on failure |
+| `GET /readyz` | Database connection readiness; 503 on failure |
 | `GET /api/v1alpha1/meta/version` | Public product version; never includes commit metadata |
 | `GET /api/v1alpha1/meta/capabilities` | API/CLI compatibility, features and non-sensitive storage operating envelope |
 | `GET /openapi.yaml` | Public OpenAPI contract |
