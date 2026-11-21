@@ -15,11 +15,9 @@ github.com/remyoudompheng/bigfft|v0.0.0-20230129092748-24d4a6f8daec|runtime|BSD-
 github.com/sethvargo/go-retry|v0.4.0|runtime|Apache-2.0|allowed
 go.uber.org/multierr|v1.11.0|runtime|MIT|allowed
 go.yaml.in/yaml/v3|v3.0.5|runtime|MIT AND Apache-2.0|allowed
-golang.org/x/crypto|v0.57.0|runtime|BSD-3-Clause|allowed
 golang.org/x/mod|v0.41.0|runtime|BSD-3-Clause|allowed
 golang.org/x/sync|v0.23.0|runtime|BSD-3-Clause|allowed
 golang.org/x/sys|v0.48.0|runtime|BSD-3-Clause|allowed
-golang.org/x/term|v0.46.0|runtime|BSD-3-Clause|allowed
 golang.org/x/text|v0.42.0|runtime|BSD-3-Clause|allowed
 modernc.org/libc|v1.75.7|runtime|BSD-3-Clause|allowed
 modernc.org/mathutil|v1.7.1|runtime|BSD-3-Clause|allowed

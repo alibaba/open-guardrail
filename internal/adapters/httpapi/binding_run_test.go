@@ -9,9 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alibaba/open-guardrail/internal/adapters/security"
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
 	"github.com/alibaba/open-guardrail/internal/config"
@@ -26,22 +24,6 @@ func TestCallerResourceBindingsAndPrivilegedOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	ids := identity.New(store.Identity(), security.Passwords{})
-	if _, err := ids.BootstrapLocal(ctx, identity.BootstrapRequest{Username: "admin", Password: "synthetic-password"}); err != nil {
-		t.Fatal(err)
-	}
-	login, err := ids.Login(ctx, identity.LoginRequest{Username: "admin", Password: "synthetic-password", Kind: "cli"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ordinary, err := ids.CreateAPIKey(ctx, login.Token, "cli", "RUN_ORCHESTRATOR")
-	if err != nil {
-		t.Fatal(err)
-	}
-	override, err := ids.CreateAPIKey(ctx, login.Token, "cli", "RUN_ORCHESTRATOR", identity.ScopeRunsCreateWithRevision)
-	if err != nil {
-		t.Fatal(err)
-	}
 	specs := spec.New(store.Specs())
 	scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
 	initial, _, err := specs.InitializeScene(ctx, scope, "recovery", "Recovery", "default", sampleHTTPSpec, "init")
@@ -64,13 +46,16 @@ func TestCallerResourceBindingsAndPrivilegedOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 	runs := runapp.New(store.Runs())
-	handler := New(store, Options{Identity: ids, ModelSpecs: specs, ModelRuns: runs, Origin: "https://guardrail.example"})
+	handler := New(store, Options{ModelSpecs: specs, ModelRuns: runs, Origin: "https://guardrail.example"})
 	call := func(key, token string, body map[string]any) *httptest.ResponseRecorder {
 		t.Helper()
 		data, _ := json.Marshal(body)
 		r := httptest.NewRequest("POST", "https://guardrail.example/runtime/v1alpha1/runs", bytes.NewReader(data))
 		r.Header.Set("Content-Type", "application/json")
-		r.Header.Set("Authorization", "Bearer "+token)
+		r.Header.Set("X-Guardrail-CSRF", "1")
+		if token != "" {
+			r.Header.Set("Authorization", "Bearer "+token)
+		}
 		r.Header.Set("Idempotency-Key", strings.ReplaceAll(t.Name(), "/", "-")+"-"+key)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
@@ -95,10 +80,10 @@ func TestCallerResourceBindingsAndPrivilegedOverride(t *testing.T) {
 	}
 	body := base()
 	body["resources"] = []resource.Reference{ref}
-	expectPolicy(call("bound", ordinary.APIKey, body), p.ID)
-	expectPolicy(call("omitted", ordinary.APIKey, base()), initial.Policy.ID)
+	expectPolicy(call("bound", "", body), p.ID)
+	expectPolicy(call("omitted", "", base()), initial.Policy.ID)
 	body["resources"] = []resource.Reference{{Kind: "application", ID: "unbound"}}
-	expectPolicy(call("unbound", ordinary.APIKey, body), initial.Policy.ID)
+	expectPolicy(call("unbound", "", body), initial.Policy.ID)
 
 	// Legal ChangeSet and reference limits must also fit the HTTP envelope.
 	refs := make([]resource.Reference, resource.MaxResources)
@@ -108,27 +93,25 @@ func TestCallerResourceBindingsAndPrivilegedOverride(t *testing.T) {
 	body = base()
 	body["changeSet"] = map[string]string{"payload": strings.Repeat("x", 250<<10)}
 	body["resources"] = refs
-	expectPolicy(call("large-context", ordinary.APIKey, body), initial.Policy.ID)
+	expectPolicy(call("large-context", "", body), initial.Policy.ID)
 	body["changeSet"] = map[string]string{"payload": strings.Repeat("x", rundomain.MaxChangeSetBytes)}
-	if w := call("oversized-context", ordinary.APIKey, body); w.Code != 400 {
+	if w := call("oversized-context", "", body); w.Code != 400 {
 		t.Fatalf("oversized ChangeSet accepted: %d", w.Code)
 	}
 
 	for _, refs := range [][]resource.Reference{{ref, ref}, {{Kind: "Invalid", ID: "x"}}} {
 		body = base()
 		body["resources"] = refs
-		if w := call("invalid-resources", ordinary.APIKey, body); w.Code != 400 {
+		if w := call("invalid-resources", "", body); w.Code != 400 {
 			t.Fatalf("invalid resources accepted: %d", w.Code)
 		}
 	}
 	body = base()
 	body["policyRevisionRef"] = map[string]string{"policyRevisionId": initial.Revision.ID}
-	if w := call("denied-override", ordinary.APIKey, body); w.Code != 403 {
-		t.Fatalf("ordinary key bypassed binding: %d", w.Code)
-	}
-	expectPolicy(call("trusted-override", override.APIKey, body), initial.Policy.ID)
+
+	expectPolicy(call("trusted-override", "", body), initial.Policy.ID)
 	body["resources"] = []resource.Reference{ref}
-	if w := call("mixed-selection", override.APIKey, body); w.Code != 400 {
+	if w := call("mixed-selection", "", body); w.Code != 400 {
 		t.Fatalf("resource and explicit selection combined: %d", w.Code)
 	}
 }

@@ -3,12 +3,13 @@ package spec
 import (
 	"context"
 
-	"github.com/alibaba/open-guardrail/internal/domain/resource"
+	"github.com/alibaba/open-guardrail/extension/resource"
 )
 
 // Repository defines the persistence boundary independently of the SQL adapter.
 type Repository interface {
-	PutBinding(context.Context, Scope, string, Binding) (Binding, error)
+	SetPolicyMaintainers(context.Context, Scope, string, []string) (Policy, error)
+	PutBindingWithOptions(context.Context, Scope, string, Binding, BindingWriteOptions) (Binding, error)
 	DeleteBinding(context.Context, Scope, string, resource.Reference) error
 	ListBindings(context.Context, Scope, string, int, *resource.Reference) (BindingPage, error)
 	GetSceneModel(ctx context.Context, scope Scope, key string) (SceneModel, error)
@@ -17,14 +18,14 @@ type Repository interface {
 	GetPolicyRevision(ctx context.Context, scope Scope, id string) (PolicyRevision, error)
 	ListPolicies(ctx context.Context, scope Scope, sceneKey string) ([]Policy, error)
 	ListPolicyRevisions(ctx context.Context, scope Scope, policyID string, pageSize int, before int64) (RevisionPage, error)
-	CreatePolicy(ctx context.Context, scope Scope, sceneKey, name, key string) (Policy, bool, error)
+	CreatePolicy(ctx context.Context, scope Scope, sceneKey, name, key string, refs ...resource.Reference) (Policy, bool, error)
 	GetPolicyDraft(ctx context.Context, scope Scope, id string) (PolicyRevision, error)
 	SavePolicyDraft(ctx context.Context, scope Scope, id, yaml string) (PolicyRevision, error)
 	// CommitPolicyRevision rechecks the reviewed Draft under its write lock.
 	CommitPolicyRevision(ctx context.Context, scope Scope, input PublicationInput) (PolicyRevision, bool, error)
 	ActivatePolicyRevision(ctx context.Context, scope Scope, policyID, revisionID string, expected *string) (Policy, error)
 	SetDefaultPolicy(ctx context.Context, scope Scope, sceneKey, policyID string, expected *string) (SceneModel, error)
-	SetSceneTTL(ctx context.Context, scope Scope, sceneKey string, ttl int64) (SceneModel, error)
+	UpdateScene(ctx context.Context, scope Scope, sceneKey string, ttl *int64, plugins *resource.Plugins) (SceneModel, error)
 	SetPolicyArchived(ctx context.Context, scope Scope, id string, archived bool) (Policy, error)
 	CommitSceneInitialization(ctx context.Context, scope Scope, input InitializationInput) (InitializedScene, bool, error)
 }

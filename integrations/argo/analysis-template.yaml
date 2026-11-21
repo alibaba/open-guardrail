@@ -57,8 +57,6 @@ spec:
                         value: https://guardrail.example.com
                       - name: ARGO_INSTANCE_ID
                         value: local-demo-cluster
-                      - name: GUARDRAIL_KEY_FILE
-                        value: /credentials/project-key.json
                       - name: POD_NAMESPACE
                         valueFrom:
                           fieldRef:
@@ -82,18 +80,8 @@ spec:
                     volumeMounts:
                       - name: state
                         mountPath: /state
-                      - name: credentials
-                        mountPath: /credentials
-                        readOnly: true
                 volumes:
                   - name: state
                     emptyDir:
                       medium: Memory
                       sizeLimit: 16Mi
-                  - name: credentials
-                    secret:
-                      secretName: open-guardrail-project-key
-                      defaultMode: 0440
-                      items:
-                        - key: project-key.json
-                          path: project-key.json

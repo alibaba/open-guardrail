@@ -40,7 +40,7 @@ func TestCompatibilityWindow(t *testing.T) {
 			}))
 			defer server.Close()
 			buildinfo.Version = tc.client
-			client, err := newAPIClient(server.URL, "", time.Second, identityResponseLimit, true)
+			client, err := newAPIClient(server.URL, "", time.Second, diagnosticResponseLimit, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,10 +55,10 @@ func TestCompatibilityWindow(t *testing.T) {
 func TestGeneratedClientBoundsResponses(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprintf(w, `{"version":%q}`, strings.Repeat("x", identityResponseLimit))
+		_, _ = fmt.Fprintf(w, `{"version":%q}`, strings.Repeat("x", diagnosticResponseLimit))
 	}))
 	defer server.Close()
-	client, err := newAPIClient(server.URL, "", time.Second, identityResponseLimit, true)
+	client, err := newAPIClient(server.URL, "", time.Second, diagnosticResponseLimit, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestGeneratedClientPreservesServerBasePath(t *testing.T) {
 				_, _ = fmt.Fprint(w, `{"version":"dev"}`)
 			}))
 			defer server.Close()
-			client, err := newAPIClient(server.URL+basePath, "", time.Second, identityResponseLimit, true)
+			client, err := newAPIClient(server.URL+basePath, "", time.Second, diagnosticResponseLimit, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -99,7 +99,7 @@ func TestCompatibilityNegotiationDoesNotReceiveCredential(t *testing.T) {
 		case "/api/v1alpha1/meta/capabilities":
 			capabilityAuthorization = r.Header.Get("Authorization")
 			_, _ = fmt.Fprint(w, `{"apiVersions":["v1alpha1"],"cli":{"minimumVersion":"0.1.0-alpha.0","maximumVersionExclusive":"0.2.0"},"features":[],"storage":{"supportLevel":"official-local","multiInstance":false}}`)
-		case "/api/v1alpha1/auth/me":
+		case "/runtime/v1alpha1/runs/run_test":
 			identityAuthorization = r.Header.Get("Authorization")
 			_, _ = fmt.Fprint(w, `{"kind":"USER","projectId":"project","role":"ADMIN","workspaceId":"workspace"}`)
 		default:
@@ -107,18 +107,18 @@ func TestCompatibilityNegotiationDoesNotReceiveCredential(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	client, err := newIdentityClient(server.URL, "ogs_synthetic")
+	client, err := newRunClient(server.URL, "ogrt_synthetic")
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := client.generated.GetCurrentAdministratorWithResponse(context.Background())
+	result, err := client.generated.GetPolicyRunWithResponse(context.Background(), "run_test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = validateResponse(result, identityResponseLimit, "identity request", false); err != nil {
+	if err = validateResponse(result, diagnosticResponseLimit, "identity request", false); err != nil {
 		t.Fatal(err)
 	}
-	if capabilityAuthorization != "" || identityAuthorization != "Bearer ogs_synthetic" {
+	if capabilityAuthorization != "" || identityAuthorization != "Bearer ogrt_synthetic" {
 		t.Fatalf("credential scope mismatch: capabilities=%q identity=%q", capabilityAuthorization, identityAuthorization)
 	}
 }
@@ -130,7 +130,7 @@ func TestResponseErrorsExposeOnlyCodeAndTrace(t *testing.T) {
 			StatusCode: http.StatusUnauthorized,
 		},
 	}
-	err := validateResponse(result, identityResponseLimit, "capabilities request", false)
+	err := validateResponse(result, diagnosticResponseLimit, "capabilities request", false)
 	if commandExitCode(err) != exitAuthentication || strings.Contains(err.Error(), "sensitive detail") ||
 		!strings.Contains(err.Error(), "UNAUTHENTICATED") || !strings.Contains(err.Error(), "trace-123") {
 		t.Fatalf("unsafe or incorrectly classified error: %v", err)

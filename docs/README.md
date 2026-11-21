@@ -8,7 +8,7 @@ Start with [Getting started](getting-started.md) to run the first-batch check wi
 | Goal | Guide |
 | --- | --- |
 | Understand and try the product | [Product overview](product-overview.md), [plan your integration](adoption-guide.md), [native installation](native-install.md), [Agent plugin](plugin-trial.md) |
-| Configure storage and remote access | [Configuration](configuration.md), [Docker](docker.md), [administrator and credentials](local-administrator.md) |
+| Configure storage and remote access | [Configuration](configuration.md), [Docker](docker.md), [administrator and credentials](access.md) |
 | Write and publish a GuardrailSpec | [GuardrailSpec YAML reference](guardrailspec-reference.md), [Scenes and Specs](scenes-and-specs.md) |
 | Inspect the decision and evidence | [Audit queries and Run reports](audit-and-reports.md#run-report) |
 | Evaluate a Run | [Runs and submissions](runs.md), [resource bindings](../examples/resource-bindings/README.md) |

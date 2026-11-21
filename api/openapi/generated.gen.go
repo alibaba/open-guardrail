@@ -19,77 +19,9 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
+	resource "github.com/alibaba/open-guardrail/extension/resource"
 	"github.com/oapi-codegen/runtime"
 )
-
-// Defines values for APIKeyMetadataRole.
-const (
-	POLICYPUBLISHER APIKeyMetadataRole = "POLICY_PUBLISHER"
-	RUNORCHESTRATOR APIKeyMetadataRole = "RUN_ORCHESTRATOR"
-)
-
-// Valid indicates whether the value is a known member of the APIKeyMetadataRole enum.
-func (e APIKeyMetadataRole) Valid() bool {
-	switch e {
-	case POLICYPUBLISHER:
-		return true
-	case RUNORCHESTRATOR:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for APIKeyResultRole.
-const (
-	APIKeyResultRolePolicyPublisher APIKeyResultRole = "POLICY_PUBLISHER"
-	APIKeyResultRoleRunOrchestrator APIKeyResultRole = "RUN_ORCHESTRATOR"
-)
-
-// Valid indicates whether the value is a known member of the APIKeyResultRole enum.
-func (e APIKeyResultRole) Valid() bool {
-	switch e {
-	case APIKeyResultRolePolicyPublisher:
-		return true
-	case APIKeyResultRoleRunOrchestrator:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateAPIKeyRequestRole.
-const (
-	CreateAPIKeyRequestRolePolicyPublisher CreateAPIKeyRequestRole = "POLICY_PUBLISHER"
-	CreateAPIKeyRequestRoleRunOrchestrator CreateAPIKeyRequestRole = "RUN_ORCHESTRATOR"
-)
-
-// Valid indicates whether the value is a known member of the CreateAPIKeyRequestRole enum.
-func (e CreateAPIKeyRequestRole) Valid() bool {
-	switch e {
-	case CreateAPIKeyRequestRolePolicyPublisher:
-		return true
-	case CreateAPIKeyRequestRoleRunOrchestrator:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateAPIKeyRequestScopes.
-const (
-	CreateAPIKeyRequestScopesRunsCreateWithRevision CreateAPIKeyRequestScopes = "runs:create-with-revision"
-)
-
-// Valid indicates whether the value is a known member of the CreateAPIKeyRequestScopes enum.
-func (e CreateAPIKeyRequestScopes) Valid() bool {
-	switch e {
-	case CreateAPIKeyRequestScopesRunsCreateWithRevision:
-		return true
-	default:
-		return false
-	}
-}
 
 // Defines values for Decision.
 const (
@@ -121,54 +53,6 @@ func (e HealthStatus) Valid() bool {
 	case Alive:
 		return true
 	case Ready:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for LoginRequestKind.
-const (
-	Browser LoginRequestKind = "browser"
-	Cli     LoginRequestKind = "cli"
-)
-
-// Valid indicates whether the value is a known member of the LoginRequestKind enum.
-func (e LoginRequestKind) Valid() bool {
-	switch e {
-	case Browser:
-		return true
-	case Cli:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for MachineScope.
-const (
-	MachineScopePoliciesCreate             MachineScope = "policies:create"
-	MachineScopeRevisionsPublish           MachineScope = "revisions:publish"
-	MachineScopeRunsCreate                 MachineScope = "runs:create"
-	MachineScopeRunsCreateWithRevision     MachineScope = "runs:create-with-revision"
-	MachineScopeRunsRead                   MachineScope = "runs:read"
-	MachineScopeSubmissionCredentialRotate MachineScope = "submission-credential:rotate"
-)
-
-// Valid indicates whether the value is a known member of the MachineScope enum.
-func (e MachineScope) Valid() bool {
-	switch e {
-	case MachineScopePoliciesCreate:
-		return true
-	case MachineScopeRevisionsPublish:
-		return true
-	case MachineScopeRunsCreate:
-		return true
-	case MachineScopeRunsCreateWithRevision:
-		return true
-	case MachineScopeRunsRead:
-		return true
-	case MachineScopeSubmissionCredentialRotate:
 		return true
 	default:
 		return false
@@ -247,45 +131,6 @@ func (e PolicyRunSummaryStatus) Valid() bool {
 	case PolicyRunSummaryStatusFINISHED:
 		return true
 	case PolicyRunSummaryStatusOPEN:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PrincipalKind.
-const (
-	PrincipalKindAdmin  PrincipalKind = "admin"
-	PrincipalKindApiKey PrincipalKind = "api_key"
-)
-
-// Valid indicates whether the value is a known member of the PrincipalKind enum.
-func (e PrincipalKind) Valid() bool {
-	switch e {
-	case PrincipalKindAdmin:
-		return true
-	case PrincipalKindApiKey:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PrincipalRole.
-const (
-	PrincipalRoleAdmin           PrincipalRole = "ADMIN"
-	PrincipalRolePolicyPublisher PrincipalRole = "POLICY_PUBLISHER"
-	PrincipalRoleRunOrchestrator PrincipalRole = "RUN_ORCHESTRATOR"
-)
-
-// Valid indicates whether the value is a known member of the PrincipalRole enum.
-func (e PrincipalRole) Valid() bool {
-	switch e {
-	case PrincipalRoleAdmin:
-		return true
-	case PrincipalRolePolicyPublisher:
-		return true
-	case PrincipalRoleRunOrchestrator:
 		return true
 	default:
 		return false
@@ -400,111 +245,6 @@ func (e CSRF) Valid() bool {
 	}
 }
 
-// Defines values for CreateProjectAPIKeyParamsXGuardrailCSRF.
-const (
-	CreateProjectAPIKeyParamsXGuardrailCSRFN1 CreateProjectAPIKeyParamsXGuardrailCSRF = "1"
-)
-
-// Valid indicates whether the value is a known member of the CreateProjectAPIKeyParamsXGuardrailCSRF enum.
-func (e CreateProjectAPIKeyParamsXGuardrailCSRF) Valid() bool {
-	switch e {
-	case CreateProjectAPIKeyParamsXGuardrailCSRFN1:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for RevokeProjectAPIKeyParamsXGuardrailCSRF.
-const (
-	RevokeProjectAPIKeyParamsXGuardrailCSRFN1 RevokeProjectAPIKeyParamsXGuardrailCSRF = "1"
-)
-
-// Valid indicates whether the value is a known member of the RevokeProjectAPIKeyParamsXGuardrailCSRF enum.
-func (e RevokeProjectAPIKeyParamsXGuardrailCSRF) Valid() bool {
-	switch e {
-	case RevokeProjectAPIKeyParamsXGuardrailCSRFN1:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for RotateProjectAPIKeyParamsXGuardrailCSRF.
-const (
-	RotateProjectAPIKeyParamsXGuardrailCSRFN1 RotateProjectAPIKeyParamsXGuardrailCSRF = "1"
-)
-
-// Valid indicates whether the value is a known member of the RotateProjectAPIKeyParamsXGuardrailCSRF enum.
-func (e RotateProjectAPIKeyParamsXGuardrailCSRF) Valid() bool {
-	switch e {
-	case RotateProjectAPIKeyParamsXGuardrailCSRFN1:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ChangeAdministratorPasswordParamsXGuardrailCSRF.
-const (
-	ChangeAdministratorPasswordParamsXGuardrailCSRFN1 ChangeAdministratorPasswordParamsXGuardrailCSRF = "1"
-)
-
-// Valid indicates whether the value is a known member of the ChangeAdministratorPasswordParamsXGuardrailCSRF enum.
-func (e ChangeAdministratorPasswordParamsXGuardrailCSRF) Valid() bool {
-	switch e {
-	case ChangeAdministratorPasswordParamsXGuardrailCSRFN1:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for LogoutAdministratorParamsXGuardrailCSRF.
-const (
-	LogoutAdministratorParamsXGuardrailCSRFN1 LogoutAdministratorParamsXGuardrailCSRF = "1"
-)
-
-// Valid indicates whether the value is a known member of the LogoutAdministratorParamsXGuardrailCSRF enum.
-func (e LogoutAdministratorParamsXGuardrailCSRF) Valid() bool {
-	switch e {
-	case LogoutAdministratorParamsXGuardrailCSRFN1:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for LoginAdministratorParamsXGuardrailCSRF.
-const (
-	LoginAdministratorParamsXGuardrailCSRFN1 LoginAdministratorParamsXGuardrailCSRF = "1"
-)
-
-// Valid indicates whether the value is a known member of the LoginAdministratorParamsXGuardrailCSRF enum.
-func (e LoginAdministratorParamsXGuardrailCSRF) Valid() bool {
-	switch e {
-	case LoginAdministratorParamsXGuardrailCSRFN1:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for BootstrapAdministratorParamsXGuardrailCSRF.
-const (
-	BootstrapAdministratorParamsXGuardrailCSRFN1 BootstrapAdministratorParamsXGuardrailCSRF = "1"
-)
-
-// Valid indicates whether the value is a known member of the BootstrapAdministratorParamsXGuardrailCSRF enum.
-func (e BootstrapAdministratorParamsXGuardrailCSRF) Valid() bool {
-	switch e {
-	case BootstrapAdministratorParamsXGuardrailCSRFN1:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for ActivatePolicyRevisionParamsXGuardrailCSRF.
 const (
 	ActivatePolicyRevisionParamsXGuardrailCSRFN1 ActivatePolicyRevisionParamsXGuardrailCSRF = "1"
@@ -544,6 +284,21 @@ const (
 func (e PublishPolicyDraftParamsXGuardrailCSRF) Valid() bool {
 	switch e {
 	case PublishPolicyDraftParamsXGuardrailCSRFN1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SetPolicyMaintainersParamsXGuardrailCSRF.
+const (
+	SetPolicyMaintainersParamsXGuardrailCSRFN1 SetPolicyMaintainersParamsXGuardrailCSRF = "1"
+)
+
+// Valid indicates whether the value is a known member of the SetPolicyMaintainersParamsXGuardrailCSRF enum.
+func (e SetPolicyMaintainersParamsXGuardrailCSRF) Valid() bool {
+	switch e {
+	case SetPolicyMaintainersParamsXGuardrailCSRFN1:
 		return true
 	default:
 		return false
@@ -685,44 +440,20 @@ func (e InitializeSceneParamsXGuardrailCSRF) Valid() bool {
 	}
 }
 
-// APIKeyMetadata defines model for APIKeyMetadata.
-type APIKeyMetadata struct {
-	CreatedAt int64              `json:"createdAt"`
-	ExpiresAt int64              `json:"expiresAt"`
-	Id        string             `json:"id"`
-	RevokedAt *int64             `json:"revokedAt,omitempty"`
-	Role      APIKeyMetadataRole `json:"role"`
-	Scopes    []MachineScope     `json:"scopes"`
-	Version   int64              `json:"version"`
+// Defines values for CreatePolicyRunParamsXGuardrailCSRF.
+const (
+	CreatePolicyRunParamsXGuardrailCSRFN1 CreatePolicyRunParamsXGuardrailCSRF = "1"
+)
+
+// Valid indicates whether the value is a known member of the CreatePolicyRunParamsXGuardrailCSRF enum.
+func (e CreatePolicyRunParamsXGuardrailCSRF) Valid() bool {
+	switch e {
+	case CreatePolicyRunParamsXGuardrailCSRFN1:
+		return true
+	default:
+		return false
+	}
 }
-
-// APIKeyMetadataRole defines model for APIKeyMetadata.Role.
-type APIKeyMetadataRole string
-
-// APIKeyPage defines model for APIKeyPage.
-type APIKeyPage struct {
-	Items     []APIKeyMetadata `json:"items"`
-	NextAfter *string          `json:"nextAfter,omitempty"`
-}
-
-// APIKeyResult defines model for APIKeyResult.
-type APIKeyResult struct {
-	// ApiKey One-time machine secret; never log this response
-	ApiKey    string `json:"apiKey"`
-	CreatedAt int64  `json:"createdAt"`
-	ExpiresAt int64  `json:"expiresAt"`
-
-	// Id Stable non-secret identifier used for rotation and revocation
-	Id   string           `json:"id"`
-	Role APIKeyResultRole `json:"role"`
-
-	// Scopes Complete effective permissions persisted with the new machine key.
-	Scopes  []MachineScope `json:"scopes"`
-	Version int64          `json:"version"`
-}
-
-// APIKeyResultRole defines model for APIKeyResult.Role.
-type APIKeyResultRole string
 
 // ActivatePolicyRevisionRequest defines model for ActivatePolicyRevisionRequest.
 type ActivatePolicyRevisionRequest struct {
@@ -758,29 +489,6 @@ type BindingPage struct {
 	NextAfter *string         `json:"nextAfter,omitempty"`
 }
 
-// BootstrapRequest defines model for BootstrapRequest.
-type BootstrapRequest struct {
-	// Password at least 6 characters and at most 128 UTF-8 bytes
-	Password *string `json:"password,omitempty"`
-
-	// SignIn Atomically create a browser session; token is sent only as an HttpOnly cookie
-	SignIn   *bool  `json:"signIn,omitempty"`
-	Username string `json:"username"`
-}
-
-// BootstrapResult defines model for BootstrapResult.
-type BootstrapResult struct {
-	User User `json:"user"`
-}
-
-// BootstrapStatus defines model for BootstrapStatus.
-type BootstrapStatus struct {
-	Initialized bool `json:"initialized"`
-
-	// RequiresToken Server-derived transport requirement; never includes a token
-	RequiresToken bool `json:"requiresToken"`
-}
-
 // CLICompatibility CLI protocol compatibility window; independent of the running server build version
 type CLICompatibility struct {
 	// MaximumVersionExclusive First incompatible CLI version
@@ -797,40 +505,26 @@ type Capabilities struct {
 	// Cli CLI protocol compatibility window; independent of the running server build version
 	Cli CLICompatibility `json:"cli"`
 
-	// Features Enabled HTTP features. run-final-submission-decision covers one immutable final Submission and fixed PASS/ALLOW, BLOCKED/DENY or UNKNOWN/DENY evaluation. run-expiry-decision-validity covers frozen deadlines, lazy expiration and Decision expiry timestamps. run-scoped-submission-token covers one-time Run credentials and Project-key-authorized rotation. No feature implies Claims.
+	// Features Enabled HTTP features. run-final-submission-decision covers one immutable final Submission and fixed PASS/ALLOW, BLOCKED/DENY or UNKNOWN/DENY evaluation. run-expiry-decision-validity covers frozen deadlines, lazy expiration and Decision expiry timestamps. run-scoped-submission-token covers one-time Run credentials and rotation through the direct-access management API. No feature implies Claims.
 	Features []string `json:"features"`
 
 	// Storage Non-sensitive operating envelope of the active storage adapter
 	Storage StorageCapability `json:"storage"`
 }
 
-// CreateAPIKeyRequest defines model for CreateAPIKeyRequest.
-type CreateAPIKeyRequest struct {
-	ExpiresInSeconds *int64                   `json:"expiresInSeconds,omitempty"`
-	Role             *CreateAPIKeyRequestRole `json:"role,omitempty"`
-
-	// Scopes Optional elevated permissions added to the fixed role template; accepted only for RUN_ORCHESTRATOR keys.
-	Scopes *[]CreateAPIKeyRequestScopes `json:"scopes,omitempty"`
-}
-
-// CreateAPIKeyRequestRole defines model for CreateAPIKeyRequest.Role.
-type CreateAPIKeyRequestRole string
-
-// CreateAPIKeyRequestScopes defines model for CreateAPIKeyRequest.Scopes.
-type CreateAPIKeyRequestScopes string
-
 // CreatePolicyRequest defines model for CreatePolicyRequest.
 type CreatePolicyRequest struct {
-	Name string `json:"name"`
+	Name     string             `json:"name"`
+	Resource *ResourceReference `json:"resource,omitempty"`
 }
 
 // CreatePolicyRunRequest defines model for CreatePolicyRunRequest.
 type CreatePolicyRunRequest struct {
-	// BusinessId Optional caller-owned immutable business correlation ID. Unique within the authenticated Project and Scene and permanently bound to one Run, including after FINISHED or EXPIRED. Use a new value for a new Run attempt. Leading or trailing whitespace is rejected.
+	// BusinessId Optional caller-owned immutable business correlation ID. Unique within the default Project and Scene and permanently bound to one Run, including after FINISHED or EXPIRED. Use a new value for a new Run attempt. Leading or trailing whitespace is rejected.
 	BusinessId *string         `json:"businessId,omitempty"`
 	ChangeSet  json.RawMessage `json:"changeSet"`
 
-	// PolicyRevisionRef Privileged override requiring runs:create-with-revision and bypassing resource bindings. Grant only to trusted override operators.
+	// PolicyRevisionRef Explicit immutable Revision selection, mutually exclusive with resource bindings.
 	PolicyRevisionRef *struct {
 		PolicyRevisionId string `json:"policyRevisionId"`
 	} `json:"policyRevisionRef,omitempty"`
@@ -862,9 +556,10 @@ type HealthStatus string
 
 // InitializeSceneRequest defines model for InitializeSceneRequest.
 type InitializeSceneRequest struct {
-	DefaultPolicyName string `json:"defaultPolicyName"`
-	Name              string `json:"name"`
-	Yaml              string `json:"yaml"`
+	DefaultPolicyName string        `json:"defaultPolicyName"`
+	Name              string        `json:"name"`
+	Plugins           *ScenePlugins `json:"plugins,omitempty"`
+	Yaml              string        `json:"yaml"`
 }
 
 // InitializedScene defines model for InitializedScene.
@@ -874,35 +569,10 @@ type InitializedScene struct {
 	Scene    SceneModel     `json:"scene"`
 }
 
-// LoginRequest defines model for LoginRequest.
-type LoginRequest struct {
-	Kind     *LoginRequestKind `json:"kind,omitempty"`
-	Password *string           `json:"password,omitempty"`
-	Username string            `json:"username"`
-}
-
-// LoginRequestKind defines model for LoginRequest.Kind.
-type LoginRequestKind string
-
-// LoginResult defines model for LoginResult.
-type LoginResult struct {
-	// ExpiresAt Unix timestamp in seconds
-	ExpiresAt int64 `json:"expiresAt"`
-
-	// Token Present only for CLI login; never log
-	Token *string `json:"token,omitempty"`
-	User  User    `json:"user"`
-}
-
-// MachineScope defines model for MachineScope.
-type MachineScope string
-
-// PasswordRequest defines model for PasswordRequest.
-type PasswordRequest struct {
-	CurrentPassword *string `json:"currentPassword,omitempty"`
-
-	// NewPassword at least 6 characters and at most 128 UTF-8 bytes
-	NewPassword *string `json:"newPassword,omitempty"`
+// PluginEndpoint defines model for PluginEndpoint.
+type PluginEndpoint struct {
+	// Url Complete HTTPS endpoint for this operation, including the provider-defined path.
+	Url string `json:"url"`
 }
 
 // Policy defines model for Policy.
@@ -910,8 +580,11 @@ type Policy struct {
 	ActiveRevisionId *string              `json:"activeRevisionId,omitempty"`
 	Id               string               `json:"id"`
 	LifecycleState   PolicyLifecycleState `json:"lifecycleState"`
-	Name             string               `json:"name"`
-	SceneKey         SceneKey             `json:"sceneKey"`
+
+	// Maintainers Maintainer actor IDs used by enterprise trusted-operator access. The creator is the initial maintainer. Enterprise writes require a listed actor; legacy Specs without reliable creator facts have an empty list. Standalone access is unrestricted.
+	Maintainers []string `json:"maintainers"`
+	Name        string   `json:"name"`
+	SceneKey    SceneKey `json:"sceneKey"`
 }
 
 // PolicyLifecycleState defines model for Policy.LifecycleState.
@@ -926,7 +599,8 @@ type PolicyBinding struct {
 
 // PolicyDraftRequest defines model for PolicyDraftRequest.
 type PolicyDraftRequest struct {
-	Yaml string `json:"yaml"`
+	Metadata *json.RawMessage `json:"metadata,omitempty"`
+	Yaml     string           `json:"yaml"`
 }
 
 // PolicyList defines model for PolicyList.
@@ -935,9 +609,12 @@ type PolicyList = []Policy
 // PolicyRevision defines model for PolicyRevision.
 type PolicyRevision struct {
 	// Digest Present only for PUBLISHED Revisions.
-	Digest   *string `json:"digest,omitempty"`
-	Id       string  `json:"id"`
-	PolicyId string  `json:"policyId"`
+	Digest *string `json:"digest,omitempty"`
+	Id     string  `json:"id"`
+
+	// Metadata Optional immutable source metadata, at most 64 KiB serialized.
+	Metadata *json.RawMessage `json:"metadata,omitempty"`
+	PolicyId string           `json:"policyId"`
 
 	// PublishedAt Present only for PUBLISHED Revisions.
 	PublishedAt *int64 `json:"publishedAt,omitempty"`
@@ -1028,27 +705,10 @@ type PolicyRunSummary struct {
 // PolicyRunSummaryStatus defines model for PolicyRunSummary.Status.
 type PolicyRunSummaryStatus string
 
-// Principal defines model for Principal.
-type Principal struct {
-	Kind      PrincipalKind `json:"kind"`
-	ProjectId string        `json:"projectId"`
-	Role      PrincipalRole `json:"role"`
-
-	// Scopes Complete persisted machine permissions used for authorization.
-	Scopes      []MachineScope `json:"scopes"`
-	User        *User          `json:"user,omitempty"`
-	WorkspaceId string         `json:"workspaceId"`
-}
-
-// PrincipalKind defines model for Principal.Kind.
-type PrincipalKind string
-
-// PrincipalRole defines model for Principal.Role.
-type PrincipalRole string
-
 // PublishPolicyRevisionRequest defines model for PublishPolicyRevisionRequest.
 type PublishPolicyRevisionRequest struct {
-	Yaml string `json:"yaml"`
+	Metadata *json.RawMessage `json:"metadata,omitempty"`
+	Yaml     string           `json:"yaml"`
 }
 
 // PutBindingRequest defines model for PutBindingRequest.
@@ -1071,14 +731,6 @@ type RevisionSummary struct {
 	PublishedAt    int64  `json:"publishedAt"`
 	PublishedBy    string `json:"publishedBy"`
 	RevisionNumber int64  `json:"revisionNumber"`
-}
-
-// RotateAPIKeyRequest defines model for RotateAPIKeyRequest.
-type RotateAPIKeyRequest struct {
-	ExpectedVersion int64 `json:"expectedVersion"`
-
-	// ExpiresInSeconds Omit to preserve the current expiry
-	ExpiresInSeconds *int64 `json:"expiresInSeconds,omitempty"`
 }
 
 // RunReport defines model for RunReport.
@@ -1166,14 +818,18 @@ type SceneKey = string
 
 // SceneModel defines model for SceneModel.
 type SceneModel struct {
-	DefaultPolicyId *string  `json:"defaultPolicyId,omitempty"`
-	Key             SceneKey `json:"key"`
-	Name            string   `json:"name"`
-	RunTtlSeconds   int64    `json:"runTtlSeconds"`
+	DefaultPolicyId *string       `json:"defaultPolicyId,omitempty"`
+	Key             SceneKey      `json:"key"`
+	Name            string        `json:"name"`
+	Plugins         *ScenePlugins `json:"plugins,omitempty"`
+	RunTtlSeconds   int64         `json:"runTtlSeconds"`
 }
 
 // SceneModelList defines model for SceneModelList.
 type SceneModelList = []SceneModel
+
+// ScenePlugins defines model for ScenePlugins.
+type ScenePlugins = resource.Plugins
 
 // SetDefaultPolicyRequest defines model for SetDefaultPolicyRequest.
 type SetDefaultPolicyRequest struct {
@@ -1181,9 +837,15 @@ type SetDefaultPolicyRequest struct {
 	PolicyId                string  `json:"policyId"`
 }
 
+// SetPolicyMaintainersRequest defines model for SetPolicyMaintainersRequest.
+type SetPolicyMaintainersRequest struct {
+	Maintainers []string `json:"maintainers"`
+}
+
 // SetSceneTTLRequest defines model for SetSceneTTLRequest.
 type SetSceneTTLRequest struct {
-	RunTtlSeconds int64 `json:"runTtlSeconds"`
+	Plugins       *ScenePlugins `json:"plugins,omitempty"`
+	RunTtlSeconds *int64        `json:"runTtlSeconds,omitempty"`
 }
 
 // SnapshotCheck defines model for SnapshotCheck.
@@ -1253,21 +915,10 @@ type SubmissionPage struct {
 	NextBefore *int64               `json:"nextBefore,omitempty"`
 }
 
-// User defines model for User.
-type User struct {
-	Id          string `json:"id"`
-	ProjectId   string `json:"projectId"`
-	Username    string `json:"username"`
-	WorkspaceId string `json:"workspaceId"`
-}
-
 // Version defines model for Version.
 type Version struct {
 	Version string `json:"version"`
 }
-
-// APIKeyID defines model for APIKeyID.
-type APIKeyID = string
 
 // CSRF defines model for CSRF.
 type CSRF string
@@ -1289,9 +940,6 @@ type RunSceneFilter = SceneKey
 
 // RunStatusFilter defines model for RunStatusFilter.
 type RunStatusFilter = RunStatus
-
-// IdentityError defines model for IdentityError.
-type IdentityError = Error
 
 // RunError defines model for RunError.
 type RunError = Error
@@ -1318,75 +966,6 @@ type ListAuditEventsParams struct {
 	Redacted *bool `form:"redacted,omitempty" json:"redacted,omitempty"`
 }
 
-// ListProjectAPIKeysParams defines parameters for ListProjectAPIKeys.
-type ListProjectAPIKeysParams struct {
-	PageSize *int    `form:"pageSize,omitempty" json:"pageSize,omitempty"`
-	After    *string `form:"after,omitempty" json:"after,omitempty"`
-}
-
-// CreateProjectAPIKeyParams defines parameters for CreateProjectAPIKey.
-type CreateProjectAPIKeyParams struct {
-	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
-	XGuardrailCSRF CreateProjectAPIKeyParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
-}
-
-// CreateProjectAPIKeyParamsXGuardrailCSRF defines parameters for CreateProjectAPIKey.
-type CreateProjectAPIKeyParamsXGuardrailCSRF string
-
-// RevokeProjectAPIKeyParams defines parameters for RevokeProjectAPIKey.
-type RevokeProjectAPIKeyParams struct {
-	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
-	XGuardrailCSRF RevokeProjectAPIKeyParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
-}
-
-// RevokeProjectAPIKeyParamsXGuardrailCSRF defines parameters for RevokeProjectAPIKey.
-type RevokeProjectAPIKeyParamsXGuardrailCSRF string
-
-// RotateProjectAPIKeyParams defines parameters for RotateProjectAPIKey.
-type RotateProjectAPIKeyParams struct {
-	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
-	XGuardrailCSRF RotateProjectAPIKeyParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
-}
-
-// RotateProjectAPIKeyParamsXGuardrailCSRF defines parameters for RotateProjectAPIKey.
-type RotateProjectAPIKeyParamsXGuardrailCSRF string
-
-// ChangeAdministratorPasswordParams defines parameters for ChangeAdministratorPassword.
-type ChangeAdministratorPasswordParams struct {
-	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
-	XGuardrailCSRF ChangeAdministratorPasswordParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
-}
-
-// ChangeAdministratorPasswordParamsXGuardrailCSRF defines parameters for ChangeAdministratorPassword.
-type ChangeAdministratorPasswordParamsXGuardrailCSRF string
-
-// LogoutAdministratorParams defines parameters for LogoutAdministrator.
-type LogoutAdministratorParams struct {
-	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
-	XGuardrailCSRF LogoutAdministratorParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
-}
-
-// LogoutAdministratorParamsXGuardrailCSRF defines parameters for LogoutAdministrator.
-type LogoutAdministratorParamsXGuardrailCSRF string
-
-// LoginAdministratorParams defines parameters for LoginAdministrator.
-type LoginAdministratorParams struct {
-	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
-	XGuardrailCSRF LoginAdministratorParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
-}
-
-// LoginAdministratorParamsXGuardrailCSRF defines parameters for LoginAdministrator.
-type LoginAdministratorParamsXGuardrailCSRF string
-
-// BootstrapAdministratorParams defines parameters for BootstrapAdministrator.
-type BootstrapAdministratorParams struct {
-	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
-	XGuardrailCSRF BootstrapAdministratorParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
-}
-
-// BootstrapAdministratorParamsXGuardrailCSRF defines parameters for BootstrapAdministrator.
-type BootstrapAdministratorParamsXGuardrailCSRF string
-
 // ActivatePolicyRevisionParams defines parameters for ActivatePolicyRevision.
 type ActivatePolicyRevisionParams struct {
 	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
@@ -1410,12 +989,21 @@ type PublishPolicyDraftParams struct {
 	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
 	XGuardrailCSRF PublishPolicyDraftParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
 
-	// IdempotencyKey Stable caller operation ID; scoped to the authenticated Project and not a credential or Run ID
+	// IdempotencyKey Stable caller operation ID; scoped to the default Project and not a credential or Run ID
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // PublishPolicyDraftParamsXGuardrailCSRF defines parameters for PublishPolicyDraft.
 type PublishPolicyDraftParamsXGuardrailCSRF string
+
+// SetPolicyMaintainersParams defines parameters for SetPolicyMaintainers.
+type SetPolicyMaintainersParams struct {
+	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
+	XGuardrailCSRF SetPolicyMaintainersParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
+}
+
+// SetPolicyMaintainersParamsXGuardrailCSRF defines parameters for SetPolicyMaintainers.
+type SetPolicyMaintainersParamsXGuardrailCSRF string
 
 // ListPolicyRevisionsParams defines parameters for ListPolicyRevisions.
 type ListPolicyRevisionsParams struct {
@@ -1428,7 +1016,7 @@ type PublishPolicyRevisionParams struct {
 	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
 	XGuardrailCSRF PublishPolicyRevisionParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
 
-	// IdempotencyKey Stable caller operation ID; scoped to the authenticated Project and not a credential or Run ID
+	// IdempotencyKey Stable caller operation ID; scoped to the default Project and not a credential or Run ID
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
@@ -1524,7 +1112,7 @@ type CreatePolicyParams struct {
 	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
 	XGuardrailCSRF CreatePolicyParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
 
-	// IdempotencyKey Stable caller operation ID; scoped to the authenticated Project and not a credential or Run ID
+	// IdempotencyKey Stable caller operation ID; scoped to the default Project and not a credential or Run ID
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
@@ -1536,7 +1124,7 @@ type InitializeSceneParams struct {
 	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
 	XGuardrailCSRF InitializeSceneParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
 
-	// IdempotencyKey Stable caller operation ID; scoped to the authenticated Project and not a credential or Run ID
+	// IdempotencyKey Stable caller operation ID; scoped to the default Project and not a credential or Run ID
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
@@ -1563,30 +1151,21 @@ type ListPolicyRunsParams struct {
 
 // CreatePolicyRunParams defines parameters for CreatePolicyRun.
 type CreatePolicyRunParams struct {
-	// IdempotencyKey Stable caller operation ID; scoped to the authenticated Project and not a credential or Run ID
+	// IdempotencyKey Stable caller operation ID; scoped to the default Project and not a credential or Run ID
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+
+	// XGuardrailCSRF Required for all management mutations. Browser requests must also pass exact Origin/Host and Sec-Fetch-Site checks. No cross-origin CORS is enabled.
+	XGuardrailCSRF CreatePolicyRunParamsXGuardrailCSRF `json:"X-Guardrail-CSRF"`
 }
+
+// CreatePolicyRunParamsXGuardrailCSRF defines parameters for CreatePolicyRun.
+type CreatePolicyRunParamsXGuardrailCSRF string
 
 // SubmitSnapshotParams defines parameters for SubmitSnapshot.
 type SubmitSnapshotParams struct {
-	// IdempotencyKey Stable caller operation ID; scoped to the authenticated Project and not a credential or Run ID
+	// IdempotencyKey Stable caller operation ID; scoped to the default Project and not a credential or Run ID
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
-
-// CreateProjectAPIKeyJSONRequestBody defines body for CreateProjectAPIKey for application/json ContentType.
-type CreateProjectAPIKeyJSONRequestBody = CreateAPIKeyRequest
-
-// RotateProjectAPIKeyJSONRequestBody defines body for RotateProjectAPIKey for application/json ContentType.
-type RotateProjectAPIKeyJSONRequestBody = RotateAPIKeyRequest
-
-// ChangeAdministratorPasswordJSONRequestBody defines body for ChangeAdministratorPassword for application/json ContentType.
-type ChangeAdministratorPasswordJSONRequestBody = PasswordRequest
-
-// LoginAdministratorJSONRequestBody defines body for LoginAdministrator for application/json ContentType.
-type LoginAdministratorJSONRequestBody = LoginRequest
-
-// BootstrapAdministratorJSONRequestBody defines body for BootstrapAdministrator for application/json ContentType.
-type BootstrapAdministratorJSONRequestBody = BootstrapRequest
 
 // ActivatePolicyRevisionJSONRequestBody defines body for ActivatePolicyRevision for application/json ContentType.
 type ActivatePolicyRevisionJSONRequestBody = ActivatePolicyRevisionRequest
@@ -1596,6 +1175,9 @@ type SavePolicyDraftJSONRequestBody = PolicyDraftRequest
 
 // PublishPolicyDraftJSONRequestBody defines body for PublishPolicyDraft for application/json ContentType.
 type PublishPolicyDraftJSONRequestBody = PolicyDraftRequest
+
+// SetPolicyMaintainersJSONRequestBody defines body for SetPolicyMaintainers for application/json ContentType.
+type SetPolicyMaintainersJSONRequestBody = SetPolicyMaintainersRequest
 
 // PublishPolicyRevisionJSONRequestBody defines body for PublishPolicyRevision for application/json ContentType.
 type PublishPolicyRevisionJSONRequestBody = PublishPolicyRevisionRequest
@@ -1700,77 +1282,6 @@ type ClientInterface interface {
 	// Read one project-scoped audit page in descending event ID order. Cursors are bound to filters and scope. Unscoped historical events are excluded. Detail objects above 4096 bytes are unavailable.
 	ListAuditEvents(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListProjectAPIKeys performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
-	//
-	// Lists secret-free key metadata in key-ID order, including expired and revoked keys.
-	ListProjectAPIKeys(ctx context.Context, params *ListProjectAPIKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateProjectAPIKeyWithBody performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-	CreateProjectAPIKeyWithBody(ctx context.Context, params *CreateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateProjectAPIKey performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-	CreateProjectAPIKey(ctx context.Context, params *CreateProjectAPIKeyParams, body CreateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// RevokeProjectAPIKey performs a DELETE /api/v1alpha1/auth/api-keys/{keyId} (the `RevokeProjectAPIKey` operationId) request.
-	//
-	// Atomically revokes a key and records an audit event. Repeated revocation returns 204.
-	RevokeProjectAPIKey(ctx context.Context, keyId APIKeyID, params *RevokeProjectAPIKeyParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// RotateProjectAPIKeyWithBody performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-	RotateProjectAPIKeyWithBody(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// RotateProjectAPIKey performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-	RotateProjectAPIKey(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, body RotateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetCurrentAdministrator performs a GET /api/v1alpha1/auth/me (the `GetCurrentAdministrator` operationId) request.
-	GetCurrentAdministrator(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ChangeAdministratorPasswordWithBody performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request,
-	// with any type of body and a specified content type.
-	ChangeAdministratorPasswordWithBody(ctx context.Context, params *ChangeAdministratorPasswordParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ChangeAdministratorPassword performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request.
-	// Takes a body of the `application/json` content type.
-	ChangeAdministratorPassword(ctx context.Context, params *ChangeAdministratorPasswordParams, body ChangeAdministratorPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// LogoutAdministrator performs a DELETE /api/v1alpha1/auth/session (the `LogoutAdministrator` operationId) request.
-	LogoutAdministrator(ctx context.Context, params *LogoutAdministratorParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// LoginAdministratorWithBody performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request,
-	// with any type of body and a specified content type.
-	LoginAdministratorWithBody(ctx context.Context, params *LoginAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// LoginAdministrator performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request.
-	// Takes a body of the `application/json` content type.
-	LoginAdministrator(ctx context.Context, params *LoginAdministratorParams, body LoginAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetBootstrapStatus performs a GET /api/v1alpha1/bootstrap (the `GetBootstrapStatus` operationId) request.
-	GetBootstrapStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// BootstrapAdministratorWithBody performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-	BootstrapAdministratorWithBody(ctx context.Context, params *BootstrapAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// BootstrapAdministrator performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-	BootstrapAdministrator(ctx context.Context, params *BootstrapAdministratorParams, body BootstrapAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetCapabilities performs a GET /api/v1alpha1/meta/capabilities (the `GetCapabilities` operationId) request.
 	GetCapabilities(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1782,10 +1293,14 @@ type ClientInterface interface {
 
 	// ActivatePolicyRevisionWithBody performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request,
 	// with any type of body and a specified content type.
+	//
+	// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	ActivatePolicyRevisionWithBody(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ActivatePolicyRevision performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request.
 	// Takes a body of the `application/json` content type.
+	//
+	// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	ActivatePolicyRevision(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, body ActivatePolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPolicyDraft performs a GET /api/v1alpha1/policies/{policyId}/draft (the `GetPolicyDraft` operationId) request.
@@ -1795,23 +1310,39 @@ type ClientInterface interface {
 
 	// SavePolicyDraftWithBody performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request,
 	// with any type of body and a specified content type.
+	//
+	// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	SavePolicyDraftWithBody(ctx context.Context, policyId string, params *SavePolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SavePolicyDraft performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request.
 	// Takes a body of the `application/json` content type.
+	//
+	// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	SavePolicyDraft(ctx context.Context, policyId string, params *SavePolicyDraftParams, body SavePolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PublishPolicyDraftWithBody performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	PublishPolicyDraftWithBody(ctx context.Context, policyId string, params *PublishPolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PublishPolicyDraft performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	PublishPolicyDraft(ctx context.Context, policyId string, params *PublishPolicyDraftParams, body PublishPolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPolicyMaintainersWithBody performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+	SetPolicyMaintainersWithBody(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPolicyMaintainers performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+	SetPolicyMaintainers(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, body SetPolicyMaintainersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPolicyRevisions performs a GET /api/v1alpha1/policies/{policyId}/revisions (the `ListPolicyRevisions` operationId) request.
 	//
@@ -1821,13 +1352,13 @@ type ClientInterface interface {
 	// PublishPolicyRevisionWithBody performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+	// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	PublishPolicyRevisionWithBody(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PublishPolicyRevision performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+	// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	PublishPolicyRevision(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, body PublishPolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ArchivePolicy performs a POST /api/v1alpha1/policies/{policyId}:archive (the `ArchivePolicy` operationId) request.
@@ -1847,17 +1378,17 @@ type ClientInterface interface {
 
 	// GetManagedRunReport performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
 	//
-	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 	GetManagedRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListManagedRunSubmissions performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 	//
-	// Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
+	// Paginated submission metadata in the default project. Fetch evidence through the selected Submission reader.
 	ListManagedRunSubmissions(ctx context.Context, runId string, params *ListManagedRunSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetManagedRunSubmission performs a GET /api/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetManagedRunSubmission` operationId) request.
 	//
-	// Read a stored Submission and its evidence within the administrator's workspace, project and selected Run.
+	// Read a stored Submission and its evidence within the default project and selected Run.
 	GetManagedRunSubmission(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSceneModels performs a GET /api/v1alpha1/scenes (the `ListSceneModels` operationId) request.
@@ -1883,13 +1414,13 @@ type ClientInterface interface {
 	// PutBindingWithBody performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 	PutBindingWithBody(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutBinding performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 	PutBinding(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SetDefaultPolicyWithBody performs a PUT /api/v1alpha1/scenes/{key}/default-policy (the `SetDefaultPolicy` operationId) request,
@@ -1906,13 +1437,13 @@ type ClientInterface interface {
 	// CreatePolicyWithBody performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	CreatePolicyWithBody(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreatePolicy performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	CreatePolicy(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// InitializeSceneWithBody performs a POST /api/v1alpha1/scenes/{key}:initialize (the `InitializeScene` operationId) request,
@@ -1936,44 +1467,41 @@ type ClientInterface interface {
 	// GetReadiness performs a GET /readyz (the `GetReadiness` operationId) request.
 	GetReadiness(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetMachineIdentity performs a GET /runtime/v1alpha1/identity (the `GetMachineIdentity` operationId) request.
-	GetMachineIdentity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListPolicyRuns performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 	//
-	// Requires runs:read. sceneKey and businessId together select at most one Run.
+	// List Runs in the default project. sceneKey and businessId together select at most one Run.
 	ListPolicyRuns(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreatePolicyRunWithBody performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+	// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	CreatePolicyRunWithBody(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreatePolicyRun performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+	// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	CreatePolicyRun(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetPolicyRun performs a GET /runtime/v1alpha1/runs/{runId} (the `GetPolicyRun` operationId) request.
 	//
-	// Requires runs:read.
+	// Read a Run in the default project.
 	GetPolicyRun(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRunPolicyRevision performs a GET /runtime/v1alpha1/runs/{runId}/policy-revision (the `GetRunPolicyRevision` operationId) request.
 	//
-	// Requires runs:read.
+	// Read this Run's frozen immutable Revision in the default project.
 	GetRunPolicyRevision(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRunReport performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
 	//
-	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 	GetRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RotatePolicySubmissionCredential performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 	//
-	// Requires submission-credential:rotate.
+	// Rotate this Run's submission credential and revoke the previous credential.
 	RotatePolicySubmissionCredential(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SubmitSnapshotWithBody performs a POST /runtime/v1alpha1/runs/{runId}/submissions (the `SubmitSnapshot` operationId) request,
@@ -1990,7 +1518,7 @@ type ClientInterface interface {
 
 	// GetRunSubmission performs a GET /runtime/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetRunSubmission` operationId) request.
 	//
-	// Requires runs:read.
+	// Read an accepted Submission of this Run in the default project.
 	GetRunSubmission(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
@@ -1999,227 +1527,6 @@ type ClientInterface interface {
 // Read one project-scoped audit page in descending event ID order. Cursors are bound to filters and scope. Unscoped historical events are excluded. Detail objects above 4096 bytes are unavailable.
 func (c *Client) ListAuditEvents(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListAuditEventsRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// ListProjectAPIKeys performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
-//
-// Lists secret-free key metadata in key-ID order, including expired and revoked keys.
-func (c *Client) ListProjectAPIKeys(ctx context.Context, params *ListProjectAPIKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectAPIKeysRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateProjectAPIKeyWithBody performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request,
-// with any type of body and a specified content type.
-//
-// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-func (c *Client) CreateProjectAPIKeyWithBody(ctx context.Context, params *CreateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateProjectAPIKeyRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateProjectAPIKey performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-func (c *Client) CreateProjectAPIKey(ctx context.Context, params *CreateProjectAPIKeyParams, body CreateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateProjectAPIKeyRequest(c.Server, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// RevokeProjectAPIKey performs a DELETE /api/v1alpha1/auth/api-keys/{keyId} (the `RevokeProjectAPIKey` operationId) request.
-//
-// Atomically revokes a key and records an audit event. Repeated revocation returns 204.
-func (c *Client) RevokeProjectAPIKey(ctx context.Context, keyId APIKeyID, params *RevokeProjectAPIKeyParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRevokeProjectAPIKeyRequest(c.Server, keyId, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// RotateProjectAPIKeyWithBody performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request,
-// with any type of body and a specified content type.
-//
-// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-func (c *Client) RotateProjectAPIKeyWithBody(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRotateProjectAPIKeyRequestWithBody(c.Server, keyId, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// RotateProjectAPIKey performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-func (c *Client) RotateProjectAPIKey(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, body RotateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRotateProjectAPIKeyRequest(c.Server, keyId, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GetCurrentAdministrator performs a GET /api/v1alpha1/auth/me (the `GetCurrentAdministrator` operationId) request.
-func (c *Client) GetCurrentAdministrator(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetCurrentAdministratorRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// ChangeAdministratorPasswordWithBody performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request,
-// with any type of body and a specified content type.
-func (c *Client) ChangeAdministratorPasswordWithBody(ctx context.Context, params *ChangeAdministratorPasswordParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewChangeAdministratorPasswordRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// ChangeAdministratorPassword performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request.
-// Takes a body of the `application/json` content type.
-func (c *Client) ChangeAdministratorPassword(ctx context.Context, params *ChangeAdministratorPasswordParams, body ChangeAdministratorPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewChangeAdministratorPasswordRequest(c.Server, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// LogoutAdministrator performs a DELETE /api/v1alpha1/auth/session (the `LogoutAdministrator` operationId) request.
-func (c *Client) LogoutAdministrator(ctx context.Context, params *LogoutAdministratorParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLogoutAdministratorRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// LoginAdministratorWithBody performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request,
-// with any type of body and a specified content type.
-func (c *Client) LoginAdministratorWithBody(ctx context.Context, params *LoginAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLoginAdministratorRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// LoginAdministrator performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request.
-// Takes a body of the `application/json` content type.
-func (c *Client) LoginAdministrator(ctx context.Context, params *LoginAdministratorParams, body LoginAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLoginAdministratorRequest(c.Server, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GetBootstrapStatus performs a GET /api/v1alpha1/bootstrap (the `GetBootstrapStatus` operationId) request.
-func (c *Client) GetBootstrapStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetBootstrapStatusRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// BootstrapAdministratorWithBody performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request,
-// with any type of body and a specified content type.
-//
-// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-func (c *Client) BootstrapAdministratorWithBody(ctx context.Context, params *BootstrapAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewBootstrapAdministratorRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// BootstrapAdministrator performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-func (c *Client) BootstrapAdministrator(ctx context.Context, params *BootstrapAdministratorParams, body BootstrapAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewBootstrapAdministratorRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2271,6 +1578,8 @@ func (c *Client) GetPolicy(ctx context.Context, policyId string, reqEditors ...R
 
 // ActivatePolicyRevisionWithBody performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request,
 // with any type of body and a specified content type.
+//
+// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) ActivatePolicyRevisionWithBody(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewActivatePolicyRevisionRequestWithBody(c.Server, policyId, params, contentType, body)
 	if err != nil {
@@ -2285,6 +1594,8 @@ func (c *Client) ActivatePolicyRevisionWithBody(ctx context.Context, policyId st
 
 // ActivatePolicyRevision performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request.
 // Takes a body of the `application/json` content type.
+//
+// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) ActivatePolicyRevision(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, body ActivatePolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewActivatePolicyRevisionRequest(c.Server, policyId, params, body)
 	if err != nil {
@@ -2314,6 +1625,8 @@ func (c *Client) GetPolicyDraft(ctx context.Context, policyId string, reqEditors
 
 // SavePolicyDraftWithBody performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request,
 // with any type of body and a specified content type.
+//
+// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) SavePolicyDraftWithBody(ctx context.Context, policyId string, params *SavePolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSavePolicyDraftRequestWithBody(c.Server, policyId, params, contentType, body)
 	if err != nil {
@@ -2328,6 +1641,8 @@ func (c *Client) SavePolicyDraftWithBody(ctx context.Context, policyId string, p
 
 // SavePolicyDraft performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request.
 // Takes a body of the `application/json` content type.
+//
+// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) SavePolicyDraft(ctx context.Context, policyId string, params *SavePolicyDraftParams, body SavePolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSavePolicyDraftRequest(c.Server, policyId, params, body)
 	if err != nil {
@@ -2343,7 +1658,7 @@ func (c *Client) SavePolicyDraft(ctx context.Context, policyId string, params *S
 // PublishPolicyDraftWithBody performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request,
 // with any type of body and a specified content type.
 //
-// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) PublishPolicyDraftWithBody(ctx context.Context, policyId string, params *PublishPolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPublishPolicyDraftRequestWithBody(c.Server, policyId, params, contentType, body)
 	if err != nil {
@@ -2359,9 +1674,41 @@ func (c *Client) PublishPolicyDraftWithBody(ctx context.Context, policyId string
 // PublishPolicyDraft performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) PublishPolicyDraft(ctx context.Context, policyId string, params *PublishPolicyDraftParams, body PublishPolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPublishPolicyDraftRequest(c.Server, policyId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPolicyMaintainersWithBody performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request,
+// with any type of body and a specified content type.
+//
+// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+func (c *Client) SetPolicyMaintainersWithBody(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPolicyMaintainersRequestWithBody(c.Server, policyId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPolicyMaintainers performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+func (c *Client) SetPolicyMaintainers(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, body SetPolicyMaintainersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPolicyMaintainersRequest(c.Server, policyId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2390,7 +1737,7 @@ func (c *Client) ListPolicyRevisions(ctx context.Context, policyId string, param
 // PublishPolicyRevisionWithBody performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request,
 // with any type of body and a specified content type.
 //
-// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) PublishPolicyRevisionWithBody(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPublishPolicyRevisionRequestWithBody(c.Server, policyId, params, contentType, body)
 	if err != nil {
@@ -2406,7 +1753,7 @@ func (c *Client) PublishPolicyRevisionWithBody(ctx context.Context, policyId str
 // PublishPolicyRevision performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *Client) PublishPolicyRevision(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, body PublishPolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPublishPolicyRevisionRequest(c.Server, policyId, params, body)
 	if err != nil {
@@ -2486,7 +1833,7 @@ func (c *Client) GetManagedPolicyRun(ctx context.Context, runId string, reqEdito
 
 // GetManagedRunReport performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
 //
-// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 func (c *Client) GetManagedRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetManagedRunReportRequest(c.Server, runId)
 	if err != nil {
@@ -2501,7 +1848,7 @@ func (c *Client) GetManagedRunReport(ctx context.Context, runId string, reqEdito
 
 // ListManagedRunSubmissions performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 //
-// Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
+// Paginated submission metadata in the default project. Fetch evidence through the selected Submission reader.
 func (c *Client) ListManagedRunSubmissions(ctx context.Context, runId string, params *ListManagedRunSubmissionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListManagedRunSubmissionsRequest(c.Server, runId, params)
 	if err != nil {
@@ -2516,7 +1863,7 @@ func (c *Client) ListManagedRunSubmissions(ctx context.Context, runId string, pa
 
 // GetManagedRunSubmission performs a GET /api/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetManagedRunSubmission` operationId) request.
 //
-// Read a stored Submission and its evidence within the administrator's workspace, project and selected Run.
+// Read a stored Submission and its evidence within the default project and selected Run.
 func (c *Client) GetManagedRunSubmission(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetManagedRunSubmissionRequest(c.Server, runId, submissionId)
 	if err != nil {
@@ -2612,7 +1959,7 @@ func (c *Client) DeleteBinding(ctx context.Context, key string, kind string, res
 // PutBindingWithBody performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
 // with any type of body and a specified content type.
 //
-// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 func (c *Client) PutBindingWithBody(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutBindingRequestWithBody(c.Server, key, kind, resourceId, params, contentType, body)
 	if err != nil {
@@ -2628,7 +1975,7 @@ func (c *Client) PutBindingWithBody(ctx context.Context, key string, kind string
 // PutBinding performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 func (c *Client) PutBinding(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutBindingRequest(c.Server, key, kind, resourceId, params, body)
 	if err != nil {
@@ -2685,7 +2032,7 @@ func (c *Client) ListPolicies(ctx context.Context, key string, reqEditors ...Req
 // CreatePolicyWithBody performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 // with any type of body and a specified content type.
 //
-// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 func (c *Client) CreatePolicyWithBody(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRequestWithBody(c.Server, key, params, contentType, body)
 	if err != nil {
@@ -2701,7 +2048,7 @@ func (c *Client) CreatePolicyWithBody(ctx context.Context, key string, params *C
 // CreatePolicy performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 func (c *Client) CreatePolicy(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRequest(c.Server, key, params, body)
 	if err != nil {
@@ -2785,22 +2132,9 @@ func (c *Client) GetReadiness(ctx context.Context, reqEditors ...RequestEditorFn
 	return c.Client.Do(req)
 }
 
-// GetMachineIdentity performs a GET /runtime/v1alpha1/identity (the `GetMachineIdentity` operationId) request.
-func (c *Client) GetMachineIdentity(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetMachineIdentityRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 // ListPolicyRuns performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 //
-// Requires runs:read. sceneKey and businessId together select at most one Run.
+// List Runs in the default project. sceneKey and businessId together select at most one Run.
 func (c *Client) ListPolicyRuns(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListPolicyRunsRequest(c.Server, params)
 	if err != nil {
@@ -2816,7 +2150,7 @@ func (c *Client) ListPolicyRuns(ctx context.Context, params *ListPolicyRunsParam
 // CreatePolicyRunWithBody performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 // with any type of body and a specified content type.
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 func (c *Client) CreatePolicyRunWithBody(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRunRequestWithBody(c.Server, params, contentType, body)
 	if err != nil {
@@ -2832,7 +2166,7 @@ func (c *Client) CreatePolicyRunWithBody(ctx context.Context, params *CreatePoli
 // CreatePolicyRun performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 func (c *Client) CreatePolicyRun(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRunRequest(c.Server, params, body)
 	if err != nil {
@@ -2847,7 +2181,7 @@ func (c *Client) CreatePolicyRun(ctx context.Context, params *CreatePolicyRunPar
 
 // GetPolicyRun performs a GET /runtime/v1alpha1/runs/{runId} (the `GetPolicyRun` operationId) request.
 //
-// Requires runs:read.
+// Read a Run in the default project.
 func (c *Client) GetPolicyRun(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPolicyRunRequest(c.Server, runId)
 	if err != nil {
@@ -2862,7 +2196,7 @@ func (c *Client) GetPolicyRun(ctx context.Context, runId string, reqEditors ...R
 
 // GetRunPolicyRevision performs a GET /runtime/v1alpha1/runs/{runId}/policy-revision (the `GetRunPolicyRevision` operationId) request.
 //
-// Requires runs:read.
+// Read this Run's frozen immutable Revision in the default project.
 func (c *Client) GetRunPolicyRevision(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRunPolicyRevisionRequest(c.Server, runId)
 	if err != nil {
@@ -2877,7 +2211,7 @@ func (c *Client) GetRunPolicyRevision(ctx context.Context, runId string, reqEdit
 
 // GetRunReport performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
 //
-// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 func (c *Client) GetRunReport(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRunReportRequest(c.Server, runId)
 	if err != nil {
@@ -2892,7 +2226,7 @@ func (c *Client) GetRunReport(ctx context.Context, runId string, reqEditors ...R
 
 // RotatePolicySubmissionCredential performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 //
-// Requires submission-credential:rotate.
+// Rotate this Run's submission credential and revoke the previous credential.
 func (c *Client) RotatePolicySubmissionCredential(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRotatePolicySubmissionCredentialRequest(c.Server, runId)
 	if err != nil {
@@ -2939,7 +2273,7 @@ func (c *Client) SubmitSnapshot(ctx context.Context, runId string, params *Submi
 
 // GetRunSubmission performs a GET /runtime/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetRunSubmission` operationId) request.
 //
-// Requires runs:read.
+// Read an accepted Submission of this Run in the default project.
 func (c *Client) GetRunSubmission(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRunSubmissionRequest(c.Server, runId, submissionId)
 	if err != nil {
@@ -3097,485 +2431,6 @@ func NewListAuditEventsRequest(server string, params *ListAuditEventsParams) (*h
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewListProjectAPIKeysRequest constructs an http.Request for the ListProjectAPIKeys method
-func NewListProjectAPIKeysRequest(server string, params *ListProjectAPIKeysParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/api-keys")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if params.PageSize != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "pageSize", *params.PageSize, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.After != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "after", *params.After, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewCreateProjectAPIKeyRequest calls the generic CreateProjectAPIKey builder with application/json body
-func NewCreateProjectAPIKeyRequest(server string, params *CreateProjectAPIKeyParams, body CreateProjectAPIKeyJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateProjectAPIKeyRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewCreateProjectAPIKeyRequestWithBody constructs an http.Request for the CreateProjectAPIKey method, with any body, and a specified content type
-func NewCreateProjectAPIKeyRequestWithBody(server string, params *CreateProjectAPIKeyParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/api-keys")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Guardrail-CSRF", headerParam0)
-
-	}
-
-	return req, nil
-}
-
-// NewRevokeProjectAPIKeyRequest constructs an http.Request for the RevokeProjectAPIKey method
-func NewRevokeProjectAPIKeyRequest(server string, keyId APIKeyID, params *RevokeProjectAPIKeyParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "keyId", keyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/api-keys/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Guardrail-CSRF", headerParam0)
-
-	}
-
-	return req, nil
-}
-
-// NewRotateProjectAPIKeyRequest calls the generic RotateProjectAPIKey builder with application/json body
-func NewRotateProjectAPIKeyRequest(server string, keyId APIKeyID, params *RotateProjectAPIKeyParams, body RotateProjectAPIKeyJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewRotateProjectAPIKeyRequestWithBody(server, keyId, params, "application/json", bodyReader)
-}
-
-// NewRotateProjectAPIKeyRequestWithBody constructs an http.Request for the RotateProjectAPIKey method, with any body, and a specified content type
-func NewRotateProjectAPIKeyRequestWithBody(server string, keyId APIKeyID, params *RotateProjectAPIKeyParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "keyId", keyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/api-keys/%s/rotation", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Guardrail-CSRF", headerParam0)
-
-	}
-
-	return req, nil
-}
-
-// NewGetCurrentAdministratorRequest constructs an http.Request for the GetCurrentAdministrator method
-func NewGetCurrentAdministratorRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/me")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewChangeAdministratorPasswordRequest calls the generic ChangeAdministratorPassword builder with application/json body
-func NewChangeAdministratorPasswordRequest(server string, params *ChangeAdministratorPasswordParams, body ChangeAdministratorPasswordJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewChangeAdministratorPasswordRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewChangeAdministratorPasswordRequestWithBody constructs an http.Request for the ChangeAdministratorPassword method, with any body, and a specified content type
-func NewChangeAdministratorPasswordRequestWithBody(server string, params *ChangeAdministratorPasswordParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/password")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Guardrail-CSRF", headerParam0)
-
-	}
-
-	return req, nil
-}
-
-// NewLogoutAdministratorRequest constructs an http.Request for the LogoutAdministrator method
-func NewLogoutAdministratorRequest(server string, params *LogoutAdministratorParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/session")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Guardrail-CSRF", headerParam0)
-
-	}
-
-	return req, nil
-}
-
-// NewLoginAdministratorRequest calls the generic LoginAdministrator builder with application/json body
-func NewLoginAdministratorRequest(server string, params *LoginAdministratorParams, body LoginAdministratorJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewLoginAdministratorRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewLoginAdministratorRequestWithBody constructs an http.Request for the LoginAdministrator method, with any body, and a specified content type
-func NewLoginAdministratorRequestWithBody(server string, params *LoginAdministratorParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/auth/session")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Guardrail-CSRF", headerParam0)
-
-	}
-
-	return req, nil
-}
-
-// NewGetBootstrapStatusRequest constructs an http.Request for the GetBootstrapStatus method
-func NewGetBootstrapStatusRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/bootstrap")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewBootstrapAdministratorRequest calls the generic BootstrapAdministrator builder with application/json body
-func NewBootstrapAdministratorRequest(server string, params *BootstrapAdministratorParams, body BootstrapAdministratorJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewBootstrapAdministratorRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewBootstrapAdministratorRequestWithBody constructs an http.Request for the BootstrapAdministrator method, with any body, and a specified content type
-func NewBootstrapAdministratorRequestWithBody(server string, params *BootstrapAdministratorParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1alpha1/bootstrap")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		var headerParam0 string
-
-		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("X-Guardrail-CSRF", headerParam0)
-
 	}
 
 	return req, nil
@@ -3886,6 +2741,66 @@ func NewPublishPolicyDraftRequestWithBody(server string, policyId string, params
 		}
 
 		req.Header.Set("Idempotency-Key", headerParam1)
+
+	}
+
+	return req, nil
+}
+
+// NewSetPolicyMaintainersRequest calls the generic SetPolicyMaintainers builder with application/json body
+func NewSetPolicyMaintainersRequest(server string, policyId string, params *SetPolicyMaintainersParams, body SetPolicyMaintainersJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetPolicyMaintainersRequestWithBody(server, policyId, params, "application/json", bodyReader)
+}
+
+// NewSetPolicyMaintainersRequestWithBody constructs an http.Request for the SetPolicyMaintainers method, with any body, and a specified content type
+func NewSetPolicyMaintainersRequestWithBody(server string, policyId string, params *SetPolicyMaintainersParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1alpha1/policies/%s/maintainers", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-Guardrail-CSRF", headerParam0)
 
 	}
 
@@ -5088,33 +4003,6 @@ func NewGetReadinessRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewGetMachineIdentityRequest constructs an http.Request for the GetMachineIdentity method
-func NewGetMachineIdentityRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/runtime/v1alpha1/identity")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewListPolicyRunsRequest constructs an http.Request for the ListPolicyRuns method
 func NewListPolicyRunsRequest(server string, params *ListPolicyRunsParams) (*http.Request, error) {
 	var err error
@@ -5264,6 +4152,15 @@ func NewCreatePolicyRunRequestWithBody(server string, params *CreatePolicyRunPar
 		}
 
 		req.Header.Set("Idempotency-Key", headerParam0)
+
+		var headerParam1 string
+
+		headerParam1, err = runtime.StyleParamWithOptions("simple", false, "X-Guardrail-CSRF", params.XGuardrailCSRF, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("X-Guardrail-CSRF", headerParam1)
 
 	}
 
@@ -5558,97 +4455,6 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	ListAuditEventsWithResponse(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*ListAuditEventsResponse, error)
 
-	// ListProjectAPIKeysWithResponse performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
-	//
-	// Lists secret-free key metadata in key-ID order, including expired and revoked keys.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	ListProjectAPIKeysWithResponse(ctx context.Context, params *ListProjectAPIKeysParams, reqEditors ...RequestEditorFn) (*ListProjectAPIKeysResponse, error)
-
-	// CreateProjectAPIKeyWithBodyWithResponse performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	CreateProjectAPIKeyWithBodyWithResponse(ctx context.Context, params *CreateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectAPIKeyResponse, error)
-
-	// CreateProjectAPIKeyWithResponse performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-	CreateProjectAPIKeyWithResponse(ctx context.Context, params *CreateProjectAPIKeyParams, body CreateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectAPIKeyResponse, error)
-
-	// RevokeProjectAPIKeyWithResponse performs a DELETE /api/v1alpha1/auth/api-keys/{keyId} (the `RevokeProjectAPIKey` operationId) request.
-	//
-	// Atomically revokes a key and records an audit event. Repeated revocation returns 204.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	RevokeProjectAPIKeyWithResponse(ctx context.Context, keyId APIKeyID, params *RevokeProjectAPIKeyParams, reqEditors ...RequestEditorFn) (*RevokeProjectAPIKeyResponse, error)
-
-	// RotateProjectAPIKeyWithBodyWithResponse performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	RotateProjectAPIKeyWithBodyWithResponse(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateProjectAPIKeyResponse, error)
-
-	// RotateProjectAPIKeyWithResponse performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-	RotateProjectAPIKeyWithResponse(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, body RotateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*RotateProjectAPIKeyResponse, error)
-
-	// GetCurrentAdministratorWithResponse performs a GET /api/v1alpha1/auth/me (the `GetCurrentAdministrator` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetCurrentAdministratorWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentAdministratorResponse, error)
-
-	// ChangeAdministratorPasswordWithBodyWithResponse performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	ChangeAdministratorPasswordWithBodyWithResponse(ctx context.Context, params *ChangeAdministratorPasswordParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeAdministratorPasswordResponse, error)
-
-	// ChangeAdministratorPasswordWithResponse performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	ChangeAdministratorPasswordWithResponse(ctx context.Context, params *ChangeAdministratorPasswordParams, body ChangeAdministratorPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeAdministratorPasswordResponse, error)
-
-	// LogoutAdministratorWithResponse performs a DELETE /api/v1alpha1/auth/session (the `LogoutAdministrator` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	LogoutAdministratorWithResponse(ctx context.Context, params *LogoutAdministratorParams, reqEditors ...RequestEditorFn) (*LogoutAdministratorResponse, error)
-
-	// LoginAdministratorWithBodyWithResponse performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	LoginAdministratorWithBodyWithResponse(ctx context.Context, params *LoginAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginAdministratorResponse, error)
-
-	// LoginAdministratorWithResponse performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	LoginAdministratorWithResponse(ctx context.Context, params *LoginAdministratorParams, body LoginAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginAdministratorResponse, error)
-
-	// GetBootstrapStatusWithResponse performs a GET /api/v1alpha1/bootstrap (the `GetBootstrapStatus` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetBootstrapStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetBootstrapStatusResponse, error)
-
-	// BootstrapAdministratorWithBodyWithResponse performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	BootstrapAdministratorWithBodyWithResponse(ctx context.Context, params *BootstrapAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BootstrapAdministratorResponse, error)
-
-	// BootstrapAdministratorWithResponse performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-	BootstrapAdministratorWithResponse(ctx context.Context, params *BootstrapAdministratorParams, body BootstrapAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*BootstrapAdministratorResponse, error)
-
 	// GetCapabilitiesWithResponse performs a GET /api/v1alpha1/meta/capabilities (the `GetCapabilities` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -5667,11 +4473,15 @@ type ClientWithResponsesInterface interface {
 	// ActivatePolicyRevisionWithBodyWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request,
 	// with any type of body and a specified content type.
 	//
+	// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	ActivatePolicyRevisionWithBodyWithResponse(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivatePolicyRevisionResponse, error)
 
 	// ActivatePolicyRevisionWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	ActivatePolicyRevisionWithResponse(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, body ActivatePolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivatePolicyRevisionResponse, error)
 
 	// GetPolicyDraftWithResponse performs a GET /api/v1alpha1/policies/{policyId}/draft (the `GetPolicyDraft` operationId) request.
@@ -5684,17 +4494,21 @@ type ClientWithResponsesInterface interface {
 	// SavePolicyDraftWithBodyWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request,
 	// with any type of body and a specified content type.
 	//
+	// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
+	//
 	// Returns a wrapper object for the known response body format(s).
 	SavePolicyDraftWithBodyWithResponse(ctx context.Context, policyId string, params *SavePolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SavePolicyDraftResponse, error)
 
 	// SavePolicyDraftWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	SavePolicyDraftWithResponse(ctx context.Context, policyId string, params *SavePolicyDraftParams, body SavePolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*SavePolicyDraftResponse, error)
 
 	// PublishPolicyDraftWithBodyWithResponse performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	PublishPolicyDraftWithBodyWithResponse(ctx context.Context, policyId string, params *PublishPolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublishPolicyDraftResponse, error)
@@ -5702,8 +4516,22 @@ type ClientWithResponsesInterface interface {
 	// PublishPolicyDraftWithResponse performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+	// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	PublishPolicyDraftWithResponse(ctx context.Context, policyId string, params *PublishPolicyDraftParams, body PublishPolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*PublishPolicyDraftResponse, error)
+
+	// SetPolicyMaintainersWithBodyWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SetPolicyMaintainersWithBodyWithResponse(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPolicyMaintainersResponse, error)
+
+	// SetPolicyMaintainersWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+	SetPolicyMaintainersWithResponse(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, body SetPolicyMaintainersJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPolicyMaintainersResponse, error)
 
 	// ListPolicyRevisionsWithResponse performs a GET /api/v1alpha1/policies/{policyId}/revisions (the `ListPolicyRevisions` operationId) request.
 	//
@@ -5715,7 +4543,7 @@ type ClientWithResponsesInterface interface {
 	// PublishPolicyRevisionWithBodyWithResponse performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+	// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	PublishPolicyRevisionWithBodyWithResponse(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublishPolicyRevisionResponse, error)
@@ -5723,7 +4551,7 @@ type ClientWithResponsesInterface interface {
 	// PublishPolicyRevisionWithResponse performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+	// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 	PublishPolicyRevisionWithResponse(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, body PublishPolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*PublishPolicyRevisionResponse, error)
 
 	// ArchivePolicyWithResponse performs a POST /api/v1alpha1/policies/{policyId}:archive (the `ArchivePolicy` operationId) request.
@@ -5753,21 +4581,21 @@ type ClientWithResponsesInterface interface {
 
 	// GetManagedRunReportWithResponse performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
 	//
-	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetManagedRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetManagedRunReportResponse, error)
 
 	// ListManagedRunSubmissionsWithResponse performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 	//
-	// Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
+	// Paginated submission metadata in the default project. Fetch evidence through the selected Submission reader.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListManagedRunSubmissionsWithResponse(ctx context.Context, runId string, params *ListManagedRunSubmissionsParams, reqEditors ...RequestEditorFn) (*ListManagedRunSubmissionsResponse, error)
 
 	// GetManagedRunSubmissionWithResponse performs a GET /api/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetManagedRunSubmission` operationId) request.
 	//
-	// Read a stored Submission and its evidence within the administrator's workspace, project and selected Run.
+	// Read a stored Submission and its evidence within the default project and selected Run.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetManagedRunSubmissionWithResponse(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*GetManagedRunSubmissionResponse, error)
@@ -5805,7 +4633,7 @@ type ClientWithResponsesInterface interface {
 	// PutBindingWithBodyWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	PutBindingWithBodyWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutBindingResponse, error)
@@ -5813,7 +4641,7 @@ type ClientWithResponsesInterface interface {
 	// PutBindingWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+	// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 	PutBindingWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*PutBindingResponse, error)
 
 	// SetDefaultPolicyWithBodyWithResponse performs a PUT /api/v1alpha1/scenes/{key}/default-policy (the `SetDefaultPolicy` operationId) request,
@@ -5834,7 +4662,7 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyWithBodyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	CreatePolicyWithBodyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error)
@@ -5842,7 +4670,7 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	CreatePolicyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error)
 
 	// InitializeSceneWithBodyWithResponse performs a POST /api/v1alpha1/scenes/{key}:initialize (the `InitializeScene` operationId) request,
@@ -5874,14 +4702,9 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetReadinessWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReadinessResponse, error)
 
-	// GetMachineIdentityWithResponse performs a GET /runtime/v1alpha1/identity (the `GetMachineIdentity` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetMachineIdentityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMachineIdentityResponse, error)
-
 	// ListPolicyRunsWithResponse performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 	//
-	// Requires runs:read. sceneKey and businessId together select at most one Run.
+	// List Runs in the default project. sceneKey and businessId together select at most one Run.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListPolicyRunsWithResponse(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*ListPolicyRunsResponse, error)
@@ -5889,7 +4712,7 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyRunWithBodyWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+	// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	CreatePolicyRunWithBodyWithResponse(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error)
@@ -5897,33 +4720,33 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyRunWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+	// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 	CreatePolicyRunWithResponse(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error)
 
 	// GetPolicyRunWithResponse performs a GET /runtime/v1alpha1/runs/{runId} (the `GetPolicyRun` operationId) request.
 	//
-	// Requires runs:read.
+	// Read a Run in the default project.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetPolicyRunWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetPolicyRunResponse, error)
 
 	// GetRunPolicyRevisionWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/policy-revision (the `GetRunPolicyRevision` operationId) request.
 	//
-	// Requires runs:read.
+	// Read this Run's frozen immutable Revision in the default project.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetRunPolicyRevisionWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetRunPolicyRevisionResponse, error)
 
 	// GetRunReportWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
 	//
-	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+	// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetRunReportResponse, error)
 
 	// RotatePolicySubmissionCredentialWithResponse performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 	//
-	// Requires submission-credential:rotate.
+	// Rotate this Run's submission credential and revoke the previous credential.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	RotatePolicySubmissionCredentialWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RotatePolicySubmissionCredentialResponse, error)
@@ -5944,7 +4767,7 @@ type ClientWithResponsesInterface interface {
 
 	// GetRunSubmissionWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetRunSubmission` operationId) request.
 	//
-	// Requires runs:read.
+	// Read an accepted Submission of this Run in the default project.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetRunSubmissionWithResponse(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*GetRunSubmissionResponse, error)
@@ -6006,616 +4829,6 @@ func (r ListAuditEventsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListAuditEventsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// ListProjectAPIKeysResponse200Headers the declared response headers of an HTTP 200 response for ListProjectAPIKeys
-type ListProjectAPIKeysResponse200Headers struct {
-	XTraceID string
-}
-
-// ListProjectAPIKeysResponseDefaultHeaders the declared response headers of an HTTP default response for ListProjectAPIKeys
-type ListProjectAPIKeysResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type ListProjectAPIKeysResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *APIKeyPage
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers200 the parsed response headers for an HTTP 200 response
-	Headers200 *ListProjectAPIKeysResponse200Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *ListProjectAPIKeysResponseDefaultHeaders
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r ListProjectAPIKeysResponse) GetJSON200() *APIKeyPage {
-	return r.JSON200
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r ListProjectAPIKeysResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r ListProjectAPIKeysResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r ListProjectAPIKeysResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListProjectAPIKeysResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListProjectAPIKeysResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// CreateProjectAPIKeyResponse201Headers the declared response headers of an HTTP 201 response for CreateProjectAPIKey
-type CreateProjectAPIKeyResponse201Headers struct {
-	XTraceID string
-}
-
-// CreateProjectAPIKeyResponseDefaultHeaders the declared response headers of an HTTP default response for CreateProjectAPIKey
-type CreateProjectAPIKeyResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type CreateProjectAPIKeyResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON201 the response for an HTTP 201 `application/json` response
-	JSON201 *APIKeyResult
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers201 the parsed response headers for an HTTP 201 response
-	Headers201 *CreateProjectAPIKeyResponse201Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *CreateProjectAPIKeyResponseDefaultHeaders
-}
-
-// GetJSON201 returns the response for an HTTP 201 `application/json` response
-func (r CreateProjectAPIKeyResponse) GetJSON201() *APIKeyResult {
-	return r.JSON201
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r CreateProjectAPIKeyResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r CreateProjectAPIKeyResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateProjectAPIKeyResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateProjectAPIKeyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateProjectAPIKeyResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// RevokeProjectAPIKeyResponse204Headers the declared response headers of an HTTP 204 response for RevokeProjectAPIKey
-type RevokeProjectAPIKeyResponse204Headers struct {
-	XTraceID string
-}
-
-// RevokeProjectAPIKeyResponseDefaultHeaders the declared response headers of an HTTP default response for RevokeProjectAPIKey
-type RevokeProjectAPIKeyResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type RevokeProjectAPIKeyResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers204 the parsed response headers for an HTTP 204 response
-	Headers204 *RevokeProjectAPIKeyResponse204Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *RevokeProjectAPIKeyResponseDefaultHeaders
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r RevokeProjectAPIKeyResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r RevokeProjectAPIKeyResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r RevokeProjectAPIKeyResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r RevokeProjectAPIKeyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r RevokeProjectAPIKeyResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// RotateProjectAPIKeyResponse201Headers the declared response headers of an HTTP 201 response for RotateProjectAPIKey
-type RotateProjectAPIKeyResponse201Headers struct {
-	XTraceID string
-}
-
-// RotateProjectAPIKeyResponseDefaultHeaders the declared response headers of an HTTP default response for RotateProjectAPIKey
-type RotateProjectAPIKeyResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type RotateProjectAPIKeyResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON201 the response for an HTTP 201 `application/json` response
-	JSON201 *APIKeyResult
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers201 the parsed response headers for an HTTP 201 response
-	Headers201 *RotateProjectAPIKeyResponse201Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *RotateProjectAPIKeyResponseDefaultHeaders
-}
-
-// GetJSON201 returns the response for an HTTP 201 `application/json` response
-func (r RotateProjectAPIKeyResponse) GetJSON201() *APIKeyResult {
-	return r.JSON201
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r RotateProjectAPIKeyResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r RotateProjectAPIKeyResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r RotateProjectAPIKeyResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r RotateProjectAPIKeyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r RotateProjectAPIKeyResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// GetCurrentAdministratorResponse200Headers the declared response headers of an HTTP 200 response for GetCurrentAdministrator
-type GetCurrentAdministratorResponse200Headers struct {
-	XTraceID string
-}
-
-// GetCurrentAdministratorResponseDefaultHeaders the declared response headers of an HTTP default response for GetCurrentAdministrator
-type GetCurrentAdministratorResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type GetCurrentAdministratorResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *Principal
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers200 the parsed response headers for an HTTP 200 response
-	Headers200 *GetCurrentAdministratorResponse200Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *GetCurrentAdministratorResponseDefaultHeaders
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetCurrentAdministratorResponse) GetJSON200() *Principal {
-	return r.JSON200
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r GetCurrentAdministratorResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r GetCurrentAdministratorResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetCurrentAdministratorResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetCurrentAdministratorResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetCurrentAdministratorResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// ChangeAdministratorPasswordResponse204Headers the declared response headers of an HTTP 204 response for ChangeAdministratorPassword
-type ChangeAdministratorPasswordResponse204Headers struct {
-	XTraceID string
-}
-
-// ChangeAdministratorPasswordResponseDefaultHeaders the declared response headers of an HTTP default response for ChangeAdministratorPassword
-type ChangeAdministratorPasswordResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type ChangeAdministratorPasswordResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers204 the parsed response headers for an HTTP 204 response
-	Headers204 *ChangeAdministratorPasswordResponse204Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *ChangeAdministratorPasswordResponseDefaultHeaders
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r ChangeAdministratorPasswordResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r ChangeAdministratorPasswordResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r ChangeAdministratorPasswordResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ChangeAdministratorPasswordResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ChangeAdministratorPasswordResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// LogoutAdministratorResponse204Headers the declared response headers of an HTTP 204 response for LogoutAdministrator
-type LogoutAdministratorResponse204Headers struct {
-	XTraceID string
-}
-
-// LogoutAdministratorResponseDefaultHeaders the declared response headers of an HTTP default response for LogoutAdministrator
-type LogoutAdministratorResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type LogoutAdministratorResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers204 the parsed response headers for an HTTP 204 response
-	Headers204 *LogoutAdministratorResponse204Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *LogoutAdministratorResponseDefaultHeaders
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r LogoutAdministratorResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r LogoutAdministratorResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r LogoutAdministratorResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r LogoutAdministratorResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r LogoutAdministratorResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// LoginAdministratorResponse201Headers the declared response headers of an HTTP 201 response for LoginAdministrator
-type LoginAdministratorResponse201Headers struct {
-	SetCookie *string
-	XTraceID  string
-}
-
-// LoginAdministratorResponseDefaultHeaders the declared response headers of an HTTP default response for LoginAdministrator
-type LoginAdministratorResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type LoginAdministratorResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON201 the response for an HTTP 201 `application/json` response
-	JSON201 *LoginResult
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers201 the parsed response headers for an HTTP 201 response
-	Headers201 *LoginAdministratorResponse201Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *LoginAdministratorResponseDefaultHeaders
-}
-
-// GetJSON201 returns the response for an HTTP 201 `application/json` response
-func (r LoginAdministratorResponse) GetJSON201() *LoginResult {
-	return r.JSON201
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r LoginAdministratorResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r LoginAdministratorResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r LoginAdministratorResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r LoginAdministratorResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r LoginAdministratorResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// GetBootstrapStatusResponse200Headers the declared response headers of an HTTP 200 response for GetBootstrapStatus
-type GetBootstrapStatusResponse200Headers struct {
-	XTraceID string
-}
-
-// GetBootstrapStatusResponseDefaultHeaders the declared response headers of an HTTP default response for GetBootstrapStatus
-type GetBootstrapStatusResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type GetBootstrapStatusResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *BootstrapStatus
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers200 the parsed response headers for an HTTP 200 response
-	Headers200 *GetBootstrapStatusResponse200Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *GetBootstrapStatusResponseDefaultHeaders
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetBootstrapStatusResponse) GetJSON200() *BootstrapStatus {
-	return r.JSON200
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r GetBootstrapStatusResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r GetBootstrapStatusResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetBootstrapStatusResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetBootstrapStatusResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetBootstrapStatusResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// BootstrapAdministratorResponse201Headers the declared response headers of an HTTP 201 response for BootstrapAdministrator
-type BootstrapAdministratorResponse201Headers struct {
-	XTraceID string
-}
-
-// BootstrapAdministratorResponseDefaultHeaders the declared response headers of an HTTP default response for BootstrapAdministrator
-type BootstrapAdministratorResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type BootstrapAdministratorResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON201 the response for an HTTP 201 `application/json` response
-	JSON201 *BootstrapResult
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers201 the parsed response headers for an HTTP 201 response
-	Headers201 *BootstrapAdministratorResponse201Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *BootstrapAdministratorResponseDefaultHeaders
-}
-
-// GetJSON201 returns the response for an HTTP 201 `application/json` response
-func (r BootstrapAdministratorResponse) GetJSON201() *BootstrapResult {
-	return r.JSON201
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r BootstrapAdministratorResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r BootstrapAdministratorResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r BootstrapAdministratorResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r BootstrapAdministratorResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r BootstrapAdministratorResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -7036,6 +5249,68 @@ func (r PublishPolicyDraftResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r PublishPolicyDraftResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// SetPolicyMaintainersResponse200Headers the declared response headers of an HTTP 200 response for SetPolicyMaintainers
+type SetPolicyMaintainersResponse200Headers struct {
+	XTraceID string
+}
+
+// SetPolicyMaintainersResponseDefaultHeaders the declared response headers of an HTTP default response for SetPolicyMaintainers
+type SetPolicyMaintainersResponseDefaultHeaders struct {
+	XTraceID string
+}
+
+type SetPolicyMaintainersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Policy
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *SpecError
+	// Headers200 the parsed response headers for an HTTP 200 response
+	Headers200 *SetPolicyMaintainersResponse200Headers
+	// HeadersDefault the parsed response headers for an HTTP default response
+	HeadersDefault *SetPolicyMaintainersResponseDefaultHeaders
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetPolicyMaintainersResponse) GetJSON200() *Policy {
+	return r.JSON200
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r SetPolicyMaintainersResponse) GetJSONDefault() *SpecError {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetPolicyMaintainersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetPolicyMaintainersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetPolicyMaintainersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetPolicyMaintainersResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -8433,69 +6708,6 @@ func (r GetReadinessResponse) ContentType() string {
 	return ""
 }
 
-// GetMachineIdentityResponse200Headers the declared response headers of an HTTP 200 response for GetMachineIdentity
-type GetMachineIdentityResponse200Headers struct {
-	XTraceID string
-}
-
-// GetMachineIdentityResponseDefaultHeaders the declared response headers of an HTTP default response for GetMachineIdentity
-type GetMachineIdentityResponseDefaultHeaders struct {
-	RetryAfter *int
-	XTraceID   string
-}
-
-type GetMachineIdentityResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *Principal
-	// JSONDefault the response for an HTTP default `application/json` response
-	JSONDefault *IdentityError
-	// Headers200 the parsed response headers for an HTTP 200 response
-	Headers200 *GetMachineIdentityResponse200Headers
-	// HeadersDefault the parsed response headers for an HTTP default response
-	HeadersDefault *GetMachineIdentityResponseDefaultHeaders
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetMachineIdentityResponse) GetJSON200() *Principal {
-	return r.JSON200
-}
-
-// GetJSONDefault returns the response for an HTTP default `application/json` response
-func (r GetMachineIdentityResponse) GetJSONDefault() *IdentityError {
-	return r.JSONDefault
-}
-
-// GetBody returns the raw response body bytes
-func (r GetMachineIdentityResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetMachineIdentityResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetMachineIdentityResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetMachineIdentityResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 // ListPolicyRunsResponse200Headers the declared response headers of an HTTP 200 response for ListPolicyRuns
 type ListPolicyRunsResponse200Headers struct {
 	XTraceID string
@@ -9033,187 +7245,6 @@ func (c *ClientWithResponses) ListAuditEventsWithResponse(ctx context.Context, p
 	return ParseListAuditEventsResponse(rsp)
 }
 
-// ListProjectAPIKeysWithResponse performs a GET /api/v1alpha1/auth/api-keys (the `ListProjectAPIKeys` operationId) request.
-//
-// Lists secret-free key metadata in key-ID order, including expired and revoked keys.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListProjectAPIKeysWithResponse(ctx context.Context, params *ListProjectAPIKeysParams, reqEditors ...RequestEditorFn) (*ListProjectAPIKeysResponse, error) {
-	rsp, err := c.ListProjectAPIKeys(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListProjectAPIKeysResponse(rsp)
-}
-
-// CreateProjectAPIKeyWithBodyWithResponse performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request,
-// with any type of body and a specified content type.
-//
-// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateProjectAPIKeyWithBodyWithResponse(ctx context.Context, params *CreateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectAPIKeyResponse, error) {
-	rsp, err := c.CreateProjectAPIKeyWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateProjectAPIKeyResponse(rsp)
-}
-
-// CreateProjectAPIKeyWithResponse performs a POST /api/v1alpha1/auth/api-keys (the `CreateProjectAPIKey` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Creates a RUN_ORCHESTRATOR or POLICY_PUBLISHER key for the administrator's default project after login. Roles expand to fixed effective scopes. RUN_ORCHESTRATOR grants runs:create, runs:read, and submission-credential:rotate and may additionally receive runs:create-with-revision. POLICY_PUBLISHER grants policies:create and revisions:publish. Callers cannot request arbitrary grants. Returns the secret once; only a hash is stored. Keys issued by this release persist their complete effective scopes. Lifetime defaults to 90 days and must be between 60 seconds and 365 days. Expired or revoked keys cannot authenticate. Revocation affects subsequent authentication, not operations that already authenticated before it committed. Do not automatically retry uncertain requests; each successful request creates a new key.
-func (c *ClientWithResponses) CreateProjectAPIKeyWithResponse(ctx context.Context, params *CreateProjectAPIKeyParams, body CreateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectAPIKeyResponse, error) {
-	rsp, err := c.CreateProjectAPIKey(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateProjectAPIKeyResponse(rsp)
-}
-
-// RevokeProjectAPIKeyWithResponse performs a DELETE /api/v1alpha1/auth/api-keys/{keyId} (the `RevokeProjectAPIKey` operationId) request.
-//
-// Atomically revokes a key and records an audit event. Repeated revocation returns 204.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RevokeProjectAPIKeyWithResponse(ctx context.Context, keyId APIKeyID, params *RevokeProjectAPIKeyParams, reqEditors ...RequestEditorFn) (*RevokeProjectAPIKeyResponse, error) {
-	rsp, err := c.RevokeProjectAPIKey(ctx, keyId, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRevokeProjectAPIKeyResponse(rsp)
-}
-
-// RotateProjectAPIKeyWithBodyWithResponse performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request,
-// with any type of body and a specified content type.
-//
-// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) RotateProjectAPIKeyWithBodyWithResponse(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RotateProjectAPIKeyResponse, error) {
-	rsp, err := c.RotateProjectAPIKeyWithBody(ctx, keyId, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRotateProjectAPIKeyResponse(rsp)
-}
-
-// RotateProjectAPIKeyWithResponse performs a POST /api/v1alpha1/auth/api-keys/{keyId}/rotation (the `RotateProjectAPIKey` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Replaces the secret of an active key atomically, preserving its ID, role and scopes. The old secret stops authenticating immediately after commit. expectedVersion must match the current metadata, preventing concurrent rotations and exact request retries from replacing a newly issued secret. Omitted lifetime preserves the existing expiry. Expired or revoked keys cannot rotate. The new secret is returned once; on an uncertain response, list keys and inspect the version before deciding how to recover.
-func (c *ClientWithResponses) RotateProjectAPIKeyWithResponse(ctx context.Context, keyId APIKeyID, params *RotateProjectAPIKeyParams, body RotateProjectAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*RotateProjectAPIKeyResponse, error) {
-	rsp, err := c.RotateProjectAPIKey(ctx, keyId, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRotateProjectAPIKeyResponse(rsp)
-}
-
-// GetCurrentAdministratorWithResponse performs a GET /api/v1alpha1/auth/me (the `GetCurrentAdministrator` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetCurrentAdministratorWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentAdministratorResponse, error) {
-	rsp, err := c.GetCurrentAdministrator(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetCurrentAdministratorResponse(rsp)
-}
-
-// ChangeAdministratorPasswordWithBodyWithResponse performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request,
-// with any type of body and a specified content type.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ChangeAdministratorPasswordWithBodyWithResponse(ctx context.Context, params *ChangeAdministratorPasswordParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ChangeAdministratorPasswordResponse, error) {
-	rsp, err := c.ChangeAdministratorPasswordWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseChangeAdministratorPasswordResponse(rsp)
-}
-
-// ChangeAdministratorPasswordWithResponse performs a PUT /api/v1alpha1/auth/password (the `ChangeAdministratorPassword` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ChangeAdministratorPasswordWithResponse(ctx context.Context, params *ChangeAdministratorPasswordParams, body ChangeAdministratorPasswordJSONRequestBody, reqEditors ...RequestEditorFn) (*ChangeAdministratorPasswordResponse, error) {
-	rsp, err := c.ChangeAdministratorPassword(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseChangeAdministratorPasswordResponse(rsp)
-}
-
-// LogoutAdministratorWithResponse performs a DELETE /api/v1alpha1/auth/session (the `LogoutAdministrator` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) LogoutAdministratorWithResponse(ctx context.Context, params *LogoutAdministratorParams, reqEditors ...RequestEditorFn) (*LogoutAdministratorResponse, error) {
-	rsp, err := c.LogoutAdministrator(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLogoutAdministratorResponse(rsp)
-}
-
-// LoginAdministratorWithBodyWithResponse performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request,
-// with any type of body and a specified content type.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) LoginAdministratorWithBodyWithResponse(ctx context.Context, params *LoginAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginAdministratorResponse, error) {
-	rsp, err := c.LoginAdministratorWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLoginAdministratorResponse(rsp)
-}
-
-// LoginAdministratorWithResponse performs a POST /api/v1alpha1/auth/session (the `LoginAdministrator` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) LoginAdministratorWithResponse(ctx context.Context, params *LoginAdministratorParams, body LoginAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginAdministratorResponse, error) {
-	rsp, err := c.LoginAdministrator(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLoginAdministratorResponse(rsp)
-}
-
-// GetBootstrapStatusWithResponse performs a GET /api/v1alpha1/bootstrap (the `GetBootstrapStatus` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetBootstrapStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetBootstrapStatusResponse, error) {
-	rsp, err := c.GetBootstrapStatus(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetBootstrapStatusResponse(rsp)
-}
-
-// BootstrapAdministratorWithBodyWithResponse performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request,
-// with any type of body and a specified content type.
-//
-// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) BootstrapAdministratorWithBodyWithResponse(ctx context.Context, params *BootstrapAdministratorParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BootstrapAdministratorResponse, error) {
-	rsp, err := c.BootstrapAdministratorWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseBootstrapAdministratorResponse(rsp)
-}
-
-// BootstrapAdministratorWithResponse performs a POST /api/v1alpha1/bootstrap (the `BootstrapAdministrator` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// One-time transaction creating the administrator and default workspace/project, shared by the browser setup wizard and CLI. No machine key is created. Repeated initialization returns 409. Direct local setup does not require a token only when the actual listener and peer are loopback, public_url is unset and no forwarding headers are present. Host, Origin and CSRF checks still apply. Other deployments require a BootstrapToken. With signIn=true a browser session is created atomically and delivered only via an HttpOnly cookie. On an uncertain response, check initialization state before retrying.
-func (c *ClientWithResponses) BootstrapAdministratorWithResponse(ctx context.Context, params *BootstrapAdministratorParams, body BootstrapAdministratorJSONRequestBody, reqEditors ...RequestEditorFn) (*BootstrapAdministratorResponse, error) {
-	rsp, err := c.BootstrapAdministrator(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseBootstrapAdministratorResponse(rsp)
-}
-
 // GetCapabilitiesWithResponse performs a GET /api/v1alpha1/meta/capabilities (the `GetCapabilities` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -9250,6 +7281,8 @@ func (c *ClientWithResponses) GetPolicyWithResponse(ctx context.Context, policyI
 // ActivatePolicyRevisionWithBodyWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request,
 // with any type of body and a specified content type.
 //
+// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
+//
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ActivatePolicyRevisionWithBodyWithResponse(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ActivatePolicyRevisionResponse, error) {
 	rsp, err := c.ActivatePolicyRevisionWithBody(ctx, policyId, params, contentType, body, reqEditors...)
@@ -9261,6 +7294,8 @@ func (c *ClientWithResponses) ActivatePolicyRevisionWithBodyWithResponse(ctx con
 
 // ActivatePolicyRevisionWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/active-revision (the `ActivatePolicyRevision` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Select this Policy's active immutable Revision. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *ClientWithResponses) ActivatePolicyRevisionWithResponse(ctx context.Context, policyId string, params *ActivatePolicyRevisionParams, body ActivatePolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*ActivatePolicyRevisionResponse, error) {
 	rsp, err := c.ActivatePolicyRevision(ctx, policyId, params, body, reqEditors...)
 	if err != nil {
@@ -9285,6 +7320,8 @@ func (c *ClientWithResponses) GetPolicyDraftWithResponse(ctx context.Context, po
 // SavePolicyDraftWithBodyWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request,
 // with any type of body and a specified content type.
 //
+// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
+//
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) SavePolicyDraftWithBodyWithResponse(ctx context.Context, policyId string, params *SavePolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SavePolicyDraftResponse, error) {
 	rsp, err := c.SavePolicyDraftWithBody(ctx, policyId, params, contentType, body, reqEditors...)
@@ -9296,6 +7333,8 @@ func (c *ClientWithResponses) SavePolicyDraftWithBodyWithResponse(ctx context.Co
 
 // SavePolicyDraftWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/draft (the `SavePolicyDraft` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Save this Spec Draft. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *ClientWithResponses) SavePolicyDraftWithResponse(ctx context.Context, policyId string, params *SavePolicyDraftParams, body SavePolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*SavePolicyDraftResponse, error) {
 	rsp, err := c.SavePolicyDraft(ctx, policyId, params, body, reqEditors...)
 	if err != nil {
@@ -9307,7 +7346,7 @@ func (c *ClientWithResponses) SavePolicyDraftWithResponse(ctx context.Context, p
 // PublishPolicyDraftWithBodyWithResponse performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request,
 // with any type of body and a specified content type.
 //
-// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) PublishPolicyDraftWithBodyWithResponse(ctx context.Context, policyId string, params *PublishPolicyDraftParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublishPolicyDraftResponse, error) {
@@ -9321,13 +7360,39 @@ func (c *ClientWithResponses) PublishPolicyDraftWithBodyWithResponse(ctx context
 // PublishPolicyDraftWithResponse performs a POST /api/v1alpha1/policies/{policyId}/draft:publish (the `PublishPolicyDraft` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml.
+// Publish only the exact Draft YAML reviewed by the caller. The required yaml must match the stored Draft under its lock; otherwise return RESOURCE_STATE_CONFLICT. Retry the same Idempotency-Key with the same yaml. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *ClientWithResponses) PublishPolicyDraftWithResponse(ctx context.Context, policyId string, params *PublishPolicyDraftParams, body PublishPolicyDraftJSONRequestBody, reqEditors ...RequestEditorFn) (*PublishPolicyDraftResponse, error) {
 	rsp, err := c.PublishPolicyDraft(ctx, policyId, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParsePublishPolicyDraftResponse(rsp)
+}
+
+// SetPolicyMaintainersWithBodyWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request,
+// with any type of body and a specified content type.
+//
+// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SetPolicyMaintainersWithBodyWithResponse(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPolicyMaintainersResponse, error) {
+	rsp, err := c.SetPolicyMaintainersWithBody(ctx, policyId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPolicyMaintainersResponse(rsp)
+}
+
+// SetPolicyMaintainersWithResponse performs a PUT /api/v1alpha1/policies/{policyId}/maintainers (the `SetPolicyMaintainers` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Replace this Spec maintainer list; empty lists are rejected. Enterprise trusted-operator mode requires a current maintainer.
+func (c *ClientWithResponses) SetPolicyMaintainersWithResponse(ctx context.Context, policyId string, params *SetPolicyMaintainersParams, body SetPolicyMaintainersJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPolicyMaintainersResponse, error) {
+	rsp, err := c.SetPolicyMaintainers(ctx, policyId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPolicyMaintainersResponse(rsp)
 }
 
 // ListPolicyRevisionsWithResponse performs a GET /api/v1alpha1/policies/{policyId}/revisions (the `ListPolicyRevisions` operationId) request.
@@ -9346,7 +7411,7 @@ func (c *ClientWithResponses) ListPolicyRevisionsWithResponse(ctx context.Contex
 // PublishPolicyRevisionWithBodyWithResponse performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request,
 // with any type of body and a specified content type.
 //
-// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) PublishPolicyRevisionWithBodyWithResponse(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PublishPolicyRevisionResponse, error) {
@@ -9360,7 +7425,7 @@ func (c *ClientWithResponses) PublishPolicyRevisionWithBodyWithResponse(ctx cont
 // PublishPolicyRevisionWithResponse performs a POST /api/v1alpha1/policies/{policyId}/revisions (the `PublishPolicyRevision` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// A Project key requires revisions:publish, granted by the POLICY_PUBLISHER role; publication does not change Draft or active Revision.
+// Publish an immutable Revision from the supplied YAML under this Policy. Retry the same Idempotency-Key with the same content. Enterprise trusted-operator mode requires a maintainer of this Spec.
 func (c *ClientWithResponses) PublishPolicyRevisionWithResponse(ctx context.Context, policyId string, params *PublishPolicyRevisionParams, body PublishPolicyRevisionJSONRequestBody, reqEditors ...RequestEditorFn) (*PublishPolicyRevisionResponse, error) {
 	rsp, err := c.PublishPolicyRevision(ctx, policyId, params, body, reqEditors...)
 	if err != nil {
@@ -9426,7 +7491,7 @@ func (c *ClientWithResponses) GetManagedPolicyRunWithResponse(ctx context.Contex
 
 // GetManagedRunReportWithResponse performs a GET /api/v1alpha1/runs/{runId}/report (the `GetManagedRunReport` operationId) request.
 //
-// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) GetManagedRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetManagedRunReportResponse, error) {
@@ -9439,7 +7504,7 @@ func (c *ClientWithResponses) GetManagedRunReportWithResponse(ctx context.Contex
 
 // ListManagedRunSubmissionsWithResponse performs a GET /api/v1alpha1/runs/{runId}/submissions (the `ListManagedRunSubmissions` operationId) request.
 //
-// Administrator-only paginated submission metadata. Fetch evidence through the selected Submission reader.
+// Paginated submission metadata in the default project. Fetch evidence through the selected Submission reader.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ListManagedRunSubmissionsWithResponse(ctx context.Context, runId string, params *ListManagedRunSubmissionsParams, reqEditors ...RequestEditorFn) (*ListManagedRunSubmissionsResponse, error) {
@@ -9452,7 +7517,7 @@ func (c *ClientWithResponses) ListManagedRunSubmissionsWithResponse(ctx context.
 
 // GetManagedRunSubmissionWithResponse performs a GET /api/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetManagedRunSubmission` operationId) request.
 //
-// Read a stored Submission and its evidence within the administrator's workspace, project and selected Run.
+// Read a stored Submission and its evidence within the default project and selected Run.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) GetManagedRunSubmissionWithResponse(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*GetManagedRunSubmissionResponse, error) {
@@ -9532,7 +7597,7 @@ func (c *ClientWithResponses) DeleteBindingWithResponse(ctx context.Context, key
 // PutBindingWithBodyWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request,
 // with any type of body and a specified content type.
 //
-// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) PutBindingWithBodyWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutBindingResponse, error) {
@@ -9546,7 +7611,7 @@ func (c *ClientWithResponses) PutBindingWithBodyWithResponse(ctx context.Context
 // PutBindingWithResponse performs a PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId} (the `PutBinding` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Idempotently create or replace a resource binding within this scene. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
+// Idempotently create or replace a resource binding within this scene. If-None-Match: * allows only an absent or already identical binding; a different existing binding conflicts. Omit policyRevisionId to follow the Policy active revision. Resource IDs containing slash must be URL-encoded.
 func (c *ClientWithResponses) PutBindingWithResponse(ctx context.Context, key string, kind string, resourceId string, params *PutBindingParams, body PutBindingJSONRequestBody, reqEditors ...RequestEditorFn) (*PutBindingResponse, error) {
 	rsp, err := c.PutBinding(ctx, key, kind, resourceId, params, body, reqEditors...)
 	if err != nil {
@@ -9591,7 +7656,7 @@ func (c *ClientWithResponses) ListPoliciesWithResponse(ctx context.Context, key 
 // CreatePolicyWithBodyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 // with any type of body and a specified content type.
 //
-// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) CreatePolicyWithBodyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error) {
@@ -9605,7 +7670,7 @@ func (c *ClientWithResponses) CreatePolicyWithBodyWithResponse(ctx context.Conte
 // CreatePolicyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// A Project key requires policies:create, granted by the POLICY_PUBLISHER role.
+// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 func (c *ClientWithResponses) CreatePolicyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error) {
 	rsp, err := c.CreatePolicy(ctx, key, params, body, reqEditors...)
 	if err != nil {
@@ -9673,20 +7738,9 @@ func (c *ClientWithResponses) GetReadinessWithResponse(ctx context.Context, reqE
 	return ParseGetReadinessResponse(rsp)
 }
 
-// GetMachineIdentityWithResponse performs a GET /runtime/v1alpha1/identity (the `GetMachineIdentity` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetMachineIdentityWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMachineIdentityResponse, error) {
-	rsp, err := c.GetMachineIdentity(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetMachineIdentityResponse(rsp)
-}
-
 // ListPolicyRunsWithResponse performs a GET /runtime/v1alpha1/runs (the `ListPolicyRuns` operationId) request.
 //
-// Requires runs:read. sceneKey and businessId together select at most one Run.
+// List Runs in the default project. sceneKey and businessId together select at most one Run.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) ListPolicyRunsWithResponse(ctx context.Context, params *ListPolicyRunsParams, reqEditors ...RequestEditorFn) (*ListPolicyRunsResponse, error) {
@@ -9700,7 +7754,7 @@ func (c *ClientWithResponses) ListPolicyRunsWithResponse(ctx context.Context, pa
 // CreatePolicyRunWithBodyWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request,
 // with any type of body and a specified content type.
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) CreatePolicyRunWithBodyWithResponse(ctx context.Context, params *CreatePolicyRunParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error) {
@@ -9714,7 +7768,7 @@ func (c *ClientWithResponses) CreatePolicyRunWithBodyWithResponse(ctx context.Co
 // CreatePolicyRunWithResponse performs a POST /runtime/v1alpha1/runs (the `CreatePolicyRun` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Requires runs:create. Creates from the Scene default active Revision. An explicit Revision additionally requires runs:create-with-revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
+// Creates from the Scene default active Revision unless an explicit Revision or resource binding selects another Revision. Same Idempotency-Key or same businessId and content replays without reissuing the credential. A businessId remains bound to its Run after FINISHED or EXPIRED; use a new businessId for a new Run attempt.
 func (c *ClientWithResponses) CreatePolicyRunWithResponse(ctx context.Context, params *CreatePolicyRunParams, body CreatePolicyRunJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyRunResponse, error) {
 	rsp, err := c.CreatePolicyRun(ctx, params, body, reqEditors...)
 	if err != nil {
@@ -9725,7 +7779,7 @@ func (c *ClientWithResponses) CreatePolicyRunWithResponse(ctx context.Context, p
 
 // GetPolicyRunWithResponse performs a GET /runtime/v1alpha1/runs/{runId} (the `GetPolicyRun` operationId) request.
 //
-// Requires runs:read.
+// Read a Run in the default project.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) GetPolicyRunWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetPolicyRunResponse, error) {
@@ -9738,7 +7792,7 @@ func (c *ClientWithResponses) GetPolicyRunWithResponse(ctx context.Context, runI
 
 // GetRunPolicyRevisionWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/policy-revision (the `GetRunPolicyRevision` operationId) request.
 //
-// Requires runs:read.
+// Read this Run's frozen immutable Revision in the default project.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) GetRunPolicyRevisionWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetRunPolicyRevisionResponse, error) {
@@ -9751,7 +7805,7 @@ func (c *ClientWithResponses) GetRunPolicyRevisionWithResponse(ctx context.Conte
 
 // GetRunReportWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/report (the `GetRunReport` operationId) request.
 //
-// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. Runtime access requires runs:read. generatedAt is a diagnostic observation time.
+// Structured diagnostic export with frozen Revision metadata, content fingerprints and up to 20 submission summaries captured at the initial Run read. Raw YAML, changeSet and free-text evidence are omitted. generatedAt is a diagnostic observation time.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) GetRunReportWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*GetRunReportResponse, error) {
@@ -9764,7 +7818,7 @@ func (c *ClientWithResponses) GetRunReportWithResponse(ctx context.Context, runI
 
 // RotatePolicySubmissionCredentialWithResponse performs a POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate (the `RotatePolicySubmissionCredential` operationId) request.
 //
-// Requires submission-credential:rotate.
+// Rotate this Run's submission credential and revoke the previous credential.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) RotatePolicySubmissionCredentialWithResponse(ctx context.Context, runId string, reqEditors ...RequestEditorFn) (*RotatePolicySubmissionCredentialResponse, error) {
@@ -9803,7 +7857,7 @@ func (c *ClientWithResponses) SubmitSnapshotWithResponse(ctx context.Context, ru
 
 // GetRunSubmissionWithResponse performs a GET /runtime/v1alpha1/runs/{runId}/submissions/{submissionId} (the `GetRunSubmission` operationId) request.
 //
-// Requires runs:read.
+// Read an accepted Submission of this Run in the default project.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) GetRunSubmissionWithResponse(ctx context.Context, runId string, submissionId string, reqEditors ...RequestEditorFn) (*GetRunSubmissionResponse, error) {
@@ -9857,631 +7911,6 @@ func ParseListAuditEventsResponse(rsp *http.Response) (*ListAuditEventsResponse,
 		response.Headers200 = &headers
 	case true:
 		var headers ListAuditEventsResponseDefaultHeaders
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseListProjectAPIKeysResponse parses an HTTP response from a ListProjectAPIKeysWithResponse call
-func ParseListProjectAPIKeysResponse(rsp *http.Response) (*ListProjectAPIKeysResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListProjectAPIKeysResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest APIKeyPage
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 200:
-		var headers ListProjectAPIKeysResponse200Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers200 = &headers
-	case true:
-		var headers ListProjectAPIKeysResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseCreateProjectAPIKeyResponse parses an HTTP response from a CreateProjectAPIKeyWithResponse call
-func ParseCreateProjectAPIKeyResponse(rsp *http.Response) (*CreateProjectAPIKeyResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateProjectAPIKeyResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest APIKeyResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 201:
-		var headers CreateProjectAPIKeyResponse201Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers201 = &headers
-	case true:
-		var headers CreateProjectAPIKeyResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseRevokeProjectAPIKeyResponse parses an HTTP response from a RevokeProjectAPIKeyWithResponse call
-func ParseRevokeProjectAPIKeyResponse(rsp *http.Response) (*RevokeProjectAPIKeyResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &RevokeProjectAPIKeyResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		var headers RevokeProjectAPIKeyResponse204Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers204 = &headers
-	case true:
-		var headers RevokeProjectAPIKeyResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseRotateProjectAPIKeyResponse parses an HTTP response from a RotateProjectAPIKeyWithResponse call
-func ParseRotateProjectAPIKeyResponse(rsp *http.Response) (*RotateProjectAPIKeyResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &RotateProjectAPIKeyResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest APIKeyResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 201:
-		var headers RotateProjectAPIKeyResponse201Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers201 = &headers
-	case true:
-		var headers RotateProjectAPIKeyResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseGetCurrentAdministratorResponse parses an HTTP response from a GetCurrentAdministratorWithResponse call
-func ParseGetCurrentAdministratorResponse(rsp *http.Response) (*GetCurrentAdministratorResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetCurrentAdministratorResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Principal
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 200:
-		var headers GetCurrentAdministratorResponse200Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers200 = &headers
-	case true:
-		var headers GetCurrentAdministratorResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseChangeAdministratorPasswordResponse parses an HTTP response from a ChangeAdministratorPasswordWithResponse call
-func ParseChangeAdministratorPasswordResponse(rsp *http.Response) (*ChangeAdministratorPasswordResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ChangeAdministratorPasswordResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		var headers ChangeAdministratorPasswordResponse204Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers204 = &headers
-	case true:
-		var headers ChangeAdministratorPasswordResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseLogoutAdministratorResponse parses an HTTP response from a LogoutAdministratorWithResponse call
-func ParseLogoutAdministratorResponse(rsp *http.Response) (*LogoutAdministratorResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &LogoutAdministratorResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		var headers LogoutAdministratorResponse204Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers204 = &headers
-	case true:
-		var headers LogoutAdministratorResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseLoginAdministratorResponse parses an HTTP response from a LoginAdministratorWithResponse call
-func ParseLoginAdministratorResponse(rsp *http.Response) (*LoginAdministratorResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &LoginAdministratorResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest LoginResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 201:
-		var headers LoginAdministratorResponse201Headers
-		if values := rsp.Header.Values("Set-Cookie"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "Set-Cookie", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.SetCookie = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers201 = &headers
-	case true:
-		var headers LoginAdministratorResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseGetBootstrapStatusResponse parses an HTTP response from a GetBootstrapStatusWithResponse call
-func ParseGetBootstrapStatusResponse(rsp *http.Response) (*GetBootstrapStatusResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetBootstrapStatusResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest BootstrapStatus
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 200:
-		var headers GetBootstrapStatusResponse200Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers200 = &headers
-	case true:
-		var headers GetBootstrapStatusResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
-// ParseBootstrapAdministratorResponse parses an HTTP response from a BootstrapAdministratorWithResponse call
-func ParseBootstrapAdministratorResponse(rsp *http.Response) (*BootstrapAdministratorResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &BootstrapAdministratorResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest BootstrapResult
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 201:
-		var headers BootstrapAdministratorResponse201Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers201 = &headers
-	case true:
-		var headers BootstrapAdministratorResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
 		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
@@ -10857,6 +8286,62 @@ func ParsePublishPolicyDraftResponse(rsp *http.Response) (*PublishPolicyDraftRes
 		response.Headers201 = &headers
 	case true:
 		var headers PublishPolicyDraftResponseDefaultHeaders
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.HeadersDefault = &headers
+	}
+
+	return response, nil
+}
+
+// ParseSetPolicyMaintainersResponse parses an HTTP response from a SetPolicyMaintainersWithResponse call
+func ParseSetPolicyMaintainersResponse(rsp *http.Response) (*SetPolicyMaintainersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetPolicyMaintainersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Policy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest SpecError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 200:
+		var headers SetPolicyMaintainersResponse200Headers
+		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.XTraceID = value
+		}
+		response.Headers200 = &headers
+	case true:
+		var headers SetPolicyMaintainersResponseDefaultHeaders
 		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
 			var value string
 			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
@@ -12120,69 +9605,6 @@ func ParseGetReadinessResponse(rsp *http.Response) (*GetReadinessResponse, error
 	return response, nil
 }
 
-// ParseGetMachineIdentityResponse parses an HTTP response from a GetMachineIdentityWithResponse call
-func ParseGetMachineIdentityResponse(rsp *http.Response) (*GetMachineIdentityResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetMachineIdentityResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Principal
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
-		var dest IdentityError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSONDefault = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 200:
-		var headers GetMachineIdentityResponse200Headers
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.Headers200 = &headers
-	case true:
-		var headers GetMachineIdentityResponseDefaultHeaders
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		if values := rsp.Header.Values("X-Trace-ID"); len(values) > 0 {
-			var value string
-			if err := runtime.BindStyledParameterWithOptions("simple", "X-Trace-ID", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.XTraceID = value
-		}
-		response.HeadersDefault = &headers
-	}
-
-	return response, nil
-}
-
 // ParseListPolicyRunsResponse parses an HTTP response from a ListPolicyRunsWithResponse call
 func ParseListPolicyRunsResponse(rsp *http.Response) (*ListPolicyRunsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -12671,36 +10093,6 @@ type ServerInterface interface {
 	// (GET /api/v1alpha1/audit-events)
 	ListAuditEvents(w http.ResponseWriter, r *http.Request, params ListAuditEventsParams)
 
-	// (GET /api/v1alpha1/auth/api-keys)
-	ListProjectAPIKeys(w http.ResponseWriter, r *http.Request, params ListProjectAPIKeysParams)
-
-	// (POST /api/v1alpha1/auth/api-keys)
-	CreateProjectAPIKey(w http.ResponseWriter, r *http.Request, params CreateProjectAPIKeyParams)
-
-	// (DELETE /api/v1alpha1/auth/api-keys/{keyId})
-	RevokeProjectAPIKey(w http.ResponseWriter, r *http.Request, keyId APIKeyID, params RevokeProjectAPIKeyParams)
-
-	// (POST /api/v1alpha1/auth/api-keys/{keyId}/rotation)
-	RotateProjectAPIKey(w http.ResponseWriter, r *http.Request, keyId APIKeyID, params RotateProjectAPIKeyParams)
-
-	// (GET /api/v1alpha1/auth/me)
-	GetCurrentAdministrator(w http.ResponseWriter, r *http.Request)
-
-	// (PUT /api/v1alpha1/auth/password)
-	ChangeAdministratorPassword(w http.ResponseWriter, r *http.Request, params ChangeAdministratorPasswordParams)
-
-	// (DELETE /api/v1alpha1/auth/session)
-	LogoutAdministrator(w http.ResponseWriter, r *http.Request, params LogoutAdministratorParams)
-
-	// (POST /api/v1alpha1/auth/session)
-	LoginAdministrator(w http.ResponseWriter, r *http.Request, params LoginAdministratorParams)
-
-	// (GET /api/v1alpha1/bootstrap)
-	GetBootstrapStatus(w http.ResponseWriter, r *http.Request)
-
-	// (POST /api/v1alpha1/bootstrap)
-	BootstrapAdministrator(w http.ResponseWriter, r *http.Request, params BootstrapAdministratorParams)
-
 	// (GET /api/v1alpha1/meta/capabilities)
 	GetCapabilities(w http.ResponseWriter, r *http.Request)
 
@@ -12721,6 +10113,9 @@ type ServerInterface interface {
 
 	// (POST /api/v1alpha1/policies/{policyId}/draft:publish)
 	PublishPolicyDraft(w http.ResponseWriter, r *http.Request, policyId string, params PublishPolicyDraftParams)
+
+	// (PUT /api/v1alpha1/policies/{policyId}/maintainers)
+	SetPolicyMaintainers(w http.ResponseWriter, r *http.Request, policyId string, params SetPolicyMaintainersParams)
 
 	// (GET /api/v1alpha1/policies/{policyId}/revisions)
 	ListPolicyRevisions(w http.ResponseWriter, r *http.Request, policyId string, params ListPolicyRevisionsParams)
@@ -12790,9 +10185,6 @@ type ServerInterface interface {
 
 	// (GET /readyz)
 	GetReadiness(w http.ResponseWriter, r *http.Request)
-
-	// (GET /runtime/v1alpha1/identity)
-	GetMachineIdentity(w http.ResponseWriter, r *http.Request)
 
 	// (GET /runtime/v1alpha1/runs)
 	ListPolicyRuns(w http.ResponseWriter, r *http.Request, params ListPolicyRunsParams)
@@ -12956,413 +10348,6 @@ func (siw *ServerInterfaceWrapper) ListAuditEvents(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListAuditEvents(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListProjectAPIKeys operation middleware
-func (siw *ServerInterfaceWrapper) ListProjectAPIKeys(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListProjectAPIKeysParams
-
-	// ------------- Optional query parameter "pageSize" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "pageSize", r.URL.Query(), &params.PageSize, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "pageSize"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "pageSize", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "after" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "after", r.URL.Query(), &params.After, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "after"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "after", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListProjectAPIKeys(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CreateProjectAPIKey operation middleware
-func (siw *ServerInterfaceWrapper) CreateProjectAPIKey(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateProjectAPIKeyParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
-		var XGuardrailCSRF CreateProjectAPIKeyParamsXGuardrailCSRF
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
-			return
-		}
-
-		params.XGuardrailCSRF = XGuardrailCSRF
-
-	} else {
-		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateProjectAPIKey(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// RevokeProjectAPIKey operation middleware
-func (siw *ServerInterfaceWrapper) RevokeProjectAPIKey(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "keyId" -------------
-	var keyId APIKeyID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "keyId", r.PathValue("keyId"), &keyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "keyId", Err: err})
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params RevokeProjectAPIKeyParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
-		var XGuardrailCSRF RevokeProjectAPIKeyParamsXGuardrailCSRF
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
-			return
-		}
-
-		params.XGuardrailCSRF = XGuardrailCSRF
-
-	} else {
-		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RevokeProjectAPIKey(w, r, keyId, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// RotateProjectAPIKey operation middleware
-func (siw *ServerInterfaceWrapper) RotateProjectAPIKey(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "keyId" -------------
-	var keyId APIKeyID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "keyId", r.PathValue("keyId"), &keyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "keyId", Err: err})
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params RotateProjectAPIKeyParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
-		var XGuardrailCSRF RotateProjectAPIKeyParamsXGuardrailCSRF
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
-			return
-		}
-
-		params.XGuardrailCSRF = XGuardrailCSRF
-
-	} else {
-		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RotateProjectAPIKey(w, r, keyId, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetCurrentAdministrator operation middleware
-func (siw *ServerInterfaceWrapper) GetCurrentAdministrator(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetCurrentAdministrator(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ChangeAdministratorPassword operation middleware
-func (siw *ServerInterfaceWrapper) ChangeAdministratorPassword(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ChangeAdministratorPasswordParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
-		var XGuardrailCSRF ChangeAdministratorPasswordParamsXGuardrailCSRF
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
-			return
-		}
-
-		params.XGuardrailCSRF = XGuardrailCSRF
-
-	} else {
-		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ChangeAdministratorPassword(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// LogoutAdministrator operation middleware
-func (siw *ServerInterfaceWrapper) LogoutAdministrator(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params LogoutAdministratorParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
-		var XGuardrailCSRF LogoutAdministratorParamsXGuardrailCSRF
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
-			return
-		}
-
-		params.XGuardrailCSRF = XGuardrailCSRF
-
-	} else {
-		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.LogoutAdministrator(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// LoginAdministrator operation middleware
-func (siw *ServerInterfaceWrapper) LoginAdministrator(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params LoginAdministratorParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
-		var XGuardrailCSRF LoginAdministratorParamsXGuardrailCSRF
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
-			return
-		}
-
-		params.XGuardrailCSRF = XGuardrailCSRF
-
-	} else {
-		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.LoginAdministrator(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetBootstrapStatus operation middleware
-func (siw *ServerInterfaceWrapper) GetBootstrapStatus(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetBootstrapStatus(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// BootstrapAdministrator operation middleware
-func (siw *ServerInterfaceWrapper) BootstrapAdministrator(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params BootstrapAdministratorParams
-
-	headers := r.Header
-
-	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
-		var XGuardrailCSRF BootstrapAdministratorParamsXGuardrailCSRF
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
-			return
-		}
-
-		params.XGuardrailCSRF = XGuardrailCSRF
-
-	} else {
-		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
-		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.BootstrapAdministrator(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -13628,6 +10613,60 @@ func (siw *ServerInterfaceWrapper) PublishPolicyDraft(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PublishPolicyDraft(w, r, policyId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetPolicyMaintainers operation middleware
+func (siw *ServerInterfaceWrapper) SetPolicyMaintainers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "policyId" -------------
+	var policyId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "policyId", r.PathValue("policyId"), &policyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "policyId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SetPolicyMaintainersParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
+		var XGuardrailCSRF SetPolicyMaintainersParamsXGuardrailCSRF
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
+			return
+		}
+
+		params.XGuardrailCSRF = XGuardrailCSRF
+
+	} else {
+		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetPolicyMaintainers(w, r, policyId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -14699,20 +11738,6 @@ func (siw *ServerInterfaceWrapper) GetReadiness(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
-// GetMachineIdentity operation middleware
-func (siw *ServerInterfaceWrapper) GetMachineIdentity(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetMachineIdentity(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // ListPolicyRuns operation middleware
 func (siw *ServerInterfaceWrapper) ListPolicyRuns(w http.ResponseWriter, r *http.Request) {
 
@@ -14829,6 +11854,29 @@ func (siw *ServerInterfaceWrapper) CreatePolicyRun(w http.ResponseWriter, r *htt
 	} else {
 		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
 		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	// ------------- Required header parameter "X-Guardrail-CSRF" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Guardrail-CSRF")]; found {
+		var XGuardrailCSRF CreatePolicyRunParamsXGuardrailCSRF
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Guardrail-CSRF", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Guardrail-CSRF", valueList[0], &XGuardrailCSRF, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Guardrail-CSRF", Err: err})
+			return
+		}
+
+		params.XGuardrailCSRF = XGuardrailCSRF
+
+	} else {
+		err := fmt.Errorf("Header parameter X-Guardrail-CSRF is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "X-Guardrail-CSRF", Err: err})
 		return
 	}
 
@@ -15161,17 +12209,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/meta/version", wrapper.GetVersion)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/meta/capabilities", wrapper.GetCapabilities)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/openapi.yaml", wrapper.GetOpenAPI)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/bootstrap", wrapper.GetBootstrapStatus)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1alpha1/bootstrap", wrapper.BootstrapAdministrator)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/auth/api-keys", wrapper.ListProjectAPIKeys)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1alpha1/auth/api-keys", wrapper.CreateProjectAPIKey)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1alpha1/auth/api-keys/{keyId}", wrapper.RevokeProjectAPIKey)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1alpha1/auth/api-keys/{keyId}/rotation", wrapper.RotateProjectAPIKey)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1alpha1/auth/session", wrapper.LogoutAdministrator)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1alpha1/auth/session", wrapper.LoginAdministrator)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/auth/me", wrapper.GetCurrentAdministrator)
-	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1alpha1/auth/password", wrapper.ChangeAdministratorPassword)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/runtime/v1alpha1/identity", wrapper.GetMachineIdentity)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/runtime/v1alpha1/runs", wrapper.ListPolicyRuns)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/runtime/v1alpha1/runs", wrapper.CreatePolicyRun)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/runtime/v1alpha1/runs/{runId}", wrapper.GetPolicyRun)
@@ -15191,6 +12228,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId}", wrapper.PutBinding)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1alpha1/scenes/{key}/default-policy", wrapper.SetDefaultPolicy)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/policies/{policyId}", wrapper.GetPolicy)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1alpha1/policies/{policyId}/maintainers", wrapper.SetPolicyMaintainers)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1alpha1/policies/{policyId}/draft", wrapper.GetPolicyDraft)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/api/v1alpha1/policies/{policyId}/draft", wrapper.SavePolicyDraft)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1alpha1/policies/{policyId}/draft:publish", wrapper.PublishPolicyDraft)

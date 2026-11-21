@@ -14,7 +14,7 @@ export const docs = [
   ['audit-and-reports', 'docs/audit-and-reports.md', 'Audit queries and Run reports', '审计查询与 Run 排障报告', 2, 'docs/i18n/audit-and-reports.zh-CN.md'],
   ['configuration', 'docs/configuration.md', 'Configuration and storage', '配置与存储', 2, 'docs/i18n/configuration.zh-CN.md'],
   ['docker', 'docs/docker.md', 'Docker deployment', 'Docker 部署', 2, 'docs/i18n/docker.zh-CN.md'],
-  ['local-administrator', 'docs/local-administrator.md', 'Administrator guide', '管理员指南', 2, 'docs/i18n/local-administrator.zh-CN.md'],
+  ['access', 'docs/access.md', 'Access and Run credentials', '访问方式与 Run 凭据', 2, 'docs/i18n/access.zh-CN.md'],
   ['integrations', 'integrations/README.md', 'Integration guide', '集成指南', 2, 'docs/i18n/integrations.zh-CN.md'],
   ['architecture', 'docs/architecture.md', 'Architecture', '架构', 2, 'docs/i18n/architecture.zh-CN.md'],
   ['adoption-guide', 'docs/adoption-guide.md', 'Plan your integration', '接入指引', 2, 'docs/i18n/adoption-guide.zh-CN.md'],

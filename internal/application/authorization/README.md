@@ -1,7 +1,7 @@
 # Guardrail authorization use cases
 
-Status: planned. Current management handlers still enforce the local administrator
-role directly; this directory does not yet provide a replacement service.
+Status: planned. Standalone management uses direct access. Enterprise adapters
+retain their identity, authorization and per-Policy maintainer checks.
 
 Own authorization for guardrail resources and operations. Combine a verified actor
 and external permission facts with authoritative Spec/Run ownership, scope and

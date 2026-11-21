@@ -28,15 +28,12 @@ func Main() {
 }
 func run(ctx context.Context, args []string, out io.Writer, logger *slog.Logger) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "--help" {
-		fmt.Fprintln(out, "Usage: open-guardrail serve [--config file] [--data-dir directory] [--listen host:port]\n       open-guardrail admin reset [--config file] [--data-dir directory]\n       open-guardrail version")
+		fmt.Fprintln(out, "Usage: open-guardrail serve [--config file] [--data-dir directory] [--listen host:port]\n       open-guardrail version")
 		return nil
 	}
 	if args[0] == "version" {
 		fmt.Fprintln(out, buildinfo.Current().Version)
 		return nil
-	}
-	if args[0] == "admin" {
-		return resetAdmin(ctx, args[1:], os.Stdin, out)
 	}
 	if args[0] != "serve" {
 		return errors.New("unknown command; use open-guardrail --help")

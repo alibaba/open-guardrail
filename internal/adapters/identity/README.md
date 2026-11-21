@@ -1,7 +1,7 @@
 # Built-in external identity adapters
 
-Status: planned. Existing local credentials remain in `application/identity`,
-`adapters/security` and the HTTP adapter; this directory adds no new provider yet.
+Status: planned. Standalone access is direct and has no local account or session.
+This directory adds no identity provider.
 
 Place generally reusable external identity implementations here as they are
 introduced. They implement public identity contracts and map provider responses

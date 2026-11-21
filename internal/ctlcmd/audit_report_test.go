@@ -14,10 +14,8 @@ import (
 	"time"
 
 	"github.com/alibaba/open-guardrail/internal/adapters/httpapi"
-	"github.com/alibaba/open-guardrail/internal/adapters/security"
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
 	"github.com/alibaba/open-guardrail/internal/application/audit"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
 	"github.com/alibaba/open-guardrail/internal/config"
@@ -32,22 +30,6 @@ func TestAuditAndReportCLIRealService(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	ids := identity.New(store.Identity(), security.Passwords{})
-	if _, err := ids.BootstrapLocal(ctx, identity.BootstrapRequest{Username: "admin", Password: "synthetic-password"}); err != nil {
-		t.Fatal(err)
-	}
-	login, err := ids.Login(ctx, identity.LoginRequest{Username: "admin", Password: "synthetic-password", Kind: "cli"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	key, err := ids.CreateAPIKey(ctx, login.Token, "cli", "RUN_ORCHESTRATOR")
-	if err != nil {
-		t.Fatal(err)
-	}
-	publisher, err := ids.CreateAPIKey(ctx, login.Token, "cli", "POLICY_PUBLISHER")
-	if err != nil {
-		t.Fatal(err)
-	}
 	specs := spec.New(store.Specs())
 	scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
 	yaml, err := os.ReadFile("../../examples/policies/recovery.yaml")
@@ -84,16 +66,10 @@ func TestAuditAndReportCLIRealService(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := httptest.NewUnstartedServer(nil)
-	server.Config.Handler = httpapi.New(store, httpapi.Options{Identity: ids, ModelSpecs: specs, ModelRuns: runs, Audits: audit.New(store.Audits()), Origin: "http://" + server.Listener.Addr().String()})
+	server.Config.Handler = httpapi.New(store, httpapi.Options{ModelSpecs: specs, ModelRuns: runs, Audits: audit.New(store.Audits()), Origin: "http://" + server.Listener.Addr().String()})
 	server.Start()
 	defer server.Close()
 	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, server.URL, login.Token)
-	keyFile := filepath.Join(dir, "key.json")
-	data, _ := json.Marshal(credentialFile{Server: server.URL, Token: key.APIKey})
-	if err = os.WriteFile(keyFile, data, 0600); err != nil {
-		t.Fatal(err)
-	}
 	call := func(args ...string) string {
 		t.Helper()
 		var out bytes.Buffer
@@ -102,7 +78,7 @@ func TestAuditAndReportCLIRealService(t *testing.T) {
 		}
 		return out.String()
 	}
-	auditArgs := []string{"audit", "list", "--server", server.URL, "--session-file", session, "--resource-type", "policy-binding", "--limit", "2"}
+	auditArgs := []string{"audit", "list", "--server", server.URL, "--resource-type", "policy-binding", "--limit", "2"}
 	var page audit.Page
 	if err = json.Unmarshal([]byte(call(auditArgs...)), &page); err != nil || len(page.Items) != 2 || page.NextCursor == nil {
 		t.Fatalf("page=%+v %v", page, err)
@@ -134,12 +110,12 @@ func TestAuditAndReportCLIRealService(t *testing.T) {
 	if err = json.Unmarshal([]byte(call(append(exportArgs, "--cursor", *page.NextCursor)...)), &older); err != nil || len(older.Items) != 1 || older.NextCursor != nil {
 		t.Fatalf("older=%+v %v", older, err)
 	}
-	reportRaw := call("run", "report", "--server", server.URL, "--key-file", keyFile, current.ID)
+	reportRaw := call("run", "report", "--server", server.URL, current.ID)
 	var report runapp.Report
 	if err = json.Unmarshal([]byte(reportRaw), &report); err != nil || report.Run.ID != current.ID || report.FinalSubmission == nil || strings.Join(report.Reasons, ",") != "CHECK_BLOCKED" || report.Revision.ID != initial.Revision.ID {
 		t.Fatalf("report=%+v err=%v", report, err)
 	}
-	for _, secret := range []string{"private-business-", "private-check-", "private-query-", "private-result-", login.Token, key.APIKey, runToken} {
+	for _, secret := range []string{"private-business-", "private-check-", "private-query-", "private-result-", runToken} {
 		if strings.Contains(reportRaw, secret) {
 			t.Fatal("report leaked private content")
 		}
@@ -147,7 +123,9 @@ func TestAuditAndReportCLIRealService(t *testing.T) {
 	get := func(path, token string, want int) {
 		t.Helper()
 		req, _ := http.NewRequest("GET", server.URL+path, nil)
-		req.Header.Set("Authorization", "Bearer "+token)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
 		res, err := server.Client().Do(req)
 		if err != nil {
 			t.Fatal(err)
@@ -158,12 +136,12 @@ func TestAuditAndReportCLIRealService(t *testing.T) {
 			t.Fatalf("%s status=%d want=%d body=%s", path, res.StatusCode, want, body)
 		}
 	}
-	get("/api/v1alpha1/audit-events", key.APIKey, 401)
+	get("/api/v1alpha1/audit-events", "", 200)
 	get("/api/v1alpha1/audit-events", runToken, 401)
-	get("/api/v1alpha1/audit-events?limit=0", login.Token, 400)
-	get("/api/v1alpha1/audit-events?cursor=invalid", login.Token, 400)
-	get("/api/v1alpha1/runs/"+current.ID+"/report", login.Token, 200)
-	get("/runtime/v1alpha1/runs/"+current.ID+"/report", publisher.APIKey, 403)
+	get("/api/v1alpha1/audit-events?limit=0", "", 400)
+	get("/api/v1alpha1/audit-events?cursor=invalid", "", 400)
+	get("/api/v1alpha1/runs/"+current.ID+"/report", "", 200)
+	get("/runtime/v1alpha1/runs/"+current.ID+"/report", "", 200)
 	get("/runtime/v1alpha1/runs/"+current.ID+"/report", runToken, 401)
-	get("/runtime/v1alpha1/runs/run_missing/report", key.APIKey, 404)
+	get("/runtime/v1alpha1/runs/run_missing/report", "", 404)
 }

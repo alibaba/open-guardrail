@@ -1,5 +1,7 @@
 # Install the native preview
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 The current preview is **v0.1.0-alpha.1**. The server and CLI run directly on
 Linux or macOS without Go, Node.js or Python. The optional demo needs Python 3.9+.
 
@@ -31,6 +33,3 @@ From the extraction directory:
 ```sh
 ./open-guardrail serve
 ```
-
-Open `http://127.0.0.1:8080` and create the first administrator. SQLite retains
-the data locally. See [configuration](configuration.md) for remote or PostgreSQL deployment.

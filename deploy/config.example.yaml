@@ -11,6 +11,10 @@ database:
 
 # For PostgreSQL, set driver: postgres and inject DATABASE_URL externally.
 # When DDL is applied through an external managed-database process, set migrations:
-# external. The service then requires the current schema version and never
-# runs migrations at startup.
+# external. The service uses existing tables without running migrations or
+# requiring migration-version records.
 # Never put real credentials in this example.
+
+# Explicitly trust caller-supplied operator IDs (no credential check).
+# Send operator in JSON or X-Operator; Spec maintainers use <namespace>:<operator>.
+# trusted_operator_namespace: example

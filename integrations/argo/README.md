@@ -1,19 +1,12 @@
 # Argo Rollouts + outer Agent demo
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](../../docs/access.md).
+
 This synthetic demo follows the [Jenkins example](../jenkins/README.md): the
 platform owns deployment and continuation, the outside Agent evaluates the
 frozen Spec and observation, and OpenGuardrail computes the Decision.
 Argo CD sync hooks remain planned. This implementation uses an **inline Argo
 Rollouts Analysis Job**.
-
-The Job creates a Run with its mounted `RUN_ORCHESTRATOR` Project Key, encrypts
-the Run Submission Credential + Spec + observation to the Agent's fresh `age`
-recipient, and emits only base64-encoded ciphertext to logs. The Agent reads
-those logs, decrypts locally, and submits directly to OpenGuardrail. It never
-receives the Project Key. The Job reuses the shared Recovery gate to read the
-Run and final Submission and compare Evidence with its original observation.
-Only `FINISHED`, unexpired `PASS / ALLOW` exits zero. BLOCKED, UNKNOWN, expiration,
-timeout, read failure or forged Evidence stops it.
 
 Argo maps Job completion to analysis success, then advances the Rollout. See the
 [Job provider](https://argo-rollouts.readthedocs.io/en/stable/analysis/job/) and

@@ -34,10 +34,12 @@ the real system. See [Runs and submissions](runs.md) for the read and retry flow
 | --- | --- |
 | Explore locally | Start the service with SQLite using a native binary or a source build, or use the disposable cleanup demo. |
 | Retain shared assessment records | Configure PostgreSQL and run one service instance per database. |
-| Provide remote access | Put the service behind a trusted HTTPS proxy and configure administrator and machine credentials. |
+| Provide remote access | Configure the HTTPS public URL and a trusted TLS proxy; restrict access through a trusted network or an authenticating proxy. |
 
 See [configuration and storage](configuration.md), [Docker deployment](docker.md)
-and [administrator setup](local-administrator.md) for the required settings.
+and [access and Run credentials](access.md) for the required settings. The
+standalone console and CLI work directly without administrator accounts, login
+or Project API Keys. Each Run still requires its own credential for submissions.
 
 ## Try the complete loop
 

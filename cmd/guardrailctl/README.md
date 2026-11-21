@@ -1,105 +1,39 @@
 # guardrailctl
 
-This is the HTTP CLI for an existing OpenGuardrail service. For a complete first
-Run, follow [Getting started](../../docs/getting-started.md). Run the examples
-from the checkout root with `guardrailctl` on `PATH`, or use
-`./bin/guardrailctl` after `make build`. In a native archive, use `./guardrailctl`.
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](../../docs/access.md).
 
-## Commands and credentials
-
-Current commands cover `status`, `capabilities`,
-`version`, `bootstrap init`, `auth login`, `logout`, `whoami`, `create-key`,
-`list-keys`, `rotate-key` and `revoke-key`,
-`scene apply`, and `binding list`, `binding put`, `binding delete`.
-It also implements `run create`, `run get`, `run wait`, `run revision`,
-`run submission`, `run list`, `run rotate-credential` and `run submit`.
-`run get` reports frozen deadlines, lazy expiry and Decision validity; `run wait`
-blocks until the Run is `FINISHED` or `EXPIRED`. Execution Claims remain planned;
-there is no checkpoint model.
-
-| Command group | Credential |
+| Command | Credential |
 | --- | --- |
-| `status`, `version`, `capabilities` | Public diagnostics; no credential required |
-| `bootstrap init` | First-administrator setup; a private bootstrap token is required for remote mode |
-| `auth`, `scene apply`, `binding` | Administrator session (`auth login` creates it) |
-| `run create/get/wait/list/revision/submission/rotate-credential` | Project key with the endpoint's effective scopes |
-| `run submit` | The Submission Credential bound to that Run |
-
-## Scenes and administrator sessions
-
-Keep credential files outside the checkout or extracted archive. For an isolated
-session, create a private directory and sign in:
+| `status`, `version`, `capabilities` | None |
+| `scene apply`, `binding list/put/delete`, `audit list/export` | None |
+| `run create/get/wait/list/report/revision/submission/rotate-credential` | None |
+| `run submit` | Credential bound to the selected Run |
 
 ```sh
+guardrailctl scene apply --key recovery --name Recovery   --spec ./examples/policies/recovery.yaml --publish
 umask 077
 guardrail_credentials_dir=$(mktemp -d)
-export OPEN_GUARDRAIL_SESSION_FILE="$guardrail_credentials_dir/admin-session.json"
-guardrailctl auth login --username admin
-guardrailctl auth create-key \
-  --result-file "$guardrail_credentials_dir/orchestrator-key.json"
 ```
 
-If you already have a Project key, use its existing private directory instead of
-issuing another. The Run examples below assume it contains `orchestrator-key.json`.
-
-Create a Scene, save its Spec and publish it with an administrator CLI session:
-
-```sh
-guardrailctl scene apply --key recovery --name Recovery \
-  --spec ./examples/policies/recovery.yaml --publish
-```
-
-The command is safe to repeat. It reuses a matching Scene, skips an unchanged
-draft, and unchanged publication returns the existing active revision. A different
-name or activation conflict fails instead of overwriting another
-administrator's work. A new Scene requires `--publish`; on an existing Scene, omit it to save an incomplete Draft for later editing.
-If draft saving succeeds but publication fails, the error states that partial
-success so the operator can inspect state before retrying. Project keys cannot
-create, save or publish Scenes.
-Administrator commands use the session saved by `auth login`. Its default
-location is the operating system's user configuration directory; the example
-above selects an isolated private file. Set `OPEN_GUARDRAIL_SESSION_FILE` or pass
-`--session-file PATH` to override that location for CI or isolated credentials.
-Set `OPEN_GUARDRAIL_URL` or pass `--server URL` to select the service origin.
-
-Machine keys default to a 90-day lifetime; `auth create-key --expires-in 24h`
-creates a shorter-lived credential. `auth list-keys` returns a bounded metadata
-page with IDs, versions, expiry and revocation timestamps, never secrets. Use
-`--page-size` and the returned `nextAfter` as `--after` to page through keys.
-`auth rotate-key --key-id ID --expected-version VERSION --result-file NEW_FILE`
-atomically replaces an active secret, preserving its grants and its expiry unless
-`--expires-in` is supplied. It invalidates the old secret and never overwrites an
-existing output file. A stale version fails without rotating again.
-`auth revoke-key --key-id ID` is safe to repeat. See the
-[administrator guide](../../docs/local-administrator.md#project-machine-keys)
-for credential lifecycle details and recovery after an uncertain response.
+Scene application reuses a matching Scene, saves changed drafts and optionally
+publishes them. A new Scene requires `--publish`; an existing Scene may save an
+incomplete draft. Conflicts fail without overwriting another edit.
+Run credential files must be regular files with mode `0600`.
+See [Access](../../docs/access.md).
 
 ## Runs and submissions
 
-Create and query a Run with the default `RUN_ORCHESTRATOR` Project key file
-produced by `auth create-key`. It receives the fixed `runs:create`, `runs:read`
-and `submission-credential:rotate` scopes. Use
-`auth create-key --role POLICY_PUBLISHER` for Policy publication automation; that
-key receives `policies:create` and `revisions:publish` and cannot operate Runs.
-An HTTP integration that must select an already-frozen immutable Revision uses a
-separate key created with `--scope runs:create-with-revision`; ordinary orchestrator
-keys cannot supply `policyRevisionRef`. `run create` selects the Scene default active Revision when resources are omitted.
-Pass `--resources FILE` for a JSON array of trusted `{kind,id}` references to use
-resource binding selection. Follow the [binding walkthrough](../../examples/resource-bindings/README.md)
-for active/pinned selection, pagination and retries.
-Creation saves a one-time Run Submission Credential in a new private file:
-
 ```sh
-guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run create \
   --scene recovery --change-set ./change-set.json \
   --operation-id pipeline-123 \
   --submission-credential-file "$guardrail_credentials_dir/run-credential.json"
-guardrailctl run get --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
-guardrailctl run wait --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
-guardrailctl run revision --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
-guardrailctl run submission --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run get run_EXAMPLE
+guardrailctl run wait run_EXAMPLE
+guardrailctl run revision run_EXAMPLE
+guardrailctl run submission \
   --submission-id sub_EXAMPLE run_EXAMPLE
-guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run list \
   --scene recovery --status OPEN --limit 20
 guardrailctl run submit --submission-credential-file "$guardrail_credentials_dir/run-credential.json" \
   --submission ./submission.json --operation-id submit-123 run_EXAMPLE
@@ -117,11 +51,8 @@ honored, bounded by the deadline.
 Waiting only observes the Run. The caller still verifies the Decision, its
 validity and the evidence before performing the guarded operation.
 
-Only the Run Submission Credential can submit to its bound Run. If it is lost,
-use the Project key to replace it while the Run is `OPEN`:
-
 ```sh
-guardrailctl run rotate-credential --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run rotate-credential \
   --submission-credential-file "$guardrail_credentials_dir/replacement-run-credential.json" run_EXAMPLE
 ```
 
@@ -132,23 +63,16 @@ use `run get` when the full immutable input is needed. Pass the response
 `nextCursor` back through `--cursor` to request the next page; cursors are opaque
 and must not be constructed by callers.
 
-`--operation-id` becomes the HTTP `Idempotency-Key`. Automation should supply a
-stable value for retries. Interactive use may omit it; the CLI generates one, and
-includes it in uncertain transport errors. A `run create` retry can recover the
-existing Run but cannot recover its one-time plaintext credential. Inspect an existing
-credential file first; if the credential was not saved, use the Project key and
-`run rotate-credential` with a new output path.
-
 ## Associate a release order with a Run
 
 Use an optional exact business identifier on creation and lookup:
 
 ```sh
-guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run create \
   --scene release-check --business-id 'release-42/batch-1/attempt-1' \
   --change-set change-set.json --operation-id release-42-create \
   --submission-credential-file "$guardrail_credentials_dir/release-42.json"
-guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run list \
   --scene release-check --business-id 'release-42/batch-1/attempt-1'
 ```
 
@@ -211,9 +135,16 @@ Jenkins, GitHub Actions and Argo integration recipes live in
 configuration belong there. Add shared business commands here alongside the matching
 server APIs, rather than creating a CLI implementation for each CD platform.
 
-See [administrator setup and CLI sessions](../../docs/local-administrator.md)
-for the currently supported initialization and identity commands.
+See [access and Run credentials](../../docs/access.md)
+for direct access and Run credential handling.
 
 ## Audit and diagnostic exports
 
-Use `guardrailctl audit list|export` with an administrator session, and `guardrailctl run report` with a Project key carrying `runs:read`. Exports are bounded and omit business text. See the [audit and report guide](../../docs/audit-and-reports.md) for filters, pagination, permissions and privacy boundaries.
+Use the default project directly to inspect audit events and export a Run report:
+
+```sh
+guardrailctl audit list --limit 20
+guardrailctl run report --output ./run-report.json run_EXAMPLE
+```
+
+Exports are bounded and omit business text. See the [audit and report guide](../../docs/audit-and-reports.md) for filters, pagination and privacy boundaries.

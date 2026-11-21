@@ -151,8 +151,8 @@ class FileTool:
 
     def execute(self, gateway, record, state_lock=None):
         # Re-read the authoritative Run and accepted evidence at the tool boundary.
-        final = gateway.cli("run", "get", "--key-file", str(gateway.key), record["runId"])
-        stored = gateway.cli("run", "submission", "--key-file", str(gateway.key),
+        final = gateway.cli("run", "get",  record["runId"])
+        stored = gateway.cli("run", "submission",
                              "--submission-id", final.get("finalSubmissionId", ""), record["runId"])
         # Remote reads must not block state polling. Keep local verification,
         # deletion and the per-file record together in a short critical section.
@@ -206,24 +206,17 @@ def assess(observation, limit):
 class Gateway:
     def __init__(self, cli, origin, private):
         self.binary, self.origin, self.private = str(cli), origin, Path(private)
-        self.session, self.key = self.private / "session.json", self.private / "key.json"
 
     def cli(self, *args, input_text=None):
         output = command(self.binary, *args[:2], "--server", self.origin, *args[2:], input_text=input_text)
         return json.loads(output) if args[0] in ("run", "scene") else None
 
-    def setup(self, password):
-        self.cli("bootstrap", "init", "--username", "demo", "--password-stdin", input_text=password + "\n")
-        self.cli("auth", "login", "--session-file", str(self.session), "--username", "demo",
-                 "--password-stdin", input_text=password + "\n")
-        self.cli("auth", "create-key", "--session-file", str(self.session), "--expires-in", "1h",
-                 "--result-file", str(self.key))
 
     def publish(self, spec_yaml, directory):
         path = directory / "policy.yaml"
         with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as output:
             output.write(spec_yaml)
-        self.cli("scene", "apply", "--session-file", str(self.session), "--key", "file-cleanup",
+        self.cli("scene", "apply",  "--key", "file-cleanup",
                  "--name", "File cleanup", "--spec", str(path), "--publish")
 
     def evaluate(self, tool, targets, limit, spec_yaml, directory, on_created=None):
@@ -235,12 +228,12 @@ class Gateway:
         private_json(directory / "change.json", change)
         credential = directory / "credential.json"
         operation = directory.name
-        created = self.cli("run", "create", "--key-file", str(self.key), "--scene", "file-cleanup",
+        created = self.cli("run", "create",  "--scene", "file-cleanup",
                            "--change-set", str(directory / "change.json"), "--operation-id", operation + "-create",
                            "--submission-credential-file", str(credential))
         if on_created:
             on_created(created["id"])
-        revision = self.cli("run", "revision", "--key-file", str(self.key), created["id"])
+        revision = self.cli("run", "revision",  created["id"])
         if (revision["id"] != created["policyRevisionId"] or revision["digest"] != created["specDigest"]
             or revision["yaml"] != spec_yaml):
             raise ValueError("Run policy differs from the policy selected for this task")
@@ -256,8 +249,8 @@ class Gateway:
         private_json(directory / "submission.json", submission)
         self.cli("run", "submit", "--submission-credential-file", str(credential),
                  "--submission", str(directory / "submission.json"), "--operation-id", operation + "-submit", created["id"])
-        final = self.cli("run", "get", "--key-file", str(self.key), created["id"])
-        stored = self.cli("run", "submission", "--key-file", str(self.key), "--submission-id", final["finalSubmissionId"], created["id"])
+        final = self.cli("run", "get",  created["id"])
+        stored = self.cli("run", "submission",  "--submission-id", final["finalSubmissionId"], created["id"])
         if (final["status"] != "FINISHED" or final["result"] != verdict
             or final["decision"] != ("ALLOW" if verdict == "PASS" else "DENY")
             or snapshot_identity(stored["snapshot"]) != snapshot_identity(submission)):
@@ -269,6 +262,4 @@ class Gateway:
                 "storedSubmission": stored, "run": final, "observation": observation, "removed": []}
 
     def close(self):
-        if self.key.is_file():
-            self.cli("auth", "revoke-key", "--session-file", str(self.session),
-                     "--key-id", json.loads(self.key.read_text())["keyId"])
+        pass

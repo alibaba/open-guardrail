@@ -45,40 +45,9 @@ class DemoLifecycleTests(unittest.TestCase):
         run.assert_not_called()
         start.assert_not_called()
 
-    def test_inspection_password_uses_hidden_prompts_and_is_not_printed(self):
-        args = demo.options(["--keep-running"])
-        password = "disposable-demo-test-only"
-        output = io.StringIO()
-        with patch.object(demo.sys.stdin, "isatty", return_value=True), patch.object(
-            demo.getpass, "getpass", side_effect=[password, password]
-        ) as prompt, contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
-            self.assertEqual(demo.administrator_password(args), password)
-        self.assertEqual(prompt.call_count, 2)
-        self.assertNotIn(password, output.getvalue())
 
-    def test_password_from_stdin_cannot_silently_be_ignored_by_automatic_smoke(self):
-        error = io.StringIO()
-        with contextlib.redirect_stderr(error), self.assertRaises(SystemExit):
-            demo.options(["--password-stdin"])
-        self.assertIn("--password-stdin requires --keep-running", error.getvalue())
 
-    def test_mismatched_password_stops_before_starting_a_service(self):
-        with patch.object(demo.sys.stdin, "isatty", return_value=True), patch.object(
-            demo.getpass, "getpass", side_effect=["first-test-password", "other-test-password"]
-        ), patch.object(demo.subprocess, "Popen") as start:
-            with self.assertRaisesRegex(ValueError, "passwords do not match"):
-                demo.main(["--keep-running"])
-        start.assert_not_called()
 
-    def test_noninteractive_inspection_requires_explicit_stdin_mode(self):
-        with patch.object(demo.sys.stdin, "isatty", return_value=False):
-            with self.assertRaisesRegex(ValueError, "--password-stdin"):
-                demo.administrator_password(demo.options(["--keep-running"]))
-        with patch.object(demo.sys, "stdin", io.StringIO("stdin-demo-test-only\n")):
-            self.assertEqual(
-                demo.administrator_password(demo.options(["--keep-running", "--password-stdin"])),
-                "stdin-demo-test-only",
-            )
 
     def test_readiness_failure_reports_exit_code_and_next_step(self):
         service = Mock()
@@ -93,7 +62,7 @@ class DemoLifecycleTests(unittest.TestCase):
         output = io.StringIO()
         with patch.object(demo.time, "sleep", side_effect=KeyboardInterrupt), contextlib.redirect_stdout(output):
             demo.inspect_in_browser(service, "http://127.0.0.1:8080")
-        self.assertIn("sign in as demo", output.getvalue())
+        self.assertIn("Open http://127.0.0.1:8080 directly", output.getvalue())
         self.assertIn("Ctrl-C", output.getvalue())
         self.assertIn("remove its temporary data", output.getvalue())
         service.terminate.assert_not_called()

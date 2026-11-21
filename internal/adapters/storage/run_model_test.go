@@ -72,6 +72,12 @@ func testPolicyRunSubmissionTransactionsBackend(t *testing.T, store *Store) {
 	if _, _, err := store.Runs().CreatePolicyRun(ctx, scope, businessConflict); !errors.Is(err, runapp.ErrBusinessIDConflict) {
 		t.Fatalf("conflicting business ID: %v", err)
 	}
+	if _, err := store.Runs().ReplayPolicyRun(ctx, scope, "new-key", in.SceneKey, in.BusinessID, businessConflict.RequestDigest, in.Now); !errors.Is(err, runapp.ErrBusinessIDConflict) {
+		t.Fatalf("replayed business ID conflict: %v", err)
+	}
+	if _, err := store.Runs().ReplayPolicyRun(ctx, scope, in.IdempotencyKey, in.SceneKey, "", businessConflict.RequestDigest, in.Now); !errors.Is(err, runapp.ErrIdempotencyConflict) {
+		t.Fatalf("replayed idempotency conflict: %v", err)
+	}
 	submissionScope := scope
 	submissionScope.SubmissionCredentialHash = digest
 	snapshot := rundomain.SubmissionSnapshot{BaseSubmissionNo: 0, FinishRun: false, Verdict: "PASS", Summary: "healthy", Checks: []rundomain.CheckSnapshot{{CheckID: "readiness", Verdict: "PASS", Summary: "healthy", Evidence: []rundomain.Observation{{RequirementID: "health", ObservedAt: "2026-10-26T00:00:00Z", QuerySummary: "checked app health", ResultSummary: "healthy"}, {RequirementID: "health", ObservedAt: "2026-10-26T00:01:00Z", QuerySummary: "checked host health", ResultSummary: "healthy"}}}}}

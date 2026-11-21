@@ -3,7 +3,6 @@
 
 import argparse
 from datetime import datetime, timezone
-import getpass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import json
@@ -203,38 +202,15 @@ def binaries(directory, supplied=None):
     return results
 
 
-def resolve_password(args):
-    if args.password_stdin:
-        password = sys.stdin.readline().rstrip("\r\n")
-        generated = False
-    elif args.prompt_password:
-        if not sys.stdin.isatty():
-            raise ValueError("Use a terminal for the hidden password prompts, or --password-stdin")
-        password = getpass.getpass("Choose a password for the demo console (username: demo): ")
-        if password != getpass.getpass("Confirm password: "):
-            raise ValueError("Passwords do not match")
-        generated = False
-    else:
-        password = secrets.token_urlsafe(20)
-        generated = True
-    if len(password) < 6 or len(password.encode()) > 128:
-        raise ValueError("Use at least 6 characters and at most 128 UTF-8 bytes")
-    return password, generated
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--password-stdin", action="store_true")
-    parser.add_argument("--prompt-password", action="store_true", help="choose a console password interactively")
     parser.add_argument("--binaries", type=Path, help="use existing native server/CLI binaries")
     parser.add_argument("--port", type=int, default=0, help="loopback demo page port (default: random)")
     args = parser.parse_args(argv)
     if sys.version_info < (3, 9):
         parser.error("Python 3.9+ is required")
-    try:
-        password, generated = resolve_password(args)
-    except ValueError as error:
-        parser.error(str(error))
     with tempfile.TemporaryDirectory(prefix="open-guardrail-cleanup-") as temporary:
         private = Path(temporary)
         server_bin, cli_bin = binaries(private, args.binaries)
@@ -263,18 +239,10 @@ def main(argv=None):
                             break
                 except (URLError, TimeoutError):
                     time.sleep(.1)
-            gateway.setup(password)
             demo = Demo(gateway, private)
             web = ThreadingHTTPServer(("127.0.0.1", args.port), handler(demo))
             print(f"Demo: http://127.0.0.1:{web.server_port}/", flush=True)
-            if generated:
-                login_file = private / "console-login.json"
-                descriptor = os.open(login_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-                with os.fdopen(descriptor, "w", encoding="utf-8") as output:
-                    json.dump({"username": "demo", "password": password}, output)
-                print(f"Console: {origin} — username demo; temporary password is in {login_file}.", flush=True)
-            else:
-                print(f"Console: {origin} — username demo; use the password you chose.", flush=True)
+            print(f"Console: {origin} — open directly.", flush=True)
             print("The demo page needs no login. It reads real Runs and a disposable directory.", flush=True)
             print("Keep this terminal open. Ctrl-C stops both services and removes temporary data.", flush=True)
             web.serve_forever(poll_interval=.2)
@@ -284,7 +252,7 @@ def main(argv=None):
             if web:
                 web.server_close()
             if demo:
-                # Do not remove files or revoke the key while an execution is in flight.
+                # Keep temporary files available while an execution is in flight.
                 while demo.busy:
                     time.sleep(.1)
                 demo.tool.close()

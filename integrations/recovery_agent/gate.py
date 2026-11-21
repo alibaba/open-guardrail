@@ -170,7 +170,6 @@ class GateInput:
     change_set: dict
     operation_identity: str
     observation: dict
-    key_file: str
     cli: str = "guardrailctl"
 
 
@@ -190,7 +189,7 @@ def prepare_gate(input_data, state_dir, recipient, envelope_path, age="age"):
     change_path = state_dir / "change.json"
     credential_path = state_dir / "run-credential.json"
     private_json(change_path, input_data.change_set)
-    created = json.loads(command(input_data.cli, "run", "create", "--key-file", input_data.key_file,
+    created = json.loads(command(input_data.cli, "run", "create",
                                  "--scene", "recovery", "--change-set", str(change_path),
                                  "--operation-id", operation_prefix + "-create",
                                  "--submission-credential-file", str(credential_path)))
@@ -198,9 +197,9 @@ def prepare_gate(input_data, state_dir, recipient, envelope_path, age="age"):
     print(f"Guardrail Run: {run_id}", flush=True)
     if created["status"] != "OPEN":
         raise RuntimeError(f"Run {run_id} is not OPEN; inspect it before retrying")
-    frozen = json.loads(command(input_data.cli, "run", "get", "--key-file", input_data.key_file,
+    frozen = json.loads(command(input_data.cli, "run", "get",
                                 run_id))
-    revision = json.loads(command(input_data.cli, "run", "revision", "--key-file", input_data.key_file, run_id))
+    revision = json.loads(command(input_data.cli, "run", "revision",  run_id))
     if revision["id"] != frozen["policyRevisionId"] or revision["digest"] != frozen["specDigest"]:
         raise RuntimeError("Run Revision does not match its frozen digest")
     private_json(state_dir / "state.json", {"runId": run_id, "policyRevisionId": frozen["policyRevisionId"],
@@ -224,12 +223,12 @@ def prepare_gate(input_data, state_dir, recipient, envelope_path, age="age"):
     print(f"Guardrail operation prefix: {operation_prefix}", flush=True)
 
 
-def finalize_gate(cli, key_file, state_dir):
+def finalize_gate(cli, state_dir):
     """Read the authoritative Decision after the Agent phase has ended."""
     state_dir = Path(state_dir)
     state = json.loads((state_dir / "state.json").read_text(encoding="utf-8"))
     run_id = state["runId"]
-    final = json.loads(command(cli, "run", "get", "--key-file", key_file, run_id))
+    final = json.loads(command(cli, "run", "get",  run_id))
     print(f"Run {run_id}: status={final['status']} result={final.get('result')} "
           f"decision={final.get('decision')}")
     decision_expired = final.get("decisionExpiresAt", 0) <= time.time()
@@ -242,7 +241,7 @@ def finalize_gate(cli, key_file, state_dir):
             if final["policyRevisionId"] != state["policyRevisionId"]:
                 raise ValueError("Run Revision changed")
             submission_id = final["finalSubmissionId"]
-            stored = json.loads(command(cli, "run", "submission", "--key-file", key_file,
+            stored = json.loads(command(cli, "run", "submission",
                                         "--submission-id", submission_id, run_id))
             if (stored["id"] != submission_id or stored["runId"] != run_id
                 or stored["submissionNo"] != final["latestSubmissionNo"]
@@ -277,11 +276,11 @@ def finalize_gate(cli, key_file, state_dir):
                           server_decision=final.get("decision"), business_evidence=business_evidence)
 
 
-def poll_gate(cli, key_file, state_dir):
+def poll_gate(cli, state_dir):
     """Return false while OPEN; permit rollout only after a fresh server read."""
     state = json.loads((Path(state_dir) / "state.json").read_text(encoding="utf-8"))
-    final = json.loads(command(cli, "run", "get", "--key-file", key_file, state["runId"]))
+    final = json.loads(command(cli, "run", "get",  state["runId"]))
     if final["status"] == "OPEN":
         return False
-    finalize_gate(cli, key_file, state_dir)
+    finalize_gate(cli,  state_dir)
     return True

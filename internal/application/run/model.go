@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/alibaba/open-guardrail/internal/domain/resource"
+	"github.com/alibaba/open-guardrail/extension/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 )
 
@@ -70,6 +70,7 @@ func (r PolicyRun) Summary() PolicyRunSummary {
 }
 
 type PolicyRunCreateInput struct {
+	ResourceGroups      [][]resource.Reference
 	Resources           []resource.Reference
 	SceneKey            string
 	BusinessID          string

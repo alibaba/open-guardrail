@@ -14,11 +14,9 @@ import (
 )
 
 type Store struct {
-	db       *sql.DB
-	provider *goose.Provider
-	expected int64
-	storage  capability.Storage
-	driver   driverDefinition
+	db      *sql.DB
+	storage capability.Storage
+	driver  driverDefinition
 }
 
 func Open(ctx context.Context, c config.Config) (*Store, error) {
@@ -32,8 +30,8 @@ func openWithMigrations(ctx context.Context, c config.Config, migrationFiles fs.
 	return openDatabase(ctx, c, migrationFiles, false)
 }
 
-// OpenExisting requires an externally maintained, current schema. It does not run
-// migrations, but prepares the default workspace/project just like Open.
+// OpenExisting uses an externally maintained schema without migration metadata.
+// It prepares the default workspace/project just like Open, but never runs DDL.
 func OpenExisting(ctx context.Context, c config.Config) (*Store, error) {
 	return openDatabase(ctx, c, migrations.Files, true)
 }
@@ -63,54 +61,40 @@ func openDatabase(ctx context.Context, c config.Config, migrationFiles fs.FS, ex
 	if err = db.PingContext(ctx); err != nil {
 		return nil, errors.New("database connection failed; verify configuration and availability")
 	}
-	files := driver.migrations
-	if files == nil {
-		files, err = fs.Sub(migrationFiles, driver.migrationDirectory)
-	}
-	if err != nil {
-		return nil, errors.New("embedded migrations unavailable")
-	}
-	versionTable := driver.versionTable
-	if versionTable == "" {
-		versionTable = "goose_db_version"
-	}
-	if existing {
-		var version int64
-		if err := db.QueryRowContext(ctx, "SELECT version_id FROM "+versionTable+" ORDER BY id DESC LIMIT 1").Scan(&version); err != nil {
-			return nil, errors.New("existing database schema required; check the service configuration")
-		}
-	}
-	p, err := goose.NewProvider(driver.dialect, db, files, goose.WithTableName(versionTable))
-	if err != nil {
-		return nil, errors.New("cannot initialize database migrations")
-	}
-	// Reject a database newer than this binary instead of accidentally downgrading.
-	version, err := p.GetDBVersion(ctx)
-	if err != nil {
-		return nil, errors.New("cannot read database migration version")
-	}
-	sources := p.ListSources()
-	if len(sources) == 0 {
-		return nil, errors.New("database migrations unavailable")
-	}
-	expected := sources[len(sources)-1].Version
-	if version > expected {
-		return nil, errors.New("database schema is newer than this server; use a compatible binary")
-	}
-	if existing && version != expected {
-		return nil, errors.New("database schema does not match; use the same binary version as the service")
-	}
 	if !existing {
+		files := driver.migrations
+		if files == nil {
+			files, err = fs.Sub(migrationFiles, driver.migrationDirectory)
+		}
+		if err != nil {
+			return nil, errors.New("embedded migrations unavailable")
+		}
+		versionTable := driver.versionTable
+		if versionTable == "" {
+			versionTable = "goose_db_version"
+		}
+		p, err := goose.NewProvider(driver.dialect, db, files, goose.WithTableName(versionTable))
+		if err != nil {
+			return nil, errors.New("cannot initialize database migrations")
+		}
+		version, err := p.GetDBVersion(ctx)
+		if err != nil {
+			return nil, errors.New("cannot read database migration version")
+		}
+		sources := p.ListSources()
+		if len(sources) == 0 {
+			return nil, errors.New("database migrations unavailable")
+		}
+		if version > sources[len(sources)-1].Version {
+			return nil, errors.New("database schema is newer than this server; use a compatible binary")
+		}
 		if _, err = p.Up(ctx); err != nil {
 			return nil, errors.New("database migration failed; service will not start")
 		}
 	}
-	s := &Store{db: db, provider: p, expected: expected, storage: driver.capability, driver: driver}
-	if err = s.Ready(ctx); err != nil {
-		return nil, err
-	}
+	s := &Store{db: db, storage: driver.capability, driver: driver}
 	if err = s.ensureDefaultProject(ctx); err != nil {
-		return nil, errors.New("cannot prepare default workspace/project; verify database data and write permissions")
+		return nil, errors.New("cannot prepare default workspace/project; verify database schema, data and write permissions")
 	}
 	opened = true
 	return s, nil
@@ -119,10 +103,6 @@ func openDatabase(ctx context.Context, c config.Config, migrationFiles fs.FS, ex
 func (s *Store) Ready(ctx context.Context) error {
 	if err := s.db.PingContext(ctx); err != nil {
 		return errors.New("database unavailable")
-	}
-	v, err := s.provider.GetDBVersion(ctx)
-	if err != nil || v != s.expected {
-		return errors.New("database schema is not ready")
 	}
 	return nil
 }

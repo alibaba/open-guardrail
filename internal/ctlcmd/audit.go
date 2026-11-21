@@ -24,7 +24,6 @@ func runAudit(args []string, out io.Writer) error {
 	flags := flag.NewFlagSet("audit "+args[1], flag.ContinueOnError)
 	flags.SetOutput(out)
 	server := flags.String("server", defaultServerURL(), "service origin (HTTPS or literal loopback HTTP)")
-	sessionFile := flags.String("session-file", "", "private administrator CLI session file")
 	event := flags.String("event-type", "", "exact event type")
 	actor := flags.String("actor-id", "", "exact actor ID")
 	resourceType := flags.String("resource-type", "", "exact stored resource type")
@@ -59,17 +58,6 @@ func runAudit(args []string, out io.Writer) error {
 		return usageError("server must be an origin without credentials, path, query or fragment")
 	}
 	*server = origin.String()
-	if *sessionFile == "" {
-		path, _, err := defaultSessionFile()
-		if err != nil {
-			return err
-		}
-		*sessionFile = path
-	}
-	session, err := readSession(identityOptions{server: *server, sessionFile: *sessionFile})
-	if err != nil {
-		return err
-	}
 	params := &contract.ListAuditEventsParams{Limit: limit}
 	if *event != "" {
 		params.EventType = event
@@ -105,7 +93,7 @@ func runAudit(args []string, out io.Writer) error {
 	}
 	redacted := args[1] == "export"
 	params.Redacted = &redacted
-	client, err := newCompatibleClient(*server, session.Token, auditResponseLimit)
+	client, err := newCompatibleClient(*server, "", auditResponseLimit)
 	if err != nil {
 		return err
 	}
