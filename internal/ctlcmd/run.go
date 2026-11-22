@@ -28,11 +28,11 @@ const runResponseLimit = 2 << 20
 var validRunResourceID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$`)
 
 type runOptions struct {
-	server, keyFile, tokenFile, scene, status, cursor, changeSetFile, submissionFile, operationID, runID, submissionID string
-	limit                                                                                                              int
-	resourcesFile, reportFile, businessID                                                                              string
-	waitTimeout                                                                                                        time.Duration
-	waitInterval                                                                                                       time.Duration
+	server, tokenFile, scene, status, cursor, changeSetFile, submissionFile, operationID, runID, submissionID string
+	limit                                                                                                     int
+	resourcesFile, reportFile, businessID                                                                     string
+	waitTimeout                                                                                               time.Duration
+	waitInterval                                                                                              time.Duration
 }
 
 func runRun(args []string, out io.Writer) error {
@@ -55,8 +55,6 @@ func runRun(args []string, out io.Writer) error {
 	var credential credentialFile
 	if command == "submit" {
 		credential, err = readSubmissionCredential(opts)
-	} else {
-		credential, err = readProjectKey(opts)
 	}
 	if err != nil {
 		return err
@@ -140,9 +138,6 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 	flags := flag.NewFlagSet("run "+command, flag.ContinueOnError)
 	flags.SetOutput(out)
 	flags.StringVar(&opts.server, "server", defaultServerURL(), "service origin (HTTPS or literal loopback HTTP)")
-	if command != "submit" {
-		flags.StringVar(&opts.keyFile, "key-file", "", "private Project key file")
-	}
 	if command == "create" || command == "list" {
 		flags.StringVar(&opts.businessID, "business-id", "", "optional exact business ID, unique within the project and scene")
 	}
@@ -218,9 +213,6 @@ func parseRunOptions(command string, args []string, out io.Writer) (runOptions, 
 		return opts, usageError("server must be an origin without credentials, path, query or fragment")
 	}
 	opts.server = origin.String()
-	if command != "submit" && opts.keyFile == "" {
-		return opts, usageError("--key-file is required")
-	}
 	if command == "create" && (opts.scene == "" || opts.changeSetFile == "" || opts.tokenFile == "") {
 		return opts, usageError("--scene, --change-set and --submission-credential-file are required")
 	}
@@ -423,18 +415,6 @@ func submitRun(opts runOptions, client *apiClient, out io.Writer) error {
 	}
 	_, err = out.Write(result.Body)
 	return preserveRunOperationID(err, generatedOperationID, opts.operationID)
-}
-
-func readProjectKey(opts runOptions) (credentialFile, error) {
-	data, err := security.ReadPrivateFile(opts.keyFile)
-	if err != nil {
-		return credentialFile{}, err
-	}
-	var saved credentialFile
-	if json.Unmarshal(data, &saved) != nil || saved.Server != opts.server || !strings.HasPrefix(saved.Token, "ogk_") {
-		return credentialFile{}, errors.New("Project key file does not match this server")
-	}
-	return saved, nil
 }
 
 func readSubmissionCredential(opts runOptions) (credentialFile, error) {

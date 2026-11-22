@@ -1,7 +1,7 @@
-// Read-only Run history uses the administrator session and never handles Project or Run credentials.
+// Standalone management uses direct same-origin API requests.
 (() => {
   const el = id => document.getElementById(id);
-  let signedIn = false, generation = 0, busy = false, loaded = false;
+  let available = false, generation = 0, busy = false, loaded = false;
   let items = [], nextCursor = "", cursors = [""];
 
   let detailVersion = 0, evidenceVersion = 0, historyVersion = 0, visibleRun = null;
@@ -25,7 +25,7 @@
 
   async function request(path) {
     const response = await fetch(path, {
-      credentials: "same-origin", redirect: "error",
+      credentials: "omit", redirect: "error",
       headers: {"Content-Type": "application/json", "X-Guardrail-CSRF": "1"},
       signal: AbortSignal.timeout(15000),
     });
@@ -120,12 +120,12 @@
     try {
       if (!validID(id)) throw {};
       const submission = await request("/api/v1alpha1/runs/" + encodeURIComponent(run.id) + "/submissions/" + encodeURIComponent(id));
-      if (!signedIn || current !== detailVersion || serial !== evidenceVersion) return;
+      if (!available || current !== detailVersion || serial !== evidenceVersion) return;
       if (submission.id !== id || submission.runId !== run.id || !submission.snapshot || submission.submissionNo < 1 || submission.submissionNo > run.latestSubmissionNo) throw {};
       renderSubmission(submission); retryEvidence = null;
     } catch (error) {
-      if (!signedIn || current !== detailVersion || serial !== evidenceVersion) return;
-      if (error.status === 401) { show("login"); return; }
+      if (!available || current !== detailVersion || serial !== evidenceVersion) return;
+
       evidenceMessage("evidenceLoadFailed", true); el("retry-run-submission").hidden = false;
     }
   }
@@ -139,7 +139,7 @@
     evidenceMessage("evidenceLoading"); retryEvidence = () => loadHistory(before, stack);
     try {
       const page = await request("/api/v1alpha1/runs/" + encodeURIComponent(run.id) + "/submissions?limit=20&before=" + (before || run.latestSubmissionNo + 1));
-      if (!signedIn || current !== detailVersion || serial !== historyVersion) return;
+      if (!available || current !== detailVersion || serial !== historyVersion) return;
       if (!Array.isArray(page.items) || page.items.some(item => item.runId !== run.id || !validID(item.id) || item.submissionNo > run.latestSubmissionNo)) throw {};
       historyCursors = stack; historyNext = page.nextBefore || null;
       el("run-submission-select").replaceChildren(...page.items.map(item => {
@@ -151,8 +151,8 @@
       el("run-submission-select").value = page.items[0].id;
       await loadSubmission(page.items[0].id);
     } catch (error) {
-      if (!signedIn || current !== detailVersion || serial !== historyVersion) return;
-      if (error.status === 401) { show("login"); return; }
+      if (!available || current !== detailVersion || serial !== historyVersion) return;
+
       retryEvidence = () => loadHistory(before, stack);
       evidenceMessage("evidenceLoadFailed", true); el("retry-run-submission").hidden = false;
     } finally {
@@ -221,7 +221,7 @@
   }
 
   async function action(work) {
-    if (!signedIn || busy) return false;
+    if (!available || busy) return false;
     const current = generation;
     busy = true; message("runsLoading", "loading"); buttons();
     try {
@@ -229,7 +229,7 @@
       return current === generation;
     } catch (error) {
       if (current !== generation) return false;
-      if (error.status === 401) { show("login"); return false; }
+
       message("runRequestFailed", "error");
       return false;
     } finally {
@@ -250,7 +250,7 @@
   }
 
   async function openRun(id) {
-    if (!signedIn) return false;
+    if (!available) return false;
     leaveDetail(); const current = detailVersion;
     el("run-list-view").hidden = true; el("run-detail-view").hidden = false;
     setText(el("run-detail-message"), "runDetailLoading");
@@ -258,9 +258,9 @@
     try {
       if (!validID(id)) throw {};
       const run = await request("/api/v1alpha1/runs/" + encodeURIComponent(id));
-      if (!signedIn || current !== detailVersion) return false;
+      if (!available || current !== detailVersion) return false;
       const revision = await request("/api/v1alpha1/policy-revisions/" + encodeURIComponent(run.policyRevisionId));
-      if (!signedIn || current !== detailVersion) return false;
+      if (!available || current !== detailVersion) return false;
       if (run.id !== id || revision.id !== run.policyRevisionId || revision.digest !== run.specDigest) throw {};
       visibleRun = run;
       el("export-run-report").hidden = false;
@@ -289,8 +289,8 @@
       if (run.latestSubmissionNo) void loadHistory(); else evidenceMessage("submissionPending");
       return true;
     } catch (error) {
-      if (!signedIn || current !== detailVersion) return false;
-      if (error.status === 401) { show("login"); return false; }
+      if (!available || current !== detailVersion) return false;
+
       setText(el("run-detail-message"), "runDetailFailed"); return false;
     }
   }
@@ -302,9 +302,9 @@
   }
 
   window.RunUI = {
-    setSignedIn(value) {
-      if (signedIn === value) return;
-      signedIn = value; generation++; busy = false; loaded = false;
+    setAvailable(value) {
+      if (available === value) return;
+      available = value; generation++; busy = false; loaded = false;
       items = []; nextCursor = ""; cursors = [""];
       el("run-business-filter").value = "";
       el("run-scene-filter").value = ""; el("run-status-filter").value = "";
@@ -313,7 +313,7 @@
     },
     show() {
       showList();
-      if (signedIn && !loaded) void load();
+      if (available && !loaded) void load();
     },
     open(id) { return openRun(id); },
     leave: leaveDetail,
@@ -340,17 +340,17 @@
 
   el("export-run-report").addEventListener("click", async () => {
     const run = visibleRun, current = detailVersion;
-    if (!signedIn || !run || el("export-run-report").disabled) return;
+    if (!available || !run || el("export-run-report").disabled) return;
     el("export-run-report").disabled = true;
     try {
       const report = await request("/api/v1alpha1/runs/" + encodeURIComponent(run.id) + "/report");
-      if (!signedIn || current !== detailVersion) return;
+      if (!available || current !== detailVersion) return;
       if (report.format !== "openguardrail.run-report.v1" || report.run?.id !== run.id) throw {};
       window.downloadGuardrailJSON(report, "guardrail-run-" + run.id + ".json");
       setText(el("run-detail-message"), "exportReady");
     } catch (error) {
-      if (!signedIn || current !== detailVersion) return;
-      if (error.status === 401) show("login"); else setText(el("run-detail-message"), "exportFailed");
+      if (!available || current !== detailVersion) return;
+      setText(el("run-detail-message"), "exportFailed");
     } finally { if (current === detailVersion) el("export-run-report").disabled = false; }
   });
 

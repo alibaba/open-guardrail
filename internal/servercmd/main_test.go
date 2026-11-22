@@ -9,7 +9,7 @@ import (
 
 func TestUsageAndInvalidCommands(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	for _, args := range [][]string{nil, {"--help"}, {"version"}, {"serve", "--help"}, {"admin"}, {"admin", "--help"}, {"admin", "reset", "--help"}} {
+	for _, args := range [][]string{nil, {"--help"}, {"version"}, {"serve", "--help"}} {
 		if err := run(context.Background(), args, io.Discard, logger); err != nil {
 			t.Fatal(err)
 		}

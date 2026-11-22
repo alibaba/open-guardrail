@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alibaba/open-guardrail/extension/resource/httpclient"
 	"github.com/alibaba/open-guardrail/internal/adapters/httpapi"
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
 	"github.com/alibaba/open-guardrail/internal/application/audit"
@@ -18,25 +19,18 @@ import (
 	"github.com/alibaba/open-guardrail/internal/config"
 )
 
-// Never infer local setup from Host or forwarding headers. An explicit public
-// deployment opts out even when its reverse proxy connects over loopback.
-func localBootstrap(c config.Config, addr net.Addr) bool {
-	tcp, ok := addr.(*net.TCPAddr)
-	return c.PublicURL == "" && ok && tcp.IP.IsLoopback()
-}
+// WrapHTTP allows an enterprise binary to mount transport adapters around the core API.
+var WrapHTTP func(http.Handler, httpapi.Options) http.Handler
 
 func Serve(ctx context.Context, c config.Config, logger *slog.Logger) error {
 	startup, cancel := context.WithTimeout(ctx, config.StartupTimeout)
-	store, err := storage.Open(startup, c)
 	defer cancel()
+	options := httpapi.Options{Logger: logger, TrustedOperatorNamespace: c.TrustedOperatorNamespace}
+	store, err := storage.Open(startup, c)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
-	identityService, err := prepareIdentity(startup, c, store)
-	if err != nil {
-		return err
-	}
 	listener, err := net.Listen("tcp", c.Listen)
 	if err != nil {
 		return errors.New("cannot listen on configured address; check host and port availability")
@@ -46,24 +40,23 @@ func Serve(ctx context.Context, c config.Config, logger *slog.Logger) error {
 	if origin == "" {
 		origin = "http://" + listener.Addr().String()
 	}
+	options.Origin = origin
+	if options.TrustedOperatorNamespace == "" {
+		options.Audits = audit.New(store.Audits())
+	}
+	options.ModelSpecs, options.ModelRuns = spec.New(store.Specs()), runapp.New(store.Runs()).WithScenePlugins(scenePlugins(store.Specs()))
+	handler := httpapi.New(store, options)
+	if WrapHTTP != nil {
+		handler = WrapHTTP(handler, options)
+	}
 	server := &http.Server{
-		Handler: httpapi.New(store, httpapi.Options{
-			Identity:   identityService,
-			Audits:     audit.New(store.Audits()),
-			Logger:     logger,
-			ModelSpecs: spec.New(store.Specs()), ModelRuns: runapp.New(store.Runs()),
-			Origin: origin, LocalBootstrap: localBootstrap(c, listener.Addr()),
-		}), ReadHeaderTimeout: 5 * time.Second,
+		Handler: handler, ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 	logger.Info("server ready", "url", "http://"+listener.Addr().String(), "database", c.Database.Driver)
-	if initialized, _ := identityService.Status(ctx); !initialized {
-		if localBootstrap(c, listener.Addr()) {
-			logger.Info("create your administrator in the browser", "url", origin)
-		} else {
-			logger.Info("administrator setup required; read the private token file locally", "token_file", bootstrapPath(c))
-		}
+	if options.TrustedOperatorNamespace != "" {
+		logger.Info("API-only access enabled; use the HTTP API")
 	}
 	if store.StorageCapability().SupportLevel == capability.SupportOfficialLocal {
 		logger.Info("local storage", "data_dir", c.DataDir)
@@ -85,5 +78,28 @@ func Serve(ctx context.Context, c config.Config, logger *slog.Logger) error {
 			return errors.New("HTTP shutdown timed out")
 		}
 		return nil
+	}
+}
+
+func scenePlugins(specs *storage.Specs) func(context.Context, runapp.Scope, string) (runapp.ScenePlugins, error) {
+	return func(ctx context.Context, scope runapp.Scope, key string) (runapp.ScenePlugins, error) {
+		scene, err := specs.GetSceneModel(ctx, spec.Scope{WorkspaceID: scope.WorkspaceID, ProjectID: scope.ProjectID}, key)
+		var result runapp.ScenePlugins
+		if errors.Is(err, spec.ErrNotFound) {
+			return result, runapp.ErrNotFound
+		}
+		if err != nil || scene.Plugins == nil {
+			return result, err
+		}
+		if e := scene.Plugins.ChangeSet; e != nil {
+			result.Enricher, err = httpclient.New(e.URL)
+			if err != nil {
+				return result, err
+			}
+		}
+		if e := scene.Plugins.BindingCandidates; e != nil {
+			result.Resolver, err = httpclient.New(e.URL)
+		}
+		return result, err
 	}
 }

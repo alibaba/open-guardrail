@@ -1,20 +1,12 @@
 # Creating, submitting and querying Runs
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 A Run freezes its Scene, Policy Revision ID, Spec digest, Run TTL and the
 caller-defined JSON context in `changeSet`. See [core concepts](concepts.md) and
 [Getting started](getting-started.md) for a complete example.
 
 ## Create and query a Run
-
-A machine key needs `runs:create` to create a Run, `runs:read` to list or read it,
-and `submission-credential:rotate` to replace its Submission Credential. Create a
-Project key after [administrator login](local-administrator.md#project-machine-keys).
-Run the examples from the checkout or archive root with `guardrailctl` on `PATH`.
-
-Set `guardrail_credentials_dir` to the private directory containing your
-`orchestrator-key.json`, outside the checkout or extracted archive. If you used
-the administrator guide in the same terminal, the variable is already set.
-Otherwise, replace this placeholder with the private directory path:
 
 ```sh
 guardrail_credentials_dir=/absolute/path/to/private/guardrail-credentials
@@ -25,19 +17,17 @@ New Run credentials stay in this directory. See Getting started for example
 
 Resource bindings select the Policy/Revision at creation; entirely unbound resources
 use the Scene default active Revision. See [bindings](extensions.md#resource-bindings).
-A trusted HTTP caller with `runs:create-with-revision` can explicitly select an immutable Revision
-through `policyRevisionRef`; ordinary orchestrator keys cannot. The current CLI
-has no explicit-Revision flag. Machine callers can inspect their effective scopes
-through `GET /runtime/v1alpha1/identity` before enabling an integration.
+An HTTP caller may explicitly select an immutable Revision through
+`policyRevisionRef`. The current CLI has no explicit-Revision flag.
 
 ```sh
-guardrailctl run create --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run create \
   --scene recovery --change-set ./change-set.json \
   --operation-id create-123 \
   --submission-credential-file "$guardrail_credentials_dir/run-credential.json"
-guardrailctl run get --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
-guardrailctl run wait --key-file "$guardrail_credentials_dir/orchestrator-key.json" run_EXAMPLE
-guardrailctl run list --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run get run_EXAMPLE
+guardrailctl run wait run_EXAMPLE
+guardrailctl run list \
   --scene recovery --status FINISHED --limit 20
 ```
 
@@ -68,7 +58,7 @@ If the credential was not saved, rotate it while the Run is `OPEN`. Rotation
 invalidates the old credential and does not extend the deadline:
 
 ```sh
-guardrailctl run rotate-credential --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run rotate-credential \
   --submission-credential-file "$guardrail_credentials_dir/replacement-run-credential.json" run_EXAMPLE
 ```
 
@@ -157,8 +147,8 @@ Project orchestrators can read a Run's Revision and Submission without Policy
 management permissions:
 
 ```sh
-guardrailctl run revision --key-file "$guardrail_credentials_dir/orchestrator-key.json" "$RUN_ID"
-guardrailctl run submission --key-file "$guardrail_credentials_dir/orchestrator-key.json" \
+guardrailctl run revision "$RUN_ID"
+guardrailctl run submission \
   --submission-id "$SUBMISSION_ID" "$RUN_ID"
 ```
 
@@ -168,13 +158,6 @@ Submission metadata plus its persisted `snapshot`. Both readers check scope and
 Run membership; a Run Submission Credential cannot use them. For a finished Run,
 use its `finalSubmissionId` as `SUBMISSION_ID`. Run metadata does not include the
 full evidence Snapshot.
-
-The management page shows the latest accepted Submission and its evidence by default.
-An administrator can select earlier submissions from paginated metadata at
-`GET /api/v1alpha1/runs/{runId}/submissions?limit=20`, then read one snapshot at
-`GET /api/v1alpha1/runs/{runId}/submissions/{submissionId}`. Use `nextBefore` as
-the next page's `before` parameter. Selecting history does not change the Run's
-final result or decision. Project-key runtime readers remain unchanged.
 
 ## Evidence limits
 
@@ -189,6 +172,5 @@ remove secrets before submission because free-form text screening is not a
 general data-loss prevention system. The management UI lists and inspects Runs
 without exposing credentials or accepting Submissions. See the
 [OpenAPI contract](../api/openapi/openapi.yaml) for fields and error codes.
-
 
 Use `guardrailctl run create|list --business-id ID` or the console Runs filter to find a business attempt. See the [release-order correlation example](../examples/business-id/README.md) for replay, credential and terminal-state handling.

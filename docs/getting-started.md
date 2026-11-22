@@ -1,5 +1,7 @@
 # Getting started
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 After the first batch deploys, have your coding agent follow the Spec and inspect metrics, logs and alerts before the next batch proceeds. [Watch the 30-second run](media/first-batch-run.mp4)
 
 ## Run the first-batch check
@@ -62,13 +64,6 @@ or its Run details. Leave the default selection and click **Run cleanup task**:
 4. Inspect both Runs in the page. Restore the files, change the selection or
    batch limit and rerun to compare the actual result.
 
-The runner is predefined code without a model. Its service calls and file
-operations are real. The [demo guide](../examples/cleanup-demo/README.md)
-explains the execution checks and limits. To inspect the same records in the
-regular UI, open the printed **Console** URL, sign in as `demo` using the
-temporary password in the printed `console-login.json` file (or the password you
-chose with `--prompt-password`), and select **Runs**.
-
 Leave the terminal open while inspecting the records. Ctrl-C stops the service
 and removes its temporary data and credentials. The original Recovery contract
 self-check is available with `python3 examples/agent-demo/smoke.py`; it exits
@@ -76,10 +71,6 @@ and cleans up immediately. Its `--keep-running` option preserves the records for
 browser inspection until Ctrl-C.
 Use the walkthrough below when you want persistent data or your own policy.
 
-For automation, `--password-stdin` reads a chosen password from standard input
-when starting the cleanup demo. Do not put passwords in command-line
-arguments or committed scripts. The source-only `make demo` target is equivalent
-to the interactive demo command above.
 
 ## Manual walkthrough: create and inspect your first Run
 
@@ -95,15 +86,10 @@ make build
 Keep that terminal open. The listener defaults to `127.0.0.1:8080`, with SQLite
 data in `./data/guardrail.db` relative to the startup directory.
 
-Open <http://127.0.0.1:8080> and create an administrator named `admin` with a
-password you choose. Setup signs you into the browser automatically. There is no
-default password.
+Open <http://127.0.0.1:8080> to enter the console directly. No account setup is required.
+For shared deployments, see [Docker](docker.md) and [Access](access.md).
 
-Local setup without a bootstrap token requires a direct loopback connection.
-For remote or container deployment, follow [Docker deployment](docker.md) and
-[administrator setup](local-administrator.md).
-
-### 2. Sign in to the CLI
+### 2. Connect the CLI
 
 Open a second terminal in the same checkout root:
 
@@ -112,27 +98,21 @@ guardrail_cli=./bin/guardrailctl
 export OPEN_GUARDRAIL_URL=http://127.0.0.1:8080
 umask 077
 guardrail_demo_dir=$(mktemp -d)
-export OPEN_GUARDRAIL_SESSION_FILE="$guardrail_demo_dir/session.json"
 "$guardrail_cli" status
-"$guardrail_cli" auth login --username admin
 ```
 
 For an extracted binary archive, set `guardrail_cli=./guardrailctl` instead.
-Enter your administrator password at the hidden prompt. Browser and CLI sessions
-are separate. This example stores its CLI session and machine credentials in a
-private temporary directory outside the source tree.
+The temporary private directory holds the Run Submission credential.
 
 ### 3. Publish the example policy
 
 ```sh
 "$guardrail_cli" scene apply --key recovery --name Recovery \
   --spec ./examples/policies/recovery.yaml --publish
-"$guardrail_cli" auth create-key --expires-in 1h \
-  --result-file "$guardrail_demo_dir/project-key.json"
 ```
 
 The policy requires a `readiness` check with `health` evidence. The command
-publishes and activates the revision; the temporary Project key lasts one hour.
+publishes and activates the revision.
 
 See [Scenes and Specs](scenes-and-specs.md) for policy editing and publication.
 
@@ -150,7 +130,7 @@ cat > "$guardrail_demo_dir/change-set.json" <<'JSON'
 JSON
 guardrail_demo_operation="quickstart-$(date +%s)-$$"
 "$guardrail_cli" run create \
-  --key-file "$guardrail_demo_dir/project-key.json" \
+  \
   --scene recovery \
   --change-set "$guardrail_demo_dir/change-set.json" \
   --operation-id "$guardrail_demo_operation-create" \
@@ -205,7 +185,7 @@ JSON
   --operation-id "$guardrail_demo_operation-submit" \
   "$guardrail_demo_run_id"
 "$guardrail_cli" run get \
-  --key-file "$guardrail_demo_dir/project-key.json" \
+  \
   "$guardrail_demo_run_id"
 ```
 
@@ -230,60 +210,9 @@ observations it relies on. See [Runs and submissions](runs.md) and the
 | Server exits or does not become ready | The cleanup demo reports a safe error category and the command's exit code when available. Run `./bin/open-guardrail serve` from source or `./open-guardrail serve` from an archive for detailed startup diagnostics. Check the data directory, native binaries and port. |
 | Demo address returns 403 | Open exactly the printed `http://127.0.0.1:<port>` address. The cleanup demo does not accept `localhost` or other hostnames. |
 | Recovery self-check exits before you can open Runs | Run `python3 examples/agent-demo/smoke.py --keep-running` and keep that terminal open. The default Recovery self-check deliberately removes its temporary records; the cleanup demo already stays running. |
-| Browser login fails | Use username `demo` and the temporary password in the printed `console-login.json` file (or the password you chose with `--prompt-password` / `smoke.py --keep-running`). The walkthrough's `admin` account and an existing service are separate. |
-| Hidden password prompt needs a terminal | Run interactively, or pass `--password-stdin` for automation. The Recovery self-check additionally needs `--keep-running` when you want to inspect its temporary records. |
-
-The demo never prints its password to stdout (by default it writes the auto-generated password to `console-login.json` and prints only that file path) or captured credential-bearing command output.
-When reporting a problem, include the step, exit code, version and platform.
-Keep passwords, session files and machine credential files private.
 
 ## Clean up or keep exploring
 
-The service data persists in `./data`. Stop the server with Ctrl-C and restart
-from the same directory to keep your administrator, policy and Run.
-Use `--data-dir /path/to/persistent/data` when you want an explicit storage location.
-
-First revoke only the Project key created for this walkthrough. While the
-administrator CLI session is still active, inspect the secret-free metadata:
-
-```sh
-"$guardrail_cli" auth list-keys --page-size 20
-```
-
-Identify the walkthrough's key by its issuance time, role and scopes. Its private
-credential file also records the same non-secret `keyId`; compare only that field
-locally if needed, without displaying or sharing the token. Follow `nextAfter`
-with `--after CURSOR` if the key is on another page. Do not revoke a key used by
-another integration.
-
-Replace the example ID with the selected key's `id`, then revoke it:
-
-```sh
-guardrail_demo_key_id=key_REPLACE_WITH_DEMO_KEY_ID
-"$guardrail_cli" auth revoke-key --key-id "$guardrail_demo_key_id"
-```
-
-After revocation succeeds, remove the temporary CLI session and files in the
-second terminal while its variables are still set. If revocation fails, retain
-the session and credential file until you have resolved the error.
-
-```sh
-"$guardrail_cli" auth logout
-rm -f "$guardrail_demo_dir/session.json" \
-  "$guardrail_demo_dir/project-key.json" \
-  "$guardrail_demo_dir/run-credential.json" \
-  "$guardrail_demo_dir/change-set.json" \
-  "$guardrail_demo_dir/submission.json"
-rmdir "$guardrail_demo_dir"
-unset OPEN_GUARDRAIL_SESSION_FILE
-```
-
-Removing a machine key file does not revoke that key. Revocation and secret
-rotation are implemented; revocation immediately prevents subsequent key
-authentication without canceling already-authenticated requests. See
-[Project machine keys](local-administrator.md#project-machine-keys) for lifetime,
-rotation and recovery rules. Use this walkthrough with a local evaluation service.
-
-Next, try the [agent-driven demo](../examples/agent-demo/README.md), configure
-[PostgreSQL or remote access](configuration.md), or read the
-[contribution guide](../CONTRIBUTING.md).
+Ctrl-C stops the service. Restart from the same data directory to retain Scenes, Specs and Runs.
+Keep Run Submission credentials private; remove temporary credential files when finished.
+See [Runs](runs.md) for expiry, retries and rotation.

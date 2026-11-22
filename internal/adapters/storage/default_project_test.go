@@ -2,9 +2,37 @@ package storage
 
 import (
 	"context"
+	"github.com/alibaba/open-guardrail/internal/config"
 	"sync"
 	"testing"
 )
+
+// Managed fixtures supply setup connections independently of application guards.
+var defaultProjectResetters = map[string]func(*testing.T, config.Config, bool){}
+
+func defaultProjectModes(c config.Config) []string {
+	if c.Database.Migrations == "external" {
+		return []string{"external"}
+	}
+	return []string{"auto", "external"}
+}
+
+func resetDefaultProject(t *testing.T, c config.Config, store *Store, workspace bool) {
+	t.Helper()
+	if reset := defaultProjectResetters[c.Database.Driver]; reset != nil {
+		reset(t, c, workspace)
+		return
+	}
+	queries := []string{"DELETE FROM project"}
+	if workspace {
+		queries = append(queries, "DELETE FROM workspace")
+	}
+	for _, query := range queries {
+		if _, err := store.db.ExecContext(context.Background(), query); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
 
 const defaultProjectSQL = "SELECT w.id,p.id,w.name,p.name FROM workspace w JOIN project p ON p.workspace_id=w.id WHERE w.workspace_id='default' AND p.project_id='default'"
 
@@ -23,8 +51,9 @@ func TestDefaultProjectPreparedWithoutAdministrator(t *testing.T) {
 			if err := store.db.QueryRowContext(ctx, defaultProjectSQL).Scan(&workspace, &project, &workspaceName, &projectName); err != nil || workspaceName != "Default" || projectName != "Default" {
 				t.Fatalf("defaults missing before administrator setup: %v", err)
 			}
-			if state, err := store.Identity().Status(ctx); err != nil || state.Initialized {
-				t.Fatalf("default project initialized an administrator: %v", err)
+			var users int
+			if err := store.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM local_user").Scan(&users); err != nil || users != 0 {
+				t.Fatalf("default project initialized a local account: %d %v", users, err)
 			}
 			for _, query := range []string{
 				"UPDATE workspace SET name='Existing workspace' WHERE workspace_id='default'",
@@ -36,7 +65,7 @@ func TestDefaultProjectPreparedWithoutAdministrator(t *testing.T) {
 				}
 			}
 			store.Close()
-			for _, mode := range []string{"auto", "external"} {
+			for _, mode := range defaultProjectModes(c) {
 				c.Database.Migrations = mode
 				reopened, err := Open(ctx, c)
 				if err != nil {
@@ -56,7 +85,8 @@ func TestDefaultProjectPreparedWithoutAdministrator(t *testing.T) {
 func TestDefaultProjectRecoversPartialInitialization(t *testing.T) {
 	for _, driver := range registeredDrivers() {
 		t.Run(driver.name, func(t *testing.T) {
-			for _, mode := range []string{"auto", "external"} {
+			fixture := testConfig(t, driver.name)
+			for _, mode := range defaultProjectModes(fixture) {
 				t.Run(mode, func(t *testing.T) {
 					ctx := context.Background()
 					c := testConfig(t, driver.name)
@@ -65,11 +95,12 @@ func TestDefaultProjectRecoversPartialInitialization(t *testing.T) {
 						t.Fatal(err)
 					}
 					defer store.Close()
-					for _, query := range []string{"DROP TABLE identity_state", "DELETE FROM project", "DELETE FROM workspace"} {
+					for _, query := range []string{"DROP TABLE identity_state"} {
 						if _, err := store.db.ExecContext(ctx, query); err != nil {
 							t.Fatal(err)
 						}
 					}
+					resetDefaultProject(t, c, store, true)
 					// Exercise concurrent empty initialization without an identity lock.
 					var group sync.WaitGroup
 					for range 8 {
@@ -80,9 +111,7 @@ func TestDefaultProjectRecoversPartialInitialization(t *testing.T) {
 						})
 					}
 					group.Wait()
-					if _, err := store.db.ExecContext(ctx, "DELETE FROM project"); err != nil {
-						t.Fatal(err)
-					}
+					resetDefaultProject(t, c, store, false)
 					store.Close()
 					c.Database.Migrations = mode
 					reopened, err := Open(ctx, c)

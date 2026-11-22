@@ -135,45 +135,24 @@ def smoke():
                         content = archive.extractfile("open-guardrail/" + row["path"]).read()
                         assert hashlib.sha256(content).hexdigest() == row["sha256"]
             volume = next(m["Name"] for m in inspection["Mounts"] if m["Destination"] == "/data")
-            token_archive = run(["docker", "cp", container + ":/data/bootstrap.token", "-"],
-                                capture=True).stdout
-            with tarfile.open(fileobj=io.BytesIO(token_archive)) as archive:
-                member = archive.getmembers()[0]
-                assert member.mode == 0o600 and member.uid == 65532 and member.gid == 65532
-                token = archive.extractfile(member).read().decode().strip()
-            assert token.startswith("ogb_")
-            status, _ = request("/api/v1alpha1/bootstrap")
-            assert status == {"initialized": False, "requiresToken": True}
-            # Backend networking and spoofed forwarding headers cannot opt into
-            # token-free local setup. Exact Host (including port) and Origin pass.
-            password = secrets.token_urlsafe(24)
-            account = {"username": "admin", "password": password}
-            request("/api/v1alpha1/bootstrap", account, expected=401,
-                    headers={"Forwarded": "for=127.0.0.1", "X-Forwarded-For": "127.0.0.1"})
-            auth = {"Authorization": "Bearer " + token}
-            request("/api/v1alpha1/bootstrap", account, expected=403,
-                    headers={**auth, "Origin": "https://untrusted.example"})
-            request("/api/v1alpha1/bootstrap", account, expected=403,
-                    headers={**auth, "Host": "untrusted.example"})
-            request("/api/v1alpha1/bootstrap", account, expected=403,
-                    headers={**auth, "X-Guardrail-CSRF": ""})
-            request("/api/v1alpha1/bootstrap", account, headers=auth, expected=201)
-            _, headers = request("/api/v1alpha1/auth/session", account, expected=201)
-            cookie = headers["Set-Cookie"]
-            assert all(flag in cookie for flag in ("Secure", "HttpOnly", "SameSite=Strict"))
+            scenes, _ = request("/api/v1alpha1/scenes")
+            assert scenes == []
+            for path in ("/api/v1alpha1/bootstrap", "/api/v1alpha1/auth/session",
+                         "/api/v1alpha1/auth/api-keys"):
+                request(path, expected=404)
+            request("/api/v1alpha1/scenes", headers={"Origin": "https://untrusted.example"}, expected=403)
+            request("/api/v1alpha1/scenes", headers={"Host": "untrusted.example"}, expected=403)
             compose("up", "-d", "--force-recreate", "guardrail", "proxy")
             ready()
             replacement = compose("ps", "-q", "guardrail", capture=True).stdout.decode().strip()
             assert replacement != container
             new_inspection = json.loads(run(["docker", "inspect", replacement], capture=True).stdout)[0]
             assert any(m.get("Name") == volume for m in new_inspection["Mounts"])
-            status, _ = request("/api/v1alpha1/bootstrap")
-            assert status["initialized"] is True
-            request("/api/v1alpha1/auth/session", account, expected=201)
-            request("/api/v1alpha1/bootstrap", account, headers=auth, expected=409)
-            print("Docker smoke passed: TLS, non-root volume, license notices, private setup, origin/CSRF and recreation")
+            scenes, _ = request("/api/v1alpha1/scenes")
+            assert scenes == []
+            print("Docker smoke passed: TLS, non-root volume, license notices, direct access, origin checks and recreation")
         finally:
-            # Startup logs contain token paths, never the token or test password.
+            # Startup logs retain the deployment diagnostics.
             compose("logs", "--no-color", "--tail", "20", check=False, timeout=30)
             compose("down", "--volumes", "--remove-orphans", check=False, timeout=60)
 

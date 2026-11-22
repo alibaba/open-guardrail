@@ -25,6 +25,7 @@ type Scope struct {
 	WorkspaceID              string
 	ProjectID                string
 	ActorID                  string
+	Operator                 string
 	SubmissionCredentialHash string
 	CanSelectRevision        bool
 }

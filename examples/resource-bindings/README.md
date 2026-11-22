@@ -1,10 +1,8 @@
 # Resource binding walkthrough
 
-[简体中文](README.zh-CN.md)
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](../../docs/access.md).
 
-Use an administrator CLI session to bind a resource to a Policy. A trusted
-orchestrator then creates a Run with a Project key and the original resource
-reference. The service selects and freezes the Policy Revision.
+[简体中文](README.zh-CN.md)
 
 ## Disposable live check
 
@@ -24,16 +22,14 @@ No model is required for this policy-selection walkthrough.
 
 ## Use an existing service
 
-Start with [administrator sign-in and Scene publication](../../cmd/guardrailctl/README.md#scenes-and-administrator-sessions).
+Start with [Scene publication through the CLI](../../cmd/guardrailctl/README.md); no sign-in is required.
 Use the Policy ID returned by `scene apply` or an existing Policy in the same
 Scene. Keep credentials and input files in a private working directory.
 
 ```sh
 export OPEN_GUARDRAIL_URL=https://guardrail.example
-export OPEN_GUARDRAIL_SESSION_FILE=/absolute/private/admin-session.json
 policy_id=REPLACE_WITH_POLICY_ID
 revision_id=REPLACE_WITH_PUBLISHED_REVISION_ID
-key_file=/absolute/private/orchestrator-key.json
 
 # Follow the Policy's active Revision. Pass the unencoded resource ID.
 guardrailctl binding put --scene recovery --kind repository \
@@ -55,7 +51,7 @@ cat > change-set.json <<'JSON'
 {"changeSetRef":"example-operation-1"}
 JSON
 
-guardrailctl run create --key-file "$key_file" --scene recovery \
+guardrailctl run create --scene recovery \
   --change-set change-set.json --resources resources.json \
   --operation-id example-operation-1 \
   --submission-credential-file /absolute/private/new-run-credential.json
@@ -74,18 +70,5 @@ with `guardrailctl binding delete --scene recovery --kind repository --resource-
 Repeated deletion succeeds without changing the Scene default.
 
 ## Selection and permissions
-
-- Management uses administrator sessions. Project keys keep their existing Run scopes.
-- `--resources` accepts a JSON array of 1–100 distinct `{kind,id}` references,
-  bounded to 64 KiB. IDs are original strings, including slashes and Unicode.
-- Omitted resources and entirely unbound sets select the Scene default.
-  Partially bound or conflicting sets fail with 409. Bound unpublished/archived
-  Policies also fail instead of falling back.
-- Resource references are supplied by the trusted integration. The integration
-  must derive them from the intended operation and enforce execution against the
-  same resources. See the [binding contract](../../docs/extensions.md#resource-bindings).
-- A binding write timeout can have an uncertain outcome. List the bindings to
-  inspect the actual state before repeating a write. Pagination returns one page
-  and the server's opaque `nextAfter` value.
 
 The smoke also checks audit mutation history, redacted export and a denied Run diagnostic report. See [audit and reports](../../docs/audit-and-reports.md).

@@ -8,6 +8,7 @@ import (
 
 // Repository defines the persistence boundary independently of the SQL adapter.
 type Repository interface {
+	ReplayPolicyRun(context.Context, Scope, string, string, string, string, int64) (PolicyRun, error)
 	GetPolicyRun(ctx context.Context, scope Scope, id string) (PolicyRun, error)
 	CreatePolicyRun(ctx context.Context, scope Scope, input PolicyRunCreateInput) (PolicyRun, bool, error)
 	SubmitSnapshot(ctx context.Context, scope Scope, runID string, input SnapshotSubmitInput) (SnapshotSubmission, bool, error)

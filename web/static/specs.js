@@ -1,9 +1,10 @@
-// Scene management uses the same administrator cookie and origin as the login UI.
+// Standalone management uses direct same-origin API requests.
 (() => {
   const el = id => document.getElementById(id);
-  let signedIn = false, generation = 0, scene = null, policy = null, draft = null, revisions = [], busy = false;
+  let available = false, generation = 0, scene = null, policy = null, draft = null, revisions = [], busy = false;
   let editing = false, activeRevision = null, previewFailed = false;
   let revisionBefore = 0, revisionNext = null, revisionPrevious = [];
+  let policies = [], createOperation = null;
   const formatTime = value => new Intl.DateTimeFormat(
     document.documentElement.lang || undefined,
     {dateStyle: "medium", timeStyle: "medium"},
@@ -45,7 +46,7 @@
   }
   async function request(url, method = "GET", body, operationID = "") {
     const response = await fetch(url, {
-      method, credentials: "same-origin", redirect: "error",
+      method, credentials: "omit", redirect: "error",
       headers: {"Content-Type": "application/json", "X-Guardrail-CSRF": "1", ...(operationID ? {"Idempotency-Key": operationID} : {})},
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(15000),
@@ -55,7 +56,7 @@
     return data;
   }
   async function action(work) {
-    if (busy || !signedIn) return;
+    if (busy || !available) return;
     const current = generation;
     busy = true; buttons();
     try {
@@ -63,7 +64,8 @@
     } catch (error) {
       if (current !== generation) return;
       el("scene-select").value = scene?.key || "";
-      if (error.status === 401) { show("login"); setText(message, "loginPrompt"); return; }
+      el("policy-select").value=policy?.id||"";
+
       notice(error.status === 409 ? "specConflict" : error.status === 422 ? "specInvalid" : "specRequestFailed");
       // Validation messages contain field guidance, never raw YAML or database errors.
       if (error.status === 422) {
@@ -123,11 +125,18 @@
     }
     return content;
   }
-  async function openScene(key, current) {
+  async function openScene(key, current, selectedPolicyID = null) {
     const base = "/api/v1alpha1/scenes/" + encodeURIComponent(key);
     const loaded = await request(base);
     if (current !== generation) return;
-    if (!loaded.defaultPolicyId) {
+    const available = await request(base + "/policies");
+    if (current !== generation) return;
+    policies = available.filter(item => item.lifecycleState === "ACTIVE");
+    const preferred = selectedPolicyID || (scene?.key === key ? policy?.id : null);
+    const policyID = policies.some(item => item.id === preferred) ? preferred : loaded.defaultPolicyId;
+    el("policy-select").replaceChildren(...policies.map(item => option(item.id, item.name)));
+    el("policy-select").value = policyID || "";
+    if (!policyID) {
       scene = loaded; policy = null; draft = null; revisions = [];
       editing = false; activeRevision = null; previewFailed = false;
       el("spec-yaml").value = ""; draftView();
@@ -139,7 +148,7 @@
       notice("noActiveSpec");
       return;
     }
-    const policyBase = "/api/v1alpha1/policies/" + encodeURIComponent(loaded.defaultPolicyId);
+    const policyBase = "/api/v1alpha1/policies/" + encodeURIComponent(policyID);
     const [selected, history, currentDraft] = await Promise.all([
       request(policyBase), request(policyBase + "/revisions?pageSize=20"),
       request(policyBase + "/draft").catch(error => { if (error.status === 404) return null; throw error; }),
@@ -173,7 +182,7 @@
       await renderRevision(current, activeContent);
     } catch (error) {
       // History content is independent of the draft editor. Authentication
-      // failures still end the session; other failures stay in the history view.
+      // failures remain in the current view so the operator can retry.
       if (error.status === 401) throw error;
     }
     if (current !== generation) return;
@@ -187,7 +196,8 @@
       ? list.map(item => option(item.key, item.name + " (" + item.key + ")"))
       : [option("", "", "noScenes")]));
     if (!list.length) {
-      scene = null; policy = null; draft = null; revisions = []; el("spec-editor").hidden = true; notice("noScenes"); return;
+      scene = null; policy = null; draft = null; revisions = [];
+      policies=[];createOperation=null;el("policy-select").replaceChildren();el("spec-create-form").reset(); el("spec-editor").hidden = true; notice("noScenes"); return;
     }
     const key = list.some(item => item.key === selected) ? selected : list[0].key;
     el("scene-select").value = key;
@@ -204,11 +214,12 @@
         if (current === generation) { window.ConsoleUI?.showDetail(); notice("specLoaded"); }
       });
     },
-    setSignedIn(value) {
-      if (signedIn === value) return;
-      signedIn = value; generation++; busy = false;
+    setAvailable(value) {
+      if (available === value) return;
+      available = value; generation++; busy = false;
       revisionBefore = 0; revisionNext = null; revisionPrevious = [];
       scene = null; policy = null; draft = null; revisions = [];
+      policies=[];createOperation=null;el("policy-select").replaceChildren();el("spec-create-form").reset();
       editing = false; activeRevision = null; previewFailed = false;
       el("spec-yaml").value = ""; el("revision-yaml").textContent = ""; el("revision-meta").textContent = "";
       el("revision-meta").removeAttribute("data-i18n");
@@ -217,8 +228,10 @@
       el("spec-editor").hidden = true; el("spec-message").textContent = "";
       el("spec-message").removeAttribute("data-i18n");
       buttons();
-      if (value) void action(current => reload(current)).then(() => {
-        if (signedIn) window.ConsoleUI?.route();
+      if (value) void action(async current => {
+        await reload(current);
+      }).then(() => {
+        if (available) window.ConsoleUI?.route();
       });
     },
   };
@@ -232,6 +245,25 @@
       el("scene-create-form").reset();
       await reload(current, created.scene.key);
       if (current === generation) { window.ConsoleUI?.created(created.scene.key); notice("sceneCreated"); }
+    });
+  });
+  el("policy-select").addEventListener("change", () => {
+    if (!mayDiscard()) {el("policy-select").value=policy?.id||"";return;}
+    const id=el("policy-select").value;
+    return action(current=>openScene(scene.key,current,id));
+  });
+  el("spec-create-form").addEventListener("submit", event => {
+    event.preventDefault(); if(!scene || !mayDiscard())return;
+    const data=Object.fromEntries(new FormData(event.currentTarget));
+    return action(async current=>{
+      const body={name:data.name};
+      const fingerprint=scene.key+JSON.stringify(body);
+      if(createOperation?.fingerprint!==fingerprint)createOperation={fingerprint,key:crypto.randomUUID()};
+      const created=await request("/api/v1alpha1/scenes/"+encodeURIComponent(scene.key)+"/policies","POST",body,createOperation.key);
+      if(current!==generation)return;
+      createOperation=null;el("spec-create-form").reset();el("spec-create-panel").open=false;
+      await openScene(scene.key,current,created.id);
+      if(current===generation)notice("specCreated");
     });
   });
   el("scene-select").addEventListener("change", () => {
@@ -250,7 +282,7 @@
   });
   el("spec-yaml").addEventListener("input", () => { buttons(); notice("specUnsaved"); });
   el("start-spec-draft").addEventListener("click", () => {
-    if (!signedIn || busy || editing || !policy || (policy.activeRevisionId && !activeRevision)) return;
+    if (!available || busy || editing || !policy || (policy.activeRevisionId && !activeRevision)) return;
     editing = true;
     el("spec-yaml").value = activeRevision?.yaml ?? "";
     draftView(); buttons(); notice("specUnsaved");
@@ -322,6 +354,6 @@
     if (current === generation) notice("specPublished");
   }));
   window.addEventListener("beforeunload", event => {
-    if (signedIn && dirty()) { event.preventDefault(); event.returnValue = ""; }
+    if (available && dirty()) { event.preventDefault(); event.returnValue = ""; }
   });
 })();

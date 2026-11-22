@@ -1,5 +1,7 @@
 # Core concepts
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 OpenGuardrail records a policy, evaluation context, assessment and decision for
 one evaluation. The caller defines the scenario; external evaluators investigate
 it, and the calling system decides how to use the recorded outcome.
@@ -44,15 +46,7 @@ uses it. See [Runs and submissions](runs.md) for concurrency and retry behavior.
 
 | Credential | Used by | Purpose |
 | --- | --- | --- |
-| Administrator session | A trusted human or administrator automation | Manage Scenes, Policies, Drafts, activation and Project keys; inspect management views. Browser and CLI sessions are separate. |
-| Project machine key | An orchestrator or policy publisher | Call only the endpoints granted by its effective scopes within one Project. A default orchestrator can create/read Runs and rotate an open Run's Submission Credential. |
-| Run Submission Credential | An external evaluator | Submit complete Snapshots to exactly one Run. It cannot create/read Runs, read Policy Revisions or manage Project credentials. |
-
-Machine roles are issuance templates; effective scopes authorize each request.
-Final Submission uses the Run credential, not the Project key. Plaintext keys and
-Run credentials are returned once and must be stored privately. See the
-[administrator guide](local-administrator.md#project-machine-keys) for issuance,
-rotation and revocation.
+| Run Submission Credential | An external evaluator | Submit complete Snapshots to exactly one Run. It is accepted only by that Run's Submission endpoint. |
 
 ## Current scope and future execution control
 

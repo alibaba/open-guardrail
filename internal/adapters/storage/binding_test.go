@@ -101,6 +101,14 @@ func TestBindingSelectionAndRunIsolation(t *testing.T) {
 			if err != nil || len(next.Items) != 1 || next.NextAfter != nil || next.Items[0].Resource != other {
 				t.Fatalf("next page: %+v %v", next, err)
 			}
+			// Repository group takes precedence; missing bindings in that entire
+			// group allow application bindings to be considered.
+			repository := resource.Reference{Kind: "repository", ID: "team/repo"}
+			put(spec.Binding{Resource: repository, PolicyID: initial.Policy.ID})
+			selected, _, err := store.Runs().CreatePolicyRun(ctx, runScope, runapp.PolicyRunCreateInput{SceneKey: "recovery", ResourceGroups: [][]resource.Reference{{repository}, {ref}}, ChangeSetJSON: "{}", ChangeSetDigest: follow.ChangeSetDigest, IdempotencyKey: "ranked", RequestDigest: modelDigest("ranked"), SubmissionTokenHash: modelDigest("synthetic"), Now: follow.CreatedAt})
+			if err != nil || selected.PolicyID != initial.Policy.ID {
+				t.Fatalf("precedence: %+v %v", selected, err)
+			}
 			// Cross-project, another Policy's Revision and Drafts
 			// cannot be made valid by going through a binding.
 			wrongScope := scope
@@ -154,6 +162,60 @@ func TestBindingSelectionAndRunIsolation(t *testing.T) {
 				read, err := store.Runs().GetPolicyRun(ctx, runScope, run.ID)
 				if err != nil || read.Selection != nil || read.PolicyRevisionID != run.PolicyRevisionID {
 					t.Fatalf("optional selection readback: %+v %v", read, err)
+				}
+			}
+		})
+	}
+}
+
+func TestSpecCreationBindingIsAtomicAndIdempotent(t *testing.T) {
+	for _, backend := range registeredDrivers() {
+		t.Run(backend.name, func(t *testing.T) {
+			store := identityStore(t, backend.name)
+			ctx := context.Background()
+			scope := spec.Scope{WorkspaceID: "default", ProjectID: "default", ActorID: "admin"}
+			svc := spec.New(store.Specs())
+			repo := resource.Reference{Kind: "repository", ID: "team/repo"}
+			app := resource.Reference{Kind: "application", ID: "7"}
+			initial, _, err := svc.InitializeScene(ctx, scope, "authoring", "Authoring", "default", sampleSpec, "init")
+			if err != nil {
+				t.Fatal(err)
+			}
+			empty, err := svc.ListBindings(ctx, scope, "authoring", 100, nil)
+			if err != nil || len(empty.Items) != 0 {
+				t.Fatalf("initialization created implicit bindings: %+v %v", empty, err)
+			}
+			if _, err = svc.PutBinding(ctx, scope, "authoring", spec.Binding{Resource: repo, PolicyID: initial.Policy.ID}); err != nil {
+				t.Fatal(err)
+			}
+			bound, created, err := svc.CreatePolicy(ctx, scope, "authoring", "application", "create", app)
+			if err != nil || !created {
+				t.Fatalf("create: %v", err)
+			}
+			replay, created, err := svc.CreatePolicy(ctx, scope, "authoring", "application", "create", app)
+			if err != nil || created || replay.ID != bound.ID {
+				t.Fatalf("retry: %v", err)
+			}
+			if _, _, err = svc.CreatePolicy(ctx, scope, "authoring", "application", "create", repo); !errors.Is(err, spec.ErrConflict) {
+				t.Fatalf("changed retry: %v", err)
+			}
+			if _, _, err = svc.CreatePolicy(ctx, scope, "authoring", "duplicate", "conflict", repo); !errors.Is(err, spec.ErrConflict) {
+				t.Fatalf("collision: %v", err)
+			}
+			policies, err := svc.ListPolicies(ctx, scope, "authoring")
+			if err != nil || len(policies) != 2 {
+				t.Fatalf("orphan policy after collision: %+v %v", policies, err)
+			}
+			bindings, err := svc.ListBindings(ctx, scope, "authoring", 100, nil)
+			if err != nil || len(bindings.Items) != 2 {
+				t.Fatalf("bindings: %+v %v", bindings, err)
+			}
+			for _, b := range bindings.Items {
+				if b.Resource == repo && b.PolicyID != initial.Policy.ID {
+					t.Fatal("creation replaced an existing binding")
+				}
+				if b.Resource == app && b.PolicyID != bound.ID {
+					t.Fatal("application binding lost")
 				}
 			}
 		})

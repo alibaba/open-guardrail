@@ -50,9 +50,9 @@ test("translations cover the same keys and every static text marker", () => {
 
 test("switching updates current status and persists only the language", () => {
   const p = page("en");
-  vm.runInContext('setText(document.querySelectorAll()[0], "signedOut")', p.context);
+  vm.runInContext('setText(document.querySelectorAll()[0], "ready")', p.context);
   p.selector.change({ target: { value: "zh-CN" } });
-  assert.equal(p.elements[0].textContent, "已退出登录。");
+  assert.equal(p.elements[0].textContent, "已就绪");
   assert.equal(p.storage.value, "zh-CN");
   assert.equal(p.document.documentElement.lang, "zh-CN");
 });
@@ -61,8 +61,8 @@ test("disabled storage does not prevent rendering or switching", () => {
   const p = page("zh-CN", null, true);
   p.selector.change({ target: { value: "en" } });
   assert.equal(p.document.documentElement.lang, "en");
-  assert.equal(p.elements.find(element => element.dataset.i18n === "preview").textContent,
-    "OPENGUARDRAIL · DEVELOPMENT PREVIEW");
+  assert.equal(p.elements.find(element => element.dataset.i18n === "previewShort").textContent,
+    "DEVELOPMENT PREVIEW");
 });
 
 test("language changes notify the Run view to reformat its existing timestamps", () => {

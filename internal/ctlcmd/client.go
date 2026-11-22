@@ -66,6 +66,7 @@ func newAPIClient(server, token string, timeout time.Duration, maxResponseBytes 
 	generated, err := contract.NewClientWithResponses(origin.String(),
 		contract.WithHTTPClient(httpClient),
 		contract.WithRequestEditorFn(func(_ context.Context, request *http.Request) error {
+			request.Header.Set("X-Guardrail-CSRF", "1")
 			if token != "" {
 				request.Header.Set("Authorization", "Bearer "+token)
 			}

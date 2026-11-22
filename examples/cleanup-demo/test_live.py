@@ -48,7 +48,7 @@ class LiveDemoTests(unittest.TestCase):
                     raise RuntimeError("test service did not start")
                 time.sleep(.05)
         cls.gateway = demo.Gateway(binaries / "guardrailctl", cls.runtime, cls.private)
-        cls.gateway.setup(secrets.token_urlsafe(24))
+
         cls.addClassCleanup(cls.gateway.close)
         cls.app = demo.Demo(cls.gateway, cls.private)
         cls.addClassCleanup(lambda: cls.app.tool.close())
@@ -103,7 +103,7 @@ class LiveDemoTests(unittest.TestCase):
         self.assertNotEqual(job["records"][0]["runId"], job["records"][1]["runId"])
         self.assertEqual({f["name"] for f in state["files"]}, {"orders.csv", "config.yaml"})
         for record in job["records"]:
-            final = self.gateway.cli("run", "get", "--key-file", str(self.gateway.key), record["runId"])
+            final = self.gateway.cli("run", "get",  record["runId"])
             self.assertEqual(final["decision"], record["decision"])
             self.assertEqual(final["policyRevisionId"], record["revision"]["id"])
             self.assertEqual(record["revision"]["yaml"], demo.policy_yaml(2))
@@ -131,10 +131,10 @@ class LiveDemoTests(unittest.TestCase):
                 self.gateway.evaluate(tool, ["cache.tmp", "download.tmp"], 2,
                                       demo.policy_yaml(2), directory / "mismatch-attempt")
             self.assertEqual(len(tool.inventory()), 4)
-            opened = self.gateway.cli("run", "list", "--key-file", str(self.gateway.key),
+            opened = self.gateway.cli("run", "list",
                                       "--scene", "file-cleanup", "--status", "OPEN")["items"]
             self.assertEqual(len(opened), 1)
-            run = self.gateway.cli("run", "get", "--key-file", str(self.gateway.key), opened[0]["id"])
+            run = self.gateway.cli("run", "get",  opened[0]["id"])
             self.assertEqual(run["changeSet"]["workspaceId"], tool.workspace_id)
             self.assertEqual(run["latestSubmissionNo"], 0)
         finally:

@@ -17,7 +17,7 @@ class ArgoAdapterTest(unittest.TestCase):
     def context(self, **updates):
         options = dict(instance_id="cluster-1", rollout="checkout", revision="hash-1",
                        checkpoint="canary", observation={"status": "healthy"},
-                       key_file="/private/key.json", cli="guardrailctl")
+                        cli="guardrailctl")
         options.update(updates)
         return adapter.context_from_argo({"POD_NAMESPACE": "demo", "JOB_UID": "job-1"}, **options)
 
@@ -42,18 +42,10 @@ class ArgoAdapterTest(unittest.TestCase):
                     revision="hash-1", checkpoint="canary", case="healthy",
                     recipient="age1test", state_dir=str(Path(root) / "state"),
                     cli="guardrailctl", timeout_seconds=780)
-                mounted_key = Path(root) / "mounted-key.json"
-                target_key = Path(root) / "secret-data.json"
-                target_key.write_text('{"server":"https://guardrail.example","token":"synthetic"}')
-                target_key.chmod(0o440)
-                mounted_key.symlink_to(target_key)
                 def prepare(context, state_dir, recipient, envelope):
-                    materialized = Path(context.key_file)
-                    self.assertFalse(materialized.is_symlink())
-                    self.assertEqual(materialized.stat().st_mode & 0o777, 0o600)
                     Path(envelope).write_bytes(b"encrypted-not-plaintext")
                 output = io.StringIO()
-                with mock.patch.dict(adapter.os.environ, {"GUARDRAIL_KEY_FILE": str(mounted_key),
+                with mock.patch.dict(adapter.os.environ, {
                          "OPEN_GUARDRAIL_URL": "https://guardrail.example",
                          "POD_NAMESPACE": "demo", "JOB_UID": "job-1"}), \
                      mock.patch.object(adapter.gate, "prepare_gate", side_effect=prepare), \
@@ -71,7 +63,7 @@ class ArgoAdapterTest(unittest.TestCase):
 
     def test_timeout_never_allows(self):
         args = SimpleNamespace(recipient="age1test", timeout_seconds=0)
-        with mock.patch.dict(adapter.os.environ, {"GUARDRAIL_KEY_FILE": __file__,
+        with mock.patch.dict(adapter.os.environ, {
                              "OPEN_GUARDRAIL_URL": "https://guardrail.example"}):
             with self.assertRaises(ValueError):
                 adapter.run(args)
@@ -127,7 +119,7 @@ class ArgoAdapterTest(unittest.TestCase):
                  mock.patch.object(adapter.time, "monotonic", return_value=100), \
                  redirect_stdout(io.StringIO()):
                 with self.assertRaises(adapter.gate.GateStopped) as caught:
-                    adapter.wait_gate(args, "unused", deadline=99)
+                    adapter.wait_gate(args, deadline=99)
             self.assertEqual(caught.exception.reason, "AGENT_TIMEOUT")
             poll.assert_not_called()
 

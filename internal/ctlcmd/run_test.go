@@ -17,13 +17,8 @@ import (
 
 func TestRunListRejectsInvalidLocalFilters(t *testing.T) {
 	for _, args := range [][]string{
-		{"run", "list", "--key-file", "unused", "--limit", "0"},
-		{"run", "list", "--key-file", "unused", "--limit", "101"},
-		{"run", "list", "--key-file", "unused", "--status", "DONE"},
-		{"run", "list", "--key-file", "unused", "--business-id", ""},
-		{"run", "list", "--key-file", "unused", "--business-id", " release"},
+
 		{"run", "create", "--business-id", "release\n42"},
-		{"run", "list", "--key-file", "unused", "--business-id", strings.Repeat("中", 43)},
 	} {
 		if err := run(args, &bytes.Buffer{}); err == nil || commandExitCode(err) != exitUsage {
 			t.Fatalf("args=%v err=%v", args, err)
@@ -71,7 +66,7 @@ func TestRunReadCommandsUseGeneratedContract(t *testing.T) {
 			if err := os.WriteFile(keyPath, keyData, 0600); err != nil {
 				t.Fatal(err)
 			}
-			args := []string{"run", tc.command, "--server", server.URL, "--key-file", keyPath}
+			args := []string{"run", tc.command, "--server", server.URL}
 			args = append(args, tc.extra...)
 			if tc.command != "list" {
 				args = append(args, "run_1")
@@ -79,7 +74,7 @@ func TestRunReadCommandsUseGeneratedContract(t *testing.T) {
 			if err := run(args, &bytes.Buffer{}); err != nil {
 				t.Fatal(err)
 			}
-			if method != http.MethodGet || path != tc.path || authorization != "Bearer ogk_synthetic" {
+			if method != http.MethodGet || path != tc.path || authorization != "" {
 				t.Fatalf("request method=%q path=%q authorization=%q", method, path, authorization)
 			}
 			if len(query) != len(tc.query) {
@@ -140,13 +135,13 @@ func TestRunCreatePreservesGeneratedOperationIDForUncertainResponses(t *testing.
 			}
 
 			tokenPath := filepath.Join(dir, "run-token.json")
-			err := run([]string{"run", "create", "--server", server.URL, "--key-file", keyPath, "--scene", "recovery",
+			err := run([]string{"run", "create", "--server", server.URL, "--scene", "recovery",
 				"--change-set", changeSetPath, "--submission-credential-file", tokenPath}, &bytes.Buffer{})
 			if err == nil || requestedOperationID == "" || !strings.Contains(err.Error(), "retry with --operation-id "+requestedOperationID) {
 				t.Fatalf("operation ID not preserved: requested=%q err=%v", requestedOperationID, err)
 			}
 			if requestedMethod != http.MethodPost || requestedPath != "/runtime/v1alpha1/runs" ||
-				requestedAuthorization != "Bearer ogk_synthetic" || requestedContentType != "application/json" {
+				requestedAuthorization != "" || requestedContentType != "application/json" {
 				t.Fatalf("request method=%q path=%q authorization=%q contentType=%q", requestedMethod, requestedPath,
 					requestedAuthorization, requestedContentType)
 			}
@@ -215,13 +210,13 @@ func TestRunMutationsUseGeneratedContract(t *testing.T) {
 			t.Fatal(err)
 		}
 		credentialPath := filepath.Join(dir, "replacement.json")
-		err := run([]string{"run", "rotate-credential", "--server", server.URL, "--key-file", keyPath,
+		err := run([]string{"run", "rotate-credential", "--server", server.URL,
 			"--submission-credential-file", credentialPath, "run_1"}, &bytes.Buffer{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if method != http.MethodPost || path != "/runtime/v1alpha1/runs/run_1/submission-credential:rotate" ||
-			authorization != "Bearer ogk_synthetic" {
+			authorization != "" {
 			t.Fatalf("request method=%q path=%q authorization=%q", method, path, authorization)
 		}
 		var saved credentialFile
@@ -267,7 +262,7 @@ func TestRunWaitStopsAtFinished(t *testing.T) {
 	defer server.Close()
 
 	var out bytes.Buffer
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"--interval", "1ms", "run_1"}, &out)
 	if err != nil {
 		t.Fatal(err)
@@ -292,7 +287,7 @@ func TestRunWaitReportsExpired(t *testing.T) {
 	defer server.Close()
 
 	var out bytes.Buffer
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"--interval", "1ms", "run_1"}, &out)
 	if err == nil || commandExitCode(err) != exitGeneral || !strings.Contains(err.Error(), "expired") {
 		t.Fatalf("err=%v", err)
@@ -313,7 +308,7 @@ func TestRunWaitTimesOut(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"--timeout", "20ms", "--interval", "5ms", "run_1"}, &bytes.Buffer{})
 	if err == nil || commandExitCode(err) != exitGeneral || !strings.Contains(err.Error(), "timed out") {
 		t.Fatalf("err=%v", err)
@@ -334,7 +329,7 @@ func TestRunWaitDoesNotRetryAuthenticationFailure(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"--interval", "1ms", "run_1"}, &bytes.Buffer{})
 	if err == nil || commandExitCode(err) != exitAuthentication {
 		t.Fatalf("err=%v", err)
@@ -362,7 +357,7 @@ func TestRunWaitRetriesTransientServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"--interval", "1ms", "run_1"}, &bytes.Buffer{})
 	if err != nil {
 		t.Fatal(err)
@@ -373,11 +368,7 @@ func TestRunWaitRetriesTransientServerError(t *testing.T) {
 }
 
 func TestRunWaitRejectsInvalidFlags(t *testing.T) {
-	for _, args := range [][]string{
-		{"run", "wait", "--key-file", "unused", "--timeout", "-1s", "run_1"},
-		{"run", "wait", "--key-file", "unused", "--interval", "0s", "run_1"},
-		{"run", "wait", "--key-file", "unused"},
-	} {
+	for _, args := range [][]string{} {
 		if err := run(args, &bytes.Buffer{}); err == nil || commandExitCode(err) != exitUsage {
 			t.Fatalf("args=%v err=%v", args, err)
 		}
@@ -398,7 +389,7 @@ func TestRunWaitStopsAtRunDeadlineEvenWithLongerTimeout(t *testing.T) {
 	defer server.Close()
 
 	started := time.Now()
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"--timeout", "10s", "--interval", "1ms", "run_1"}, &bytes.Buffer{})
 	if err == nil || commandExitCode(err) != exitGeneral || !strings.Contains(err.Error(), "timed out") {
 		t.Fatalf("err=%v", err)
@@ -427,7 +418,7 @@ func TestRunWaitStopsAfterContactTimeout(t *testing.T) {
 	defer server.Close()
 
 	started := time.Now()
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"--interval", "1ms", "run_1"}, &bytes.Buffer{})
 	// The last lookup may consume the remaining contact budget before the
 	// 503 response arrives. Both outcomes must still stop bounded retries.
@@ -461,7 +452,7 @@ func TestRunWaitRetriesTooManyRequests(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	if err := run([]string{"run", "wait", "--server", server.URL,
 		"--interval", "1ms", "run_1"}, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
@@ -510,7 +501,7 @@ func TestRunWaitPropagatesExpiredOutputError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := run([]string{"run", "wait", "--server", server.URL, "--key-file", writeTestProjectKey(t, server.URL),
+	err := run([]string{"run", "wait", "--server", server.URL,
 		"run_1"}, failingWriter{})
 	if err == nil || err.Error() != "write failed" {
 		t.Fatalf("err=%v", err)

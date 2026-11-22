@@ -1,5 +1,7 @@
 # GuardrailSpec YAML 字段手册
 
+页面、CLI 和管理 API 均可直接使用，无需账号或登录；提交评估仍需绑定 Run 的提交凭据。详见[访问指南](access.zh-CN.md)。
+
 [English](../guardrailspec-reference.md) | 简体中文
 
 GuardrailSpec 定义一类操作需要完成的检查及证据。它是一份 YAML 策略文档，
@@ -78,17 +80,6 @@ spec:
 
 ## YAML 与 Scene 的边界
 
-- 文件只能包含一份 UTF-8 YAML 文档，最多 64 KiB、4,096 个节点、嵌套深度 16。
-  不接受重复键、锚点、别名、自定义标签、未知字段或隐式标量类型转换。
-  除 `spec.validForSeconds` 外，标量必须是 YAML 字符串；可能被解析成布尔值
-  或数字的文字应加引号。
-- `sceneKey`、`runTtlSeconds`、Project key 和每次操作的 `changeSet` 都不是
-  GuardrailSpec 字段。Scene 有自己的稳定 key 和 Run 截止时间；
-  `spec.validForSeconds` 控制的是 Run 进入终态后的决策有效期。
-  调用方在创建每个 Run 时提交 `changeSet`。
-- 已发布的 Revision 不可修改。发布时校验和规范化 YAML，并生成内容 digest；
-  Run 会冻结选中的 Revision 和 digest。注释与排版不构成策略检查。
-
 ## 发布与使用
 
 启动服务并使用管理员 CLI 会话，从仓库根目录发布 YAML：
@@ -97,11 +88,6 @@ spec:
 guardrailctl scene apply --key file-cleanup --name 'File cleanup' \
   --spec ./file-cleanup.yaml --publish
 ```
-
-首次执行会创建 Scene、默认 Policy 及生效 Revision；内容未变化的重复发布会
-复用现有 Revision。发布会修改服务状态，试写时请使用隔离服务。
-用于创建和读取 Run 的 Project key 不能发布 Spec。Draft 审查、生效版本和
-凭据见[场景与 Spec](../scenes-and-specs.md)，完整本地流程见[入门指南](../getting-started.md)。
 
 ## 常见错误
 

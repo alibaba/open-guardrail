@@ -1,5 +1,7 @@
 # 安装原生预览版
 
+页面、CLI 和管理 API 均可直接使用，无需账号或登录；提交评估仍需绑定 Run 的提交凭据。详见[访问指南](access.zh-CN.md)。
+
 当前预览版为 **v0.1.0-alpha.1**。服务与 CLI 可直接在 Linux 或 macOS 运行，无需 Go、Node.js 或 Python。可选 Demo 需要 Python 3.9+。
 
 ## 选择平台下载
@@ -25,5 +27,3 @@ python3 examples/cleanup-demo/demo.py
 ```sh
 ./open-guardrail serve
 ```
-
-打开 `http://127.0.0.1:8080`，创建首个管理员。SQLite 在本地保留数据；远程或 PostgreSQL 部署见[配置指南](../configuration.md)。

@@ -11,7 +11,7 @@ from integrations.recovery_agent import gate
 
 
 def context_from_jenkins(jenkins_env, *, instance_id, checkpoint, service, candidate,
-                         environment, observation, key_file, cli):
+                         environment, observation, cli):
     job_name = jenkins_env.get("JOB_NAME", "")
     build_number = jenkins_env.get("BUILD_NUMBER", "")
     build_tag = jenkins_env.get("BUILD_TAG", "")
@@ -19,8 +19,6 @@ def context_from_jenkins(jenkins_env, *, instance_id, checkpoint, service, candi
         raise ValueError("instance, checkpoint, service, environment and candidate are required")
     if not job_name or not (build_number.isascii() and build_number.isdigit()) or not build_tag:
         raise ValueError("Jenkins JOB_NAME, BUILD_NUMBER and BUILD_TAG are required")
-    if not key_file:
-        raise ValueError("Jenkins GUARDRAIL_KEY_FILE credential is required")
     delivery = {"type": "jenkins", "instanceId": instance_id,
                 "jobName": job_name, "buildNumber": build_number,
                 "buildTag": build_tag, "checkpoint": checkpoint}
@@ -30,7 +28,6 @@ def context_from_jenkins(jenkins_env, *, instance_id, checkpoint, service, candi
                     "candidate": candidate, "delivery": delivery},
         operation_identity=identity,
         observation=observation,
-        key_file=key_file,
         cli=cli,
     )
 
@@ -55,9 +52,6 @@ def main():
         if not os.environ.get("OPEN_GUARDRAIL_URL"):
             raise ValueError("Jenkins job must configure OPEN_GUARDRAIL_URL")
         if args.phase == "prepare":
-            key_file = os.environ.get("GUARDRAIL_KEY_FILE", "")
-            if not key_file or not Path(key_file).is_file():
-                raise ValueError("Jenkins file credential GUARDRAIL_KEY_FILE is unavailable")
             if not args.recipient or not args.recipient.startswith("age1") or not args.envelope:
                 raise ValueError("an age recipient and envelope path are required")
             if not (args.observation or args.health_url):
@@ -66,13 +60,10 @@ def main():
             gate.prepare_gate(context_from_jenkins(
                 os.environ, instance_id=args.instance_id, checkpoint=args.checkpoint,
                 service=args.service, environment=args.environment, candidate=args.candidate,
-                observation=observation, key_file=key_file, cli=args.cli,
+                observation=observation, cli=args.cli,
             ), args.state_dir, args.recipient, args.envelope)
         else:
-            key_file = os.environ.get("GUARDRAIL_KEY_FILE", "")
-            if not key_file or not Path(key_file).is_file():
-                raise ValueError("Jenkins file credential GUARDRAIL_KEY_FILE is unavailable")
-            return 0 if gate.poll_gate(args.cli, key_file, args.state_dir) else 2
+            return 0 if gate.poll_gate(args.cli,  args.state_dir) else 2
     except (KeyError, ValueError, RuntimeError, OSError) as error:
         print(f"Jenkins Guardrail adapter stopped: {error}. Inspect the Run and private "
               "state before retrying; see docs/runs.md.", file=sys.stderr)

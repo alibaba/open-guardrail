@@ -30,6 +30,10 @@ func lockBindingScene(ctx context.Context, tx *sql.Tx, scope spec.Scope, scene s
 }
 
 func (s *Specs) PutBinding(ctx context.Context, scope spec.Scope, scene string, b spec.Binding) (spec.Binding, error) {
+	return s.PutBindingWithOptions(ctx, scope, scene, b, spec.BindingWriteOptions{})
+}
+
+func (s *Specs) PutBindingWithOptions(ctx context.Context, scope spec.Scope, scene string, b spec.Binding, options spec.BindingWriteOptions) (spec.Binding, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return spec.Binding{}, specError(err)
@@ -66,6 +70,9 @@ func (s *Specs) PutBinding(ctx context.Context, scope spec.Scope, scene string, 
 	}
 	if before != nil && before.PolicyID == b.PolicyID && sameRevision(before.PolicyRevisionID, b.PolicyRevisionID) {
 		return b, nil
+	}
+	if options.CreateOnly && before != nil {
+		return spec.Binding{}, spec.ErrConflict
 	}
 	// Scene locking makes delete+insert one atomic, portable upsert. The unique
 	// resource key also protects against writers outside this application.
@@ -229,4 +236,28 @@ func selectBinding(ctx context.Context, tx *sql.Tx, scope runapp.Scope, scene st
 		return bindingSelection{}, runapp.ErrBindingConflict
 	}
 	return bindingSelection{PolicyID: policy, RevisionID: revision, Resources: append([]resource.Reference(nil), refs...)}, nil
+}
+
+// Creation never replaces a binding already owned by another Spec.
+func (s *Specs) insertCreationBinding(ctx context.Context, tx *sql.Tx, scope spec.Scope, scene, policy string, ref resource.Reference) error {
+	if !ref.Valid() {
+		return spec.ErrInvalid
+	}
+	// Every binding writer already holds the Scene lock, including creation.
+	var exists int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM policy_binding WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND project_id=(SELECT id FROM project WHERE project_id=$2) AND scene_key=$3 AND resource_kind=$4 AND resource_id=$5`, scope.WorkspaceID, scope.ProjectID, scene, ref.Kind, ref.ID).Scan(&exists); err != nil {
+		return specError(err)
+	}
+	if exists > 0 {
+		return spec.ErrConflict
+	}
+	_, err := tx.ExecContext(ctx, `INSERT INTO policy_binding(workspace_id,project_id,scene_key,resource_kind,resource_id,policy_id)
+ VALUES((SELECT id FROM workspace WHERE workspace_id=$1),(SELECT id FROM project WHERE project_id=$2),$3,$4,$5,(SELECT id FROM policy WHERE policy_id=$6))`, scope.WorkspaceID, scope.ProjectID, scene, ref.Kind, ref.ID, policy)
+	if err != nil && s.driver.isDuplicate(err) {
+		return spec.ErrConflict
+	}
+	if err != nil {
+		return specError(err)
+	}
+	return auditBindingChange(ctx, tx, scope, scene, nil, &spec.Binding{Resource: ref, PolicyID: policy})
 }

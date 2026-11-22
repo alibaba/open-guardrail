@@ -313,8 +313,7 @@
             data-i="console"
             >打开 OpenGuardrail 控制台 →</a
           ><span data-i="consoleNote">
-            用户名 demo，密码为启动时设置的密码。上面的 Run
-            详情无需另行登录。</span
+            直接打开控制台即可查看同一本地服务中的 Run。</span
           >
         </p>
         <p class="boundary" data-i="boundary">
@@ -386,7 +385,7 @@
           historyMeta: (n, limit) => `${n} 次检查 · 每次最多 ${limit} 个文件`,
           console: "打开 OpenGuardrail 控制台 →",
           consoleNote:
-            " 用户名 demo，密码为启动时设置的密码。上面的 Run 详情无需另行登录。",
+            " 直接打开控制台即可查看同一本地服务中的 Run。",
           boundary:
             "OpenGuardrail 校验提交并保存决策。示例程序负责读取文件和检查规则；删除工具执行前核验 Run、证据、有效期及文件状态。此示例不提供操作系统级沙箱，也不代表模型能力测试。",
           footer:
@@ -507,7 +506,7 @@
           historyMeta: (n, limit) => `${n} ${n === 1 ? "check" : "checks"} · limit: ${limit} ${limit === 1 ? "file" : "files"}`,
           console: "Open the OpenGuardrail console →",
           consoleNote:
-            " Username: demo. Use the password chosen at startup. Run details above need no additional login.",
+            " The console opens directly. Run details above use the same local service.",
           boundary:
             "OpenGuardrail validates submissions and stores decisions. This example reads files and evaluates rules; the deletion tool verifies the Run, evidence, expiry and current files before acting. This is not an OS sandbox or a model benchmark.",
           footer:

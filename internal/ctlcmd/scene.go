@@ -20,8 +20,8 @@ import (
 const sceneResponseLimit = 512 * 1024
 
 type sceneOptions struct {
-	server, sessionFile, key, name, specFile string
-	publish                                  bool
+	server, key, name, specFile string
+	publish                     bool
 }
 
 type sceneApplyResult struct {
@@ -47,11 +47,7 @@ func runScene(args []string, out io.Writer) error {
 	if err != nil {
 		return usageError(err.Error())
 	}
-	session, err := readSession(identityOptions{server: opts.server, sessionFile: opts.sessionFile})
-	if err != nil {
-		return err
-	}
-	client, err := newSceneClient(opts.server, session.Token)
+	client, err := newSceneClient(opts.server, "")
 	if err != nil {
 		return err
 	}
@@ -63,29 +59,12 @@ func parseSceneOptions(args []string, out io.Writer) (sceneOptions, error) {
 	flags := flag.NewFlagSet("scene apply", flag.ContinueOnError)
 	flags.SetOutput(out)
 	flags.StringVar(&opts.server, "server", defaultServerURL(), "service origin (HTTPS or literal loopback HTTP)")
-	flags.StringVar(&opts.sessionFile, "session-file", "", "private administrator CLI session file (defaults to the OS user configuration directory)")
 	flags.StringVar(&opts.key, "key", "", "stable Scene key")
 	flags.StringVar(&opts.name, "name", "", "Scene display name")
 	flags.StringVar(&opts.specFile, "spec", "", "UTF-8 Spec YAML file")
 	flags.BoolVar(&opts.publish, "publish", false, "publish and activate the saved draft")
 	if err := flags.Parse(args); err != nil {
 		return opts, err
-	}
-	sessionFileProvided := false
-	flags.Visit(func(current *flag.Flag) {
-		if current.Name == "session-file" {
-			sessionFileProvided = true
-		}
-	})
-	if opts.sessionFile == "" {
-		if sessionFileProvided {
-			return opts, usageError("--session-file cannot be empty")
-		}
-		defaultSession, _, err := defaultSessionFile()
-		if err != nil {
-			return opts, err
-		}
-		opts.sessionFile = defaultSession
 	}
 	if flags.NArg() != 0 {
 		return opts, usageError("unexpected positional arguments")
