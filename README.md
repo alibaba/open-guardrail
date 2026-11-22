@@ -59,9 +59,9 @@ The local walkthrough uses synthetic data for a `checkout` service rollout. The 
 
 The agent submits the observation window, affected instances, redacted findings and references for review. The confirmed impact on business data yields `BLOCKED`. The local Guardrail records `DENY`. The example runs offline from any release system. In a live rollout, the execution tool applies the decision to pause or resume. If required logs are unavailable and the other evidence is inconclusive, the agent submits `UNKNOWN`, identifies the missing evidence and Guardrail records `DENY`.
 
-[![First-batch Run replay. Metrics and alerts are clear, but a rejected write leaves a captured order pending. The agent submits BLOCKED and Guardrail returns DENY.](docs/media/first-batch-run.gif)](docs/media/first-batch-run.mp4)
+[![First-batch Run replay. Metrics and alerts are clear, but a rejected write leaves a captured order pending. The agent submits BLOCKED and Guardrail returns DENY.](docs/media/first-batch-run.en.gif)](docs/media/first-batch-run.en.gif)
 
-[Watch the 30-second run with playback controls (MP4)](docs/media/first-batch-run.mp4)
+[Watch the 30-second run (animated GIF)](docs/media/first-batch-run.en.gif)
 
 ## Quickstart
 
