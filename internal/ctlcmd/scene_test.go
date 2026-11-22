@@ -21,13 +21,12 @@ func TestSceneApplyInitializeAndUpdate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(state.serveHTTP))
 	defer server.Close()
 	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, server.URL, "ogs_synthetic")
 	file := filepath.Join(dir, "recovery.yaml")
 	firstYAML := "apiVersion: guardrail.open/v1alpha1\nkind: GuardrailSpec\n"
 	if err := os.WriteFile(file, []byte(firstYAML), 0600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"scene", "apply", "--server", server.URL, "--session-file", session, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
+	args := []string{"scene", "apply", "--server", server.URL, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
 	first := runSceneApplyForTest(t, args)
 	if !first.Created || first.Revision == nil || (first.Revision.RevisionNumber == nil || *first.Revision.RevisionNumber != 1) || first.Scene.DefaultPolicyId == nil {
 		t.Fatalf("first=%+v", first)
@@ -55,13 +54,12 @@ func TestSceneApplyRepeatDoesNotDownloadLargeHistory(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(state.serveHTTP))
 	defer server.Close()
 	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, server.URL, "ogs_synthetic")
 	file := filepath.Join(dir, "recovery.yaml")
 	yaml := "apiVersion: guardrail.open/v1alpha1\nkind: GuardrailSpec\n"
 	if err := os.WriteFile(file, []byte(yaml), 0600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"scene", "apply", "--server", server.URL, "--session-file", session, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
+	args := []string{"scene", "apply", "--server", server.URL, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
 	first := runSceneApplyForTest(t, args)
 	if first.Revision == nil {
 		t.Fatal("initialization returned no Revision")
@@ -91,12 +89,11 @@ func TestSceneApplyRequiresPublishForNewScene(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(state.serveHTTP))
 	defer server.Close()
 	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, server.URL, "ogs_synthetic")
 	file := filepath.Join(dir, "recovery.yaml")
 	if err := os.WriteFile(file, []byte("draft"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	err := run([]string{"scene", "apply", "--server", server.URL, "--session-file", session, "--key", "recovery", "--name", "Recovery", "--spec", file}, &bytes.Buffer{})
+	err := run([]string{"scene", "apply", "--server", server.URL, "--key", "recovery", "--name", "Recovery", "--spec", file}, &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "require --publish") || state.inits != 0 {
 		t.Fatalf("err=%v inits=%d", err, state.inits)
 	}
@@ -107,12 +104,11 @@ func TestSceneApplyReportsDraftWhenPublishFails(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(state.serveHTTP))
 	defer server.Close()
 	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, server.URL, "ogs_synthetic")
 	file := filepath.Join(dir, "recovery.yaml")
 	if err := os.WriteFile(file, []byte("first"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"scene", "apply", "--server", server.URL, "--session-file", session, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
+	args := []string{"scene", "apply", "--server", server.URL, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
 	runSceneApplyForTest(t, args)
 	if err := os.WriteFile(file, []byte("changed"), 0600); err != nil {
 		t.Fatal(err)
@@ -126,28 +122,16 @@ func TestSceneApplyReportsDraftWhenPublishFails(t *testing.T) {
 	}
 }
 
-func TestSceneApplyRejectsProjectKeyAsSession(t *testing.T) {
-	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, "http://127.0.0.1:8080", "ogk_synthetic")
-	file := filepath.Join(dir, "recovery.yaml")
-	_ = os.WriteFile(file, []byte("draft"), 0600)
-	err := run([]string{"scene", "apply", "--session-file", session, "--key", "recovery", "--name", "Recovery", "--spec", file}, &bytes.Buffer{})
-	if err == nil || !strings.Contains(err.Error(), "session file does not match") {
-		t.Fatalf("err=%v", err)
-	}
-}
-
 func TestSceneApplyDoesNotActivateReplacedDraft(t *testing.T) {
 	state := &sceneAPITestState{}
 	server := httptest.NewServer(http.HandlerFunc(state.serveHTTP))
 	defer server.Close()
 	dir := t.TempDir()
-	session := writeSceneCredential(t, dir, server.URL, "ogs_synthetic")
 	file := filepath.Join(dir, "recovery.yaml")
 	if err := os.WriteFile(file, []byte("initial"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"scene", "apply", "--server", server.URL, "--session-file", session, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
+	args := []string{"scene", "apply", "--server", server.URL, "--key", "recovery", "--name", "Recovery", "--spec", file, "--publish"}
 	initial := runSceneApplyForTest(t, args)
 	if err := os.WriteFile(file, []byte("reviewed by this caller"), 0600); err != nil {
 		t.Fatal(err)
@@ -194,15 +178,6 @@ func runSceneApplyForTest(t *testing.T, args []string) sceneApplyResult {
 	}
 	return result
 }
-func writeSceneCredential(t *testing.T, dir, server, token string) string {
-	t.Helper()
-	path := filepath.Join(dir, "session.json")
-	data, _ := json.Marshal(credentialFile{Server: server, Token: token})
-	if err := os.WriteFile(path, data, 0600); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
 
 type sceneAPITestState struct {
 	mu                                 sync.Mutex
@@ -222,7 +197,7 @@ func (s *sceneAPITestState) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{"apiVersions":["v1alpha1"],"cli":{"minimumVersion":"0.1.0-alpha.0","maximumVersionExclusive":"0.2.0"},"features":[],"storage":{"supportLevel":"official-local","multiInstance":false}}`)
 		return
 	}
-	if r.Header.Get("Authorization") != "Bearer ogs_synthetic" {
+	if r.Header.Get("Authorization") != "" {
 		writeSceneTestError(w, 401, "UNAUTHENTICATED")
 		return
 	}

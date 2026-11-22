@@ -1,7 +1,8 @@
 # Public extension contracts
 
-Status: planned. These directories contain design only; no provider interface is
-implemented or supported yet.
+Status: ChangeSet enrichment and binding candidates have optional v1alpha1 HTTP
+adapters under `resource/`. Identity, authorization and delivery providers are
+deferred.
 
 Contracts describe the external facts needed by the shared application. Organize
 them by identity, authorization and delivery capability. A provider supplies facts;

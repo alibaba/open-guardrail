@@ -1,5 +1,6 @@
 # Agent plugins (cleanup preview)
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](../../docs/access.md).
 
 For a matching versioned installation and independent trial, see the [installation guide](https://github.com/alibaba/open-guardrail/blob/main/docs/plugin-trial.md).
 
@@ -95,12 +96,6 @@ Status returns the latest ten owned Run summaries. Pass `runId` to read one
 owned Run's frozen revision and accepted Submission snapshot without duplicating
 large evidence in the list. The reported removed-file
 list is local execution state, distinct from the authoritative decision/evidence.
-
-Each pi conversation or DSH Agent owns its own worker, local service, one-hour
-machine key and directory. No existing administrator session or database is
-reused. Tools return no credentials or private paths. Shutdown, pi session switch
-and plugin unload stop owned services and remove temporary data. Records are
-**ephemeral**: inspect/capture non-secret status results while the session lives.
 
 ## Failure and trust boundary
 

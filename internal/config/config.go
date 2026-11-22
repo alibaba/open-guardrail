@@ -17,11 +17,13 @@ import (
 )
 
 type Config struct {
-	PublicURL string   `yaml:"public_url"`
-	Listen    string   `yaml:"listen"`
-	DataDir   string   `yaml:"data_dir"`
-	Database  Database `yaml:"database"`
+	PublicURL                string   `yaml:"public_url"`
+	Listen                   string   `yaml:"listen"`
+	DataDir                  string   `yaml:"data_dir"`
+	Database                 Database `yaml:"database"`
+	TrustedOperatorNamespace string   `yaml:"trusted_operator_namespace"`
 }
+
 type Database struct {
 	Driver         string `yaml:"driver"`
 	URL            string `yaml:"url"`
@@ -113,5 +115,9 @@ func Load(path, listen, dataDir string) (Config, error) {
 	if err != nil {
 		return c, fmt.Errorf("resolve data directory: %w", err)
 	}
+	if c.TrustedOperatorNamespace != "" && !driverName.MatchString(c.TrustedOperatorNamespace) {
+		return c, errors.New("trusted_operator_namespace must be a valid namespace")
+	}
+
 	return c, nil
 }

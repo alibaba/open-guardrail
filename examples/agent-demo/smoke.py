@@ -2,12 +2,10 @@
 """Live service/CLI/Jenkins gate smoke for outcomes and forged Evidence (no model)."""
 
 import argparse
-import getpass
 import json
 from datetime import datetime, timezone
 import os
 from pathlib import Path
-import secrets
 import shutil
 import socket
 import subprocess
@@ -67,32 +65,13 @@ def options(argv=None):
         description="Run four synthetic Recovery cases against a temporary local service.")
     parser.add_argument("--keep-running", action="store_true",
                         help="keep the service and Runs available in the browser until Ctrl-C")
-    parser.add_argument("--password-stdin", action="store_true",
-                        help="read the temporary demo administrator password from stdin")
     args = parser.parse_args(argv)
     if sys.version_info < (3, 9):
         parser.error("Python 3.9+ is required. Use a newer Python, or run the native "
                      "binaries with the manual walkthrough in docs/getting-started.md.")
-    if args.password_stdin and not args.keep_running:
-        parser.error("--password-stdin requires --keep-running")
     return args
 
 
-def administrator_password(args):
-    if not args.keep_running:
-        return secrets.token_urlsafe(24)
-    if args.password_stdin:
-        password = sys.stdin.readline().rstrip("\r\n")
-    else:
-        if not sys.stdin.isatty():
-            raise ValueError("--keep-running needs a terminal for the hidden password prompt; "
-                             "use --password-stdin for automation")
-        password = getpass.getpass("Choose a password for the temporary demo administrator: ")
-        if password != getpass.getpass("Confirm password: "):
-            raise ValueError("passwords do not match")
-    if len(password) < 6 or len(password.encode("utf-8")) > 128:
-        raise ValueError("password must contain at least 6 characters and at most 128 UTF-8 bytes")
-    return password
 
 
 def wait_for_service(service, origin):
@@ -114,7 +93,7 @@ def wait_for_service(service, origin):
 
 
 def inspect_in_browser(service, origin):
-    print(f"Open {origin} and sign in as demo with the password you chose.", flush=True)
+    print(f"Open {origin} directly.", flush=True)
     print("Select Runs to inspect the four synthetic assessments and their evidence.", flush=True)
     print("Press Ctrl-C to stop the service and remove its temporary data and credentials.",
           flush=True)
@@ -128,7 +107,6 @@ def inspect_in_browser(service, origin):
 
 def main(argv=None):
     args = options(argv)
-    password = administrator_password(args)
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="open-guardrail-demo-") as temporary:
         work = Path(temporary)
@@ -156,8 +134,7 @@ def main(argv=None):
         origin = f"http://127.0.0.1:{port}"
         environment = {key: value for key, value in os.environ.items()
                        if not key.startswith("OPEN_GUARDRAIL_") and key != "DATABASE_URL"}
-        environment.update(OPEN_GUARDRAIL_URL=origin,
-                           OPEN_GUARDRAIL_SESSION_FILE=str(work / "session.json"))
+        environment.update(OPEN_GUARDRAIL_URL=origin)
         server_log_path = work / "server.log"
         with server_log_path.open("w", encoding="utf-8") as server_log:
             service = subprocess.Popen((str(server_bin), "serve", "--listen", f"127.0.0.1:{port}",
@@ -166,34 +143,18 @@ def main(argv=None):
         try:
             wait_for_service(service, origin)
 
-            try:
-                read_json(origin + "/runtime/v1alpha1/runs")
-            except HTTPError as failure:
-                with failure:
-                    denied = json.load(failure)
-                    trace_id = failure.headers.get("X-Trace-ID")
-                if failure.code != 401 or not trace_id or denied.get("traceId") != trace_id:
-                    raise AssertionError("unauthenticated response lost its correlation ID")
-            else:
-                raise AssertionError("Run orchestration accepted an unauthenticated request")
+            read_json(origin + "/runtime/v1alpha1/runs")
 
             def cli(*args, input_text=None):
                 return run(str(cli_bin), *args, env=environment, input_text=input_text)
 
-            cli("bootstrap", "init", "--username", "demo", "--password-stdin",
-                input_text=password + "\n")
-            cli("auth", "login", "--username", "demo", "--password-stdin",
-                input_text=password + "\n")
             scene_args = ("scene", "apply", "--key", "recovery", "--name", "Recovery",
                           "--spec", str(ROOT / "examples/policies/recovery.yaml"), "--publish")
             cli(*scene_args)
             repeated_scene = json.loads(cli(*scene_args))
             if repeated_scene["draftChanged"] or repeated_scene["revision"]["revisionNumber"] != 1:
                 raise AssertionError("repeated Scene application changed the active Revision")
-            key_path = work / "project-key.json"
-            cli("auth", "create-key", "--result-file", str(key_path))
-            admin_token = json.loads(Path(environment["OPEN_GUARDRAIL_SESSION_FILE"]).read_text())["token"]
-            private_values = [password, admin_token, json.loads(key_path.read_text())["token"]]
+            private_values = []
             completed = {}
             for case in ("healthy", "unhealthy", "unknown", "forged"):
                 fixture = json.loads((EXAMPLE / (("healthy" if case == "forged" else case) + ".json")).read_text(encoding="utf-8"))
@@ -207,7 +168,7 @@ def main(argv=None):
                 change = work / (case + "-change.json")
                 private_json(change, fixture["changeSet"])
                 token = work / (case + "-token.json")
-                created = json.loads(cli("run", "create", "--key-file", str(key_path),
+                created = json.loads(cli("run", "create",
                                          "--scene", "recovery", "--change-set", str(change),
                                          "--operation-id", "create-" + case,
                                          "--submission-credential-file", str(token)))
@@ -224,7 +185,7 @@ def main(argv=None):
                         "observedAt": datetime.now(timezone.utc).isoformat(),
                         "querySummary": "Read synthetic health observation",
                         "resultSummary": json.dumps(health, sort_keys=True)}]}]})
-                revision = json.loads(cli("run", "revision", "--key-file", str(key_path), created["id"]))
+                revision = json.loads(cli("run", "revision",  created["id"]))
                 if revision["id"] != created["policyRevisionId"] or revision["digest"] != created["specDigest"]:
                     raise AssertionError("Run-scoped Revision disagrees with frozen reference")
                 agent_work = work / (case + "-agent")
@@ -236,15 +197,15 @@ def main(argv=None):
                 run(sys.executable, "-m", "integrations.jenkins.agent_client", "submit",
                     "--work-dir", str(agent_work), "--submission", str(submission),
                     "--cli", str(cli_bin), env=environment)
-                actual = json.loads(cli("run", "get", "--key-file", str(key_path), created["id"]))
-                accepted = json.loads(cli("run", "submission", "--key-file", str(key_path),
+                actual = json.loads(cli("run", "get",  created["id"]))
+                accepted = json.loads(cli("run", "submission",
                     "--submission-id", actual["finalSubmissionId"], created["id"]))
                 gate_state = work / (case + "-gate")
                 gate_state.mkdir(mode=0o700)
                 private_json(gate_state / "state.json", {"runId": created["id"],
                     "policyRevisionId": created["policyRevisionId"],
                     "observation": {"status": "unhealthy"} if case == "forged" else health})
-                gate_env = {**environment, "GUARDRAIL_KEY_FILE": str(key_path)}
+                gate_env = dict(environment)
                 polled = subprocess.run((sys.executable, "-m", "integrations.jenkins.adapter",
                     "--phase", "poll", "--state-dir", str(gate_state), "--cli", str(cli_bin)),
                     cwd=ROOT, env=gate_env, capture_output=True, text=True, timeout=30)
@@ -263,12 +224,23 @@ def main(argv=None):
                     raise AssertionError(f"{case}: wrong terminal Run or Evidence")
                 completed[case] = (created["id"], expected)
 
-            listed = read_json(origin + "/api/v1alpha1/runs", admin_token)
+            try:
+                read_json(origin + "/runtime/v1alpha1/runs", private_values[0])
+            except HTTPError as failure:
+                with failure:
+                    denied = json.load(failure)
+                    trace_id = failure.headers.get("X-Trace-ID")
+                if failure.code != 401 or not trace_id or denied.get("traceId") != trace_id:
+                    raise AssertionError("rejected Run credential lost its correlation ID")
+            else:
+                raise AssertionError("Run submission credential authorized a read request")
+
+            listed = read_json(origin + "/api/v1alpha1/runs")
             listed_ids = {item["id"] for item in listed["items"]}
             for case, (run_id, decision) in completed.items():
                 if run_id not in listed_ids:
                     raise AssertionError(f"{case}: missing from management list")
-                detail = read_json(origin + "/api/v1alpha1/runs/" + run_id, admin_token)
+                detail = read_json(origin + "/api/v1alpha1/runs/" + run_id)
                 if detail["decision"] != decision:
                     raise AssertionError(f"{case}: management detail disagrees")
                 print(f"{case}: {run_id} server={decision} gate={'ALLOW' if decision == 'ALLOW' and case != 'forged' else 'DENY'}",
@@ -277,9 +249,9 @@ def main(argv=None):
             records = [json.loads(line) for line in logs.splitlines()]
             if not any(record.get("trace_id") == trace_id and record.get("status") == 401
                        and record.get("route") == "GET /runtime/v1alpha1/runs" for record in records):
-                raise AssertionError("CLI failure cannot be found in standard server access logs")
+                raise AssertionError("rejected Run credential cannot be found in server access logs")
             if any(value in logs for value in private_values):
-                raise AssertionError("server access logs exposed a password or credential")
+                raise AssertionError("server access logs exposed a Run submission credential")
             print(f"All four synthetic cases passed in {time.monotonic() - started:.1f}s.",
                   flush=True)
             if args.keep_running:

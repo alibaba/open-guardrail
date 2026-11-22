@@ -1,5 +1,7 @@
 # GuardrailSpec YAML reference
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 [简体中文](i18n/guardrailspec-reference.zh-CN.md) | English
 
 A GuardrailSpec describes the checks and evidence required for one kind of
@@ -84,35 +86,12 @@ means `UNKNOWN / DENY`. See [Run evaluation](runs.md) for the submission format.
 
 ## YAML and Scene boundaries
 
-- The file must contain one UTF-8 YAML document of at most 64 KiB, 4,096 nodes
-  and nesting depth 16. Duplicate keys, anchors, aliases, custom tags, unknown
-  fields and implicit scalar coercions are rejected. Except for
-  `spec.validForSeconds`, scalar values must be YAML strings. Quote values that
-  YAML could interpret as a boolean or number.
-- `sceneKey`, `runTtlSeconds`, Project keys and the operation's `changeSet` are
-  **not** GuardrailSpec fields. A Scene has its own stable key and Run TTL;
-  `spec.validForSeconds` instead controls how long a terminal Decision remains
-  valid. The caller supplies `changeSet` when creating each Run.
-- A published Revision is immutable. Publication validates and canonicalizes
-  the YAML, assigning a content digest. A Run freezes the selected Revision and
-  digest. Comments and formatting are not policy checks.
-
 ## Publish and use it
-
-With a running service and an administrator CLI session, publish the file from
-the checkout root:
 
 ```sh
 guardrailctl scene apply --key file-cleanup --name 'File cleanup' \
   --spec ./file-cleanup.yaml --publish
 ```
-
-The first application creates the Scene, its default Policy and an active
-Revision. Repeating an unchanged publication reuses that Revision. Publishing
-changes service state; use an isolated service while experimenting. An
-orchestrator Project key can create and read Runs but cannot publish the Spec.
-See [Scenes and Specs](scenes-and-specs.md) for Draft review, activation and
-credentials, and [Getting started](getting-started.md) for a complete local flow.
 
 ## Common mistakes
 

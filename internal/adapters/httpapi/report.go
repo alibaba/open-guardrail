@@ -3,7 +3,6 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 )
 
@@ -15,7 +14,7 @@ func (s *server) GetManagedRunReport(w http.ResponseWriter, r *http.Request, id 
 	s.writeRunReport(w, r, scope, id)
 }
 func (s *server) GetRunReport(w http.ResponseWriter, r *http.Request, id string) {
-	scope, ok := s.runScope(w, r, identity.ScopeRunsRead)
+	scope, ok := s.runScope(w, r)
 	if !ok {
 		return
 	}

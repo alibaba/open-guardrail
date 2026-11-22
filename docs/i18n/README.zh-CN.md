@@ -140,7 +140,7 @@ make build
 ./bin/open-guardrail serve
 ```
 
-打开 <http://127.0.0.1:8080>，创建首个管理员账号。系统没有默认密码。
+打开 <http://127.0.0.1:8080> 即可直接使用，无需创建账号或登录。
 SQLite 将数据保存在 `./data`，无需另行部署数据库服务。
 
 ### 接下来做什么
@@ -168,7 +168,7 @@ OpenGuardrail 校验提交内容并记录决策，执行工具在操作前核验
 预览版已包含：
 
 - 独立的 Go 服务、通过 HTTP 调用服务的 CLI，以及内嵌管理界面。
-- 本地管理员初始化、浏览器与 CLI 会话，以及具有作用域和有效期限制的机器凭据。
+- 页面与 CLI 直接使用，评估提交保留绑定 Run 的凭据。
   支持列出凭据元数据、轮换密钥和撤销凭据。
 - 场景、可编辑的策略草稿，以及不可变的策略版本。
 - 冻结策略与评估上下文的 Run、中间提交和最终提交、结构化证据、超时处理和持久化决策。
@@ -212,7 +212,7 @@ OpenGuardrail 校验提交内容并记录决策，执行工具在操作前核验
 | --- | --- |
 | 运行本地示例并查看决策 | [入门指南](getting-started.zh-CN.md) |
 | 配置存储或远程服务 | [配置与存储](configuration.zh-CN.md)、[Docker 部署](docker.zh-CN.md) |
-| 管理管理员账号与凭据 | [管理员指南](local-administrator.zh-CN.md) |
+| 了解访问方式与 Run 凭据 | [访问指南](access.zh-CN.md) |
 | 编写并发布策略 | [GuardrailSpec YAML 字段手册](guardrailspec-reference.zh-CN.md)、[场景与 Spec](scenes-and-specs.zh-CN.md) |
 | 追溯一次决策 | [审计查询与 Run 排障报告](audit-and-reports.zh-CN.md) |
 | 创建 Run 并提交证据 | [Run 与提交](runs.zh-CN.md) |

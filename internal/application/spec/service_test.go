@@ -2,6 +2,7 @@ package spec
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -72,6 +73,27 @@ func TestSpecCommandsRejectInvalidDocumentsBeforePersistence(t *testing.T) {
 	}
 	if repository.calls != 0 {
 		t.Fatal("invalid document reached persistence")
+	}
+}
+
+func TestRevisionMetadataIsBoundToPublicationIdentity(t *testing.T) {
+	repository := &recordingRepository{}
+	service := New(repository)
+	ctx := context.Background()
+	if _, _, err := service.PublishPolicyRevisionWithOptions(ctx, Scope{}, "policy", policyFixture, "key", false, PublicationOptions{Metadata: json.RawMessage(`{"commit":"abc"}`)}); err != nil {
+		t.Fatal(err)
+	}
+	withMetadata := repository.publication.RequestDigest
+	if string(repository.publication.Metadata) != `{"commit":"abc"}` {
+		t.Fatal("metadata was not frozen")
+	}
+	if _, _, err := service.PublishPolicyRevision(ctx, Scope{}, "policy", policyFixture, "key", false); err != nil || repository.publication.RequestDigest == withMetadata {
+		t.Fatal("metadata did not distinguish publication retries")
+	}
+	for _, invalid := range []json.RawMessage{json.RawMessage(`[]`), json.RawMessage(`null`)} {
+		if _, _, err := service.PublishPolicyRevisionWithOptions(ctx, Scope{}, "policy", policyFixture, "bad", false, PublicationOptions{Metadata: invalid}); !errors.Is(err, ErrInvalid) {
+			t.Fatal("non-object metadata reached storage")
+		}
 	}
 }
 

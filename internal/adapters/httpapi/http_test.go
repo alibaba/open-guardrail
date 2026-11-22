@@ -15,7 +15,6 @@ import (
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
 	"github.com/alibaba/open-guardrail/internal/application/audit"
 	"github.com/alibaba/open-guardrail/internal/application/capability"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
 )
 
@@ -26,12 +25,11 @@ func TestCapabilitiesMatchRegisteredFeatures(t *testing.T) {
 		want    string
 	}{
 		{"diagnostics", Options{}, ""},
-		{"identity", Options{Identity: &identity.Service{}}, "local-administrator,project-api-key"},
-		{"specs", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,resource-policy-bindings"},
-		{"runs", Options{Identity: &identity.Service{}, ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token,run-diagnostic-report"},
-		{"all", Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{}), ModelRuns: runapp.New(&storage.Runs{})}, "local-administrator,project-api-key,scene-policy-management,immutable-policy-revisions,resource-policy-bindings,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token,run-diagnostic-report"},
-		{"audit", Options{Identity: &identity.Service{}, Audits: audit.New(&storage.AuditEvents{})}, "local-administrator,project-api-key,project-audit-query"},
-		{"specs without identity", Options{ModelSpecs: spec.New(&storage.Specs{})}, ""},
+
+		{"specs", Options{ModelSpecs: spec.New(&storage.Specs{})}, "scene-policy-management,immutable-policy-revisions,resource-policy-bindings"},
+		{"runs", Options{ModelRuns: runapp.New(&storage.Runs{})}, "policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token,run-diagnostic-report"},
+		{"all", Options{ModelSpecs: spec.New(&storage.Specs{}), ModelRuns: runapp.New(&storage.Runs{})}, "scene-policy-management,immutable-policy-revisions,resource-policy-bindings,policy-revision-runs,explicit-revision-run-scope,multi-submission-decision,run-expiry-decision-validity,run-scoped-submission-token,run-diagnostic-report"},
+		{"audit", Options{Audits: audit.New(&storage.AuditEvents{})}, "project-audit-query"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			handler := New(checker{}, tc.options)
@@ -45,7 +43,7 @@ func TestCapabilitiesMatchRegisteredFeatures(t *testing.T) {
 				t.Fatalf("unexpected capabilities: %s", response.Body.String())
 			}
 			// Constructing another handler must not change this handler's features.
-			New(checker{}, Options{Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{})})
+			New(checker{}, Options{ModelSpecs: spec.New(&storage.Specs{})})
 			again := httptest.NewRecorder()
 			handler.ServeHTTP(again, httptest.NewRequest("GET", "/api/v1alpha1/meta/capabilities", nil))
 			if again.Body.String() != response.Body.String() {
@@ -82,7 +80,7 @@ func TestHTTP(t *testing.T) {
 		{"/api/v1alpha1/meta/version", nil, 200, "version"},
 		{"/api/v1alpha1/meta/capabilities", nil, 200, "v1alpha1"},
 		{"/", nil, 200, "OpenGuardrail"},
-		{"/runs.js", nil, 200, "Run history"},
+		{"/runs.js", nil, 200, "Standalone management"},
 		{"/select-arrow.svg", nil, 200, "stroke=\"#5b625e\""},
 		{"/favicon.svg", nil, 200, "fill=\"#16654d\""},
 		{"/openapi.yaml", nil, 200, "openapi: 3.0.3"},

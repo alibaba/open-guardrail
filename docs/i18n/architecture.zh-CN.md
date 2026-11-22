@@ -1,5 +1,7 @@
 # 运行时架构
 
+页面、CLI 和管理 API 均可直接使用，无需账号或登录；提交评估仍需绑定 Run 的提交凭据。详见[访问指南](access.zh-CN.md)。
+
 本文描述当前已经存在的代码。目标产品决策记录在 [ADR 0001](../adr/0001-product-baseline.md)，实现顺序见[仓库中的中文开发路线图](development-roadmap.zh-CN.md)（贡献者文档）。
 
 面向调用方的模型和阅读路径见[核心概念](../concepts.md)及[文档目录](../README.md)。[README 架构图](../../README.md#target-architecture)包含规划中的组件；[快速开始流程图](../getting-started.md#evaluation-flow)展示已经实现的评估闭环。
@@ -30,17 +32,13 @@
 
 ## 明确的实现范围
 
-管理 UI 是内嵌静态页面，不需要前端构建。未来的组合和 Provider 目录目前只有设计 README，不定义受支持的 Go API，也不增加运行时行为，见[包布局](../extensions.md)。当前范围包括本地管理员引导和会话，见[管理员指南](../local-administrator.md)。
+管理 UI 是内嵌静态页面，不需要前端构建。未来的组合和 Provider 目录目前只有设计 README，不定义受支持的 Go API，也不增加运行时行为，见[包布局](../extensions.md)。当前范围包括本地管理员引导和会话，见[访问指南](../access.md)。
 
 Scene 设置保存在 `scene`，Policy 元数据保存在 `policy`。可编辑草稿和已发布内容都保存在 `policy_revision`。`internal/domain/spec` 负责文档校验、规范 JSON 和摘要。草稿可以在校验前保存；发布会校验并冻结修订。激活是独立的比较并交换更新。草稿编辑以最后一次写入生效的语义更新同一修订行。键、约束和初始化见 [ADR 0002](../adr/0002-persistence-model.md)。
 
 `internal/application/spec.Service` 校验和规范化文档，并为 Scene 初始化和修订发布准备请求身份。HTTP 处理器调用这个服务。存储端口接受准备好的命令，保持 Project / Scene / Policy 加锁顺序、已审阅草稿的精确比较、幂等重放检查和原子审计写入。文档校验不再需要持有数据库写锁；发布时间仍通过延迟调用的应用时钟，在取得必要持久化锁后采样。
 
 运行时 API 根据 `sceneKey` 和任意 JSON 对象 `changeSet` 创建 Run。机器角色是签发模板；每个密钥持久化完整有效权限范围，端点按范围授权。限定 Project 范围的 `RUN_ORCHESTRATOR` 密钥获得 `runs:create`、`runs:read` 和 `submission-credential:rotate`。可信集成密钥可以额外获得 `runs:create-with-revision`，以选择上游系统已经冻结的不可变修订。普通编排器密钥通过精确资源绑定选择修订，未绑定资源时使用 Scene 默认激活修订。独立的 `POLICY_PUBLISHER` 密钥获得 `policies:create` 和 `revisions:publish`，不能创建 Run 或编辑管理员草稿。
-
-选中的策略修订和 Scene TTL，与 `policyId`、`policyRevisionId`、Spec 摘要及规范化 ChangeSet 一起冻结在 Run 中。Run 从 OPEN 开始，创建时只返回一次明文提交凭据，持久化仅保存其摘要。Run 处于 OPEN 时，Project 密钥可以轮换提交凭据。匹配的 Run 凭据携带基线编号提交完整快照；中间快照推进基线，最终快照原子地产生一个 Result 和 Decision，并将 Run 转为 FINISHED。超期未完成的 Run 转为 EXPIRED，已完成 Run 保持终态。Policy Revision 包含不可变 YAML 和规范 Spec，因此 Run 不复制这些内容。
-
-身份应用层负责真正的初始化和登录用例，以及 Project 密钥有效期和状态转换规则。密钥创建默认有效期为 90 天；未显式修改时，轮换保留现有过期时间。管理员会话与密钥签发、按版本检查的轮换或幂等撤销及对应审计写入，在同一身份事务中再次校验。元数据分页不包含秘密或已存储哈希。认证在数据库读取后采样时间，因此连接池等待不会延长凭据寿命。当前引导逻辑和 HTTP 处理器仍依赖本地身份服务。目录 README 中所述的公开企业组合和可替换身份仍在规划。
 
 该服务未内置内部平台依赖、Provider 凭据、私有端点或遥测。公开 API 由 `api/openapi/openapi.yaml` 描述。
 

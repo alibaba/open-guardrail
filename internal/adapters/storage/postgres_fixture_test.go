@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alibaba/open-guardrail/internal/application/identity"
+	opaque "github.com/alibaba/open-guardrail/internal/application/token"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 )
@@ -29,7 +29,7 @@ func isolatedPostgresDSN(t *testing.T) string {
 	t.Cleanup(func() { admin.Close() })
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	schema := "guardrail_test_" + strings.ToLower(identity.RandomToken("")[:24])
+	schema := "guardrail_test_" + strings.ToLower(opaque.RandomToken("")[:24])
 	quoted := pgx.Identifier{schema}.Sanitize()
 	if _, err = admin.ExecContext(ctx, "CREATE SCHEMA "+quoted); err != nil {
 		t.Fatal(err)

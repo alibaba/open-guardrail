@@ -17,12 +17,17 @@
 | PostgreSQL 数据库 DSN | `database.url` | `DATABASE_URL` | 空 |
 | 数据库连接池大小 | `database.max_connections` | — | `10` |
 | 结构迁移模式 | `database.migrations` | `OPEN_GUARDRAIL_DATABASE_MIGRATIONS` | `auto` |
+| 信任调用方身份的 API 模式 | `trusted_operator_namespace` | — | 空，表示关闭 |
 
 `--listen` 和 `--data-dir` 覆盖对应设置。使用 `DATABASE_URL` 时必须显式选择 `postgres`。未知 YAML 字段会导致校验失败；配置文件必须恰好包含一个 YAML 文档，大小不超过 1 MiB。日志和 API 错误不会包含凭据或原始驱动错误。
 
 监听非回环地址时，必须显式配置 HTTPS `public_url`（或 `OPEN_GUARDRAIL_PUBLIC_URL`），并置于可信 TLS 反向代理之后；不能直接暴露未加密的后端。默认回环地址不需要代理。
 
-`public_url` 必须是 HTTPS 源，不能包含路径、末尾斜杠、用户信息、查询参数或片段。客户端使用非标准端口时，也要包含端口，例如 `https://guardrail.example.com:8443`。配置对外源后，即使后端监听回环地址，也必须使用远程引导令牌流程。
+`public_url` 必须是 HTTPS 源，不能包含路径、末尾斜杠、用户信息、查询参数或片段。客户端使用非标准端口时，也要包含端口，例如 `https://guardrail.example.com:8443`。回环和代理部署均可直接使用，无需初始化账号或令牌。
+
+### 无需本地管理员的 API 部署
+
+服务启动时自动准备默认 workspace/project。设置 `trusted_operator_namespace: example`，即可信任调用方通过 JSON `operator` 或 `X-Operator` 传入的身份，不做凭据验证，也不创建本地管理员。身份标识为 `example:<operator>`，新建 Spec 时成为初始维护者，后续修改按该 Spec 的维护者校验。缺失、无效、重复或冲突的身份返回 400。此模式关闭管理控制台和本地身份接口，保留 CSRF、幂等及维护者校验。
 
 ### 结构迁移模式
 
@@ -32,7 +37,7 @@
 
 ### HTTPS 代理后的 Docker 部署
 
-完整 Docker Compose 方案包括 TLS、私有后端网络、持久化 SQLite 和首个管理员初始化，见 [Docker 部署](../docker.md)。镜像使用 UID / GID `65532:65532`，在私有网络内监听 `0.0.0.0:8080`，数据保存在 `/data`。必须提供 `OPEN_GUARDRAIL_PUBLIC_URL`，镜像没有内置的对外源。
+完整 Docker Compose 方案包括 TLS、私有后端网络、持久化 SQLite 和首个直接访问控制台，见 [Docker 部署](../docker.md)。镜像使用 UID / GID `65532:65532`，在私有网络内监听 `0.0.0.0:8080`，数据保存在 `/data`。必须提供 `OPEN_GUARDRAIL_PUBLIC_URL`，镜像没有内置的对外源。
 
 ## 数据库选择
 

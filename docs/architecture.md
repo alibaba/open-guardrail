@@ -1,5 +1,7 @@
 # Runtime architecture
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 This document describes the code that exists today. Target product decisions are
 recorded in [ADR 0001](adr/0001-product-baseline.md), and their implementation order
 is tracked in the [development roadmap](development-roadmap.md).
@@ -92,8 +94,7 @@ The UI is embedded static management pages with no frontend build requirement.
 Future composition and provider directories contain design READMEs only; they do
 not define supported Go APIs or add runtime behavior. See the
 [package layout](extensions.md).
-The current scope includes local administrator bootstrap and sessions; see the
-[administrator guide](local-administrator.md).
+Management is directly available; see [Access](access.md).
 Scene settings live in `scene`; Policy metadata lives in `policy`.
 Both editable Drafts and published content live in `policy_revision`. `internal/domain/spec` owns document validation,
 canonical JSON and the digest. Drafts may be saved before validation; publishing
@@ -108,38 +109,6 @@ retains project/Scene/Policy lock ordering, exact reviewed-Draft comparisons,
 idempotent replay checks and atomic audit writes. Validation no longer requires
 holding database write locks. Publication timestamps are still sampled after
 the required persistence locks through a deferred application clock.
-
-The runtime API creates a Run from `sceneKey` and an arbitrary JSON object
-`changeSet`. Machine roles are issuance templates; each key persists its complete
-effective scopes and endpoint authorization checks those scopes. A Project-scoped
-`RUN_ORCHESTRATOR` key receives `runs:create`, `runs:read` and
-`submission-credential:rotate`. A trusted integration key may additionally receive
-`runs:create-with-revision` so it can select an immutable Revision already frozen by
-an upstream system. Ordinary orchestrator keys select through exact resource bindings, or use the
-Scene default active Revision when no resources are bound. A separate `POLICY_PUBLISHER` key receives `policies:create` and
-`revisions:publish`; it cannot create Runs or edit an administrator's Draft.
-The selected Policy Revision and Scene TTL are frozen in the Run
-with its `policyId`, `policyRevisionId`, Spec digest and normalized ChangeSet.
-A Run starts OPEN and creation returns its plaintext Submission Credential once;
-only a digest is persisted. A Project key can rotate the credential while OPEN.
-The matching Run credential submits complete Snapshots with a baseline number.
-Intermediate Snapshots advance the baseline. A final Snapshot atomically creates
-one Result and Decision and moves the Run to FINISHED. An overdue unfinished Run
-moves to EXPIRED. A finished Run retains its terminal state. The Policy Revision
-contains the immutable YAML and canonical Spec, so the Run does not copy them.
-
-The identity application layer owns actual initialization and login use cases.
-It also owns Project-key lifetime and transition rules. Key creation defaults to
-90 days; rotation preserves the existing expiry unless explicitly changed.
-Administrator sessions are rechecked in the same identity transaction as key
-issuance, version-checked rotation or idempotent revocation and their audit writes.
-Metadata pages never contain secrets or stored hashes. Authentication samples
-time after database reads, so pool waits do not extend a credential's lifetime.
-The current bootstrap and HTTP handlers still depend on the local identity service.
-Public enterprise composition and replaceable identity remain planned, as documented
-in the directory READMEs.
-No internal platform dependency, provider credential, private endpoint or telemetry
-is built into this service. Public APIs are documented by api/openapi/openapi.yaml.
 
 ## Build choices
 

@@ -11,9 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alibaba/open-guardrail/internal/adapters/security"
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
 	"github.com/alibaba/open-guardrail/internal/config"
@@ -43,28 +41,8 @@ func TestModelHTTPFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	identities := identity.New(store.Identity(), security.Passwords{})
-	if _, err = identities.BootstrapLocal(ctx, identity.BootstrapRequest{Username: "admin", Password: "synthetic-password"}); err != nil {
-		t.Fatal(err)
-	}
-	login, err := identities.Login(ctx, identity.LoginRequest{Username: "admin", Password: "synthetic-password", Kind: "cli"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	key, err := identities.CreateAPIKey(ctx, login.Token, "cli", "RUN_ORCHESTRATOR")
-	if err != nil {
-		t.Fatal(err)
-	}
-	revisionKey, err := identities.CreateAPIKey(ctx, login.Token, "cli", "RUN_ORCHESTRATOR", identity.ScopeRunsCreateWithRevision)
-	if err != nil {
-		t.Fatal(err)
-	}
-	policyKey, err := identities.CreateAPIKey(ctx, login.Token, "cli", "POLICY_PUBLISHER")
-	if err != nil {
-		t.Fatal(err)
-	}
 	runs := &pausingSubmissionRepository{Repository: store.Runs(), entered: make(chan struct{}), resume: make(chan struct{})}
-	handler := New(store, Options{Identity: identities, ModelSpecs: spec.New(store.Specs()), ModelRuns: runapp.New(runs), Origin: "https://guardrail.example"})
+	handler := New(store, Options{ModelSpecs: spec.New(store.Specs()), ModelRuns: runapp.New(runs), Origin: "https://guardrail.example"})
 	call := func(method, path, token, idem string, body any) *httptest.ResponseRecorder {
 		t.Helper()
 		data, _ := json.Marshal(body)
@@ -89,17 +67,30 @@ func TestModelHTTPFlow(t *testing.T) {
 			t.Fatalf("got %d want %d: %s", out.Code, status, out.Body.String())
 		}
 	}
-	init := call("POST", "/api/v1alpha1/scenes/recovery:initialize", login.Token, "init-1", map[string]any{"name": "Recovery", "defaultPolicyName": "default", "yaml": sampleHTTPSpec})
+	init := call("POST", "/api/v1alpha1/scenes/recovery:initialize", "", "init-1", map[string]any{"name": "Recovery", "defaultPolicyName": "default", "yaml": sampleHTTPSpec})
 	expect(init, 201)
-	denied := call("POST", "/api/v1alpha1/scenes/recovery/policies", key.APIKey, "p-denied", map[string]any{"name": "from-run-key"})
-	expect(denied, 403)
-	var deniedProblem struct {
-		Code string `json:"code"`
+	scenePath := "/api/v1alpha1/scenes/plugin-scene"
+	configured := map[string]any{"changeSet": map[string]string{"url": "https://plugin.example.com/custom/enrich"}}
+	sceneInput := map[string]any{"name": "Plugin scene", "defaultPolicyName": "default", "yaml": sampleHTTPSpec, "plugins": configured}
+	expect(call("POST", scenePath+":initialize", "", "plugin-init", sceneInput), 201)
+	expect(call("POST", scenePath+":initialize", "", "plugin-init", sceneInput), 200)
+	sceneInput["plugins"] = map[string]any{}
+	expect(call("POST", scenePath+":initialize", "", "plugin-init", sceneInput), 409)
+	expect(call("PATCH", scenePath, "", "", map[string]any{"runTtlSeconds": 3600}), 200)
+	expect(call("PATCH", scenePath, "", "", map[string]any{"plugins": map[string]any{"changeSet": map[string]string{"url": "http://plugin.example.com"}}}), 400)
+	read := call("GET", scenePath, "", "", nil)
+	expect(read, 200)
+	var configuredScene spec.SceneModel
+	if err := json.Unmarshal(read.Body.Bytes(), &configuredScene); err != nil || configuredScene.RunTTLSeconds != 3600 || configuredScene.Plugins == nil || configuredScene.Plugins.ChangeSet == nil || configuredScene.Plugins.ChangeSet.URL != "https://plugin.example.com/custom/enrich" {
+		t.Fatalf("stored scene configuration: %s", read.Body.String())
 	}
-	if err := json.Unmarshal(denied.Body.Bytes(), &deniedProblem); err != nil || deniedProblem.Code != "PERMISSION_DENIED" {
-		t.Fatalf("unexpected permission response: %s: %v", denied.Body.String(), err)
+	expect(call("PATCH", scenePath, "", "", map[string]any{"plugins": map[string]any{}}), 200)
+	read = call("GET", scenePath, "", "", nil)
+	expect(read, 200)
+	if strings.Contains(read.Body.String(), `"plugins"`) {
+		t.Fatalf("plugins still configured: %s", read.Body.String())
 	}
-	policyCreated := call("POST", "/api/v1alpha1/scenes/recovery/policies", policyKey.APIKey, "p-1", map[string]any{"name": "automation-publisher"})
+	policyCreated := call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "p-1", map[string]any{"name": "automation-publisher"})
 	expect(policyCreated, 201)
 	var policy struct {
 		ID string `json:"id"`
@@ -107,23 +98,14 @@ func TestModelHTTPFlow(t *testing.T) {
 	if err := json.Unmarshal(policyCreated.Body.Bytes(), &policy); err != nil || policy.ID == "" {
 		t.Fatalf("invalid policy: %s: %v", policyCreated.Body.String(), err)
 	}
-	expect(call("POST", "/api/v1alpha1/scenes/recovery/policies", policyKey.APIKey, "p-1", map[string]any{"name": "automation-publisher"}), 200)
+	expect(call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "p-1", map[string]any{"name": "automation-publisher"}), 200)
 	path := "/api/v1alpha1/policies/" + policy.ID
-	expect(call("GET", path, policyKey.APIKey, "", nil), 401)
+	expect(call("GET", path, "", "", nil), 200)
 	draftYAML := strings.Replace(sampleHTTPSpec, "Check recovery readiness", "Check a manual draft", 1)
-	expect(call("PUT", path+"/draft", login.Token, "", map[string]any{"yaml": draftYAML}), 200)
-	expect(call("PUT", path+"/draft", policyKey.APIKey, "", map[string]any{"yaml": sampleHTTPSpec}), 401)
-	expect(call("POST", path+":archive", policyKey.APIKey, "", map[string]any{}), 401)
-	expect(call("POST", path+"/draft:publish", policyKey.APIKey, "draft-denied", nil), 401)
-	expect(call("POST", path+"/revisions", key.APIKey, "revision-denied", map[string]any{"yaml": sampleHTTPSpec}), 403)
-	runDenied := call("POST", "/runtime/v1alpha1/runs", policyKey.APIKey, "run-denied", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "app"}})
-	expect(runDenied, 403)
-	if err := json.Unmarshal(runDenied.Body.Bytes(), &deniedProblem); err != nil || deniedProblem.Code != "PERMISSION_DENIED" {
-		t.Fatalf("unexpected Run permission response: %s: %v", runDenied.Body.String(), err)
-	}
-	revisionCreated := call("POST", path+"/revisions", policyKey.APIKey, "r-1", map[string]any{"yaml": sampleHTTPSpec})
+	expect(call("PUT", path+"/draft", "", "", map[string]any{"yaml": draftYAML}), 200)
+	revisionCreated := call("POST", path+"/revisions", "", "r-1", map[string]any{"yaml": sampleHTTPSpec})
 	expect(revisionCreated, 201)
-	history := call("GET", path+"/revisions?pageSize=1", login.Token, "", nil)
+	history := call("GET", path+"/revisions?pageSize=1", "", "", nil)
 	expect(history, 200)
 	var historyPage struct {
 		Items []map[string]any `json:"items"`
@@ -135,20 +117,19 @@ func TestModelHTTPFlow(t *testing.T) {
 		t.Fatal("history page returned full YAML")
 	}
 	for _, query := range []string{"pageSize=0", "pageSize=101", "before=0", "before=oops", "pageSize=1&pageSize=2"} {
-		expect(call("GET", path+"/revisions?"+query, login.Token, "", nil), 400)
+		expect(call("GET", path+"/revisions?"+query, "", "", nil), 400)
 	}
-	expect(call("GET", path+"/revisions", policyKey.APIKey, "", nil), 401)
+	expect(call("GET", path+"/revisions", "", "", nil), 200)
 	var publishedRevision struct {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(revisionCreated.Body.Bytes(), &publishedRevision); err != nil || publishedRevision.ID == "" {
 		t.Fatalf("invalid Revision response: %s: %v", revisionCreated.Body.String(), err)
 	}
-	expect(call("POST", path+"/revisions", policyKey.APIKey, "r-1", map[string]any{"yaml": sampleHTTPSpec}), 200)
+	expect(call("POST", path+"/revisions", "", "r-1", map[string]any{"yaml": sampleHTTPSpec}), 200)
 	explicitBody := map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "app"}, "policyRevisionRef": map[string]any{"policyRevisionId": publishedRevision.ID}}
-	expect(call("POST", "/runtime/v1alpha1/runs", key.APIKey, "explicit-denied", explicitBody), 403)
-	expect(call("POST", "/runtime/v1alpha1/runs", revisionKey.APIKey, "explicit-allowed", explicitBody), 201)
-	policyRead := call("GET", path, login.Token, "", nil)
+	expect(call("POST", "/runtime/v1alpha1/runs", "", "explicit-allowed", explicitBody), 201)
+	policyRead := call("GET", path, "", "", nil)
 	expect(policyRead, 200)
 	var afterPublish map[string]any
 	if err := json.Unmarshal(policyRead.Body.Bytes(), &afterPublish); err != nil {
@@ -162,28 +143,28 @@ func TestModelHTTPFlow(t *testing.T) {
 	if afterPublish["activeRevisionId"] != nil {
 		t.Fatal("machine publication activated revision")
 	}
-	draftRead := call("GET", path+"/draft", login.Token, "", nil)
+	draftRead := call("GET", path+"/draft", "", "", nil)
 	expect(draftRead, 200)
 	var currentDraft struct{ ID, PolicyID, Status, YAML string }
 	if err := json.Unmarshal(draftRead.Body.Bytes(), &currentDraft); err != nil || currentDraft.PolicyID == "" || currentDraft.Status != "DRAFT" || currentDraft.YAML != draftYAML {
 		t.Fatalf("invalid draft: %s %v", draftRead.Body.String(), err)
 	}
 	for _, invalid := range []any{nil, map[string]any{}, map[string]any{"yaml": nil}} {
-		expect(call("POST", path+"/draft:publish", login.Token, "missing-reviewed-content", invalid), 400)
+		expect(call("POST", path+"/draft:publish", "", "missing-reviewed-content", invalid), 400)
 	}
-	expect(call("POST", path+"/draft:publish", login.Token, "reviewed-draft", map[string]any{"yaml": sampleHTTPSpec}), 409)
-	publishedDraft := call("POST", path+"/draft:publish", login.Token, "reviewed-draft", map[string]any{"yaml": draftYAML})
+	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": sampleHTTPSpec}), 409)
+	publishedDraft := call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": draftYAML})
 	expect(publishedDraft, 201)
 	var promoted struct{ ID, Status string }
 	if err := json.Unmarshal(publishedDraft.Body.Bytes(), &promoted); err != nil || promoted.ID != currentDraft.ID || promoted.Status != "PUBLISHED" {
 		t.Fatalf("draft identity changed: %s %v", publishedDraft.Body.String(), err)
 	}
-	expect(call("GET", path+"/draft", login.Token, "", nil), 404)
-	expect(call("PUT", path+"/draft", login.Token, "", map[string]any{"yaml": sampleHTTPSpec}), 200)
+	expect(call("GET", path+"/draft", "", "", nil), 404)
+	expect(call("PUT", path+"/draft", "", "", map[string]any{"yaml": sampleHTTPSpec}), 200)
 	// A successful exact retry returns its old Revision even after another edit.
-	expect(call("POST", path+"/draft:publish", login.Token, "reviewed-draft", map[string]any{"yaml": draftYAML}), 200)
-	expect(call("POST", path+"/draft:publish", login.Token, "reviewed-draft", map[string]any{"yaml": sampleHTTPSpec}), 409)
-	created := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "create-1", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "app"}})
+	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": draftYAML}), 200)
+	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": sampleHTTPSpec}), 409)
+	created := call("POST", "/runtime/v1alpha1/runs", "", "create-1", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "app"}})
 	expect(created, 201)
 	var creation struct {
 		Run                  runapp.PolicyRun `json:"run"`
@@ -203,11 +184,11 @@ func TestModelHTTPFlow(t *testing.T) {
 		"control":        "release-\x01-1001",
 		"too-long":       strings.Repeat("x", 129),
 	} {
-		response := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-invalid-"+name, map[string]any{"sceneKey": "recovery", "businessId": invalid, "changeSet": map[string]any{"target": "business"}})
+		response := call("POST", "/runtime/v1alpha1/runs", "", "business-invalid-"+name, map[string]any{"sceneKey": "recovery", "businessId": invalid, "changeSet": map[string]any{"target": "business"}})
 		expect(response, 400)
 	}
 	businessBody := map[string]any{"sceneKey": "recovery", "businessId": "release-1001", "changeSet": map[string]any{"target": "business"}}
-	businessCreated := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-create", businessBody)
+	businessCreated := call("POST", "/runtime/v1alpha1/runs", "", "business-create", businessBody)
 	expect(businessCreated, 201)
 	var businessCreation struct {
 		Run runapp.PolicyRun `json:"run"`
@@ -215,13 +196,13 @@ func TestModelHTTPFlow(t *testing.T) {
 	if err := json.Unmarshal(businessCreated.Body.Bytes(), &businessCreation); err != nil || businessCreation.Run.BusinessID == nil || *businessCreation.Run.BusinessID != "release-1001" {
 		t.Fatalf("invalid business Run: %s: %v", businessCreated.Body.String(), err)
 	}
-	businessReplay := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-replay", businessBody)
+	businessReplay := call("POST", "/runtime/v1alpha1/runs", "", "business-replay", businessBody)
 	expect(businessReplay, 200)
 	var replayedBusinessRun runapp.PolicyRun
 	if err := json.Unmarshal(businessReplay.Body.Bytes(), &replayedBusinessRun); err != nil || replayedBusinessRun.ID != businessCreation.Run.ID {
 		t.Fatalf("invalid business replay: %s: %v", businessReplay.Body.String(), err)
 	}
-	businessConflict := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "business-conflict", map[string]any{"sceneKey": "recovery", "businessId": "release-1001", "changeSet": map[string]any{"target": "different"}})
+	businessConflict := call("POST", "/runtime/v1alpha1/runs", "", "business-conflict", map[string]any{"sceneKey": "recovery", "businessId": "release-1001", "changeSet": map[string]any{"target": "different"}})
 	expect(businessConflict, 409)
 	var businessProblem struct {
 		Code string `json:"code"`
@@ -229,7 +210,7 @@ func TestModelHTTPFlow(t *testing.T) {
 	if err := json.Unmarshal(businessConflict.Body.Bytes(), &businessProblem); err != nil || businessProblem.Code != "BUSINESS_ID_CONFLICT" {
 		t.Fatalf("unexpected business conflict: %s: %v", businessConflict.Body.String(), err)
 	}
-	businessList := call("GET", "/runtime/v1alpha1/runs?sceneKey=recovery&businessId=release-1001", key.APIKey, "", nil)
+	businessList := call("GET", "/runtime/v1alpha1/runs?sceneKey=recovery&businessId=release-1001", "", "", nil)
 	expect(businessList, 200)
 	var businessPage struct {
 		Items []runapp.PolicyRunSummary `json:"items"`
@@ -266,7 +247,7 @@ func TestModelHTTPFlow(t *testing.T) {
 	expect(final, 201)
 	repeated := call("POST", "/runtime/v1alpha1/runs/"+creation.Run.ID+"/submissions", creation.SubmissionCredential.Token, "sub-2", snapshot)
 	expect(repeated, 200)
-	got := call("GET", "/runtime/v1alpha1/runs/"+creation.Run.ID, key.APIKey, "", nil)
+	got := call("GET", "/runtime/v1alpha1/runs/"+creation.Run.ID, "", "", nil)
 	expect(got, 200)
 	var run runapp.PolicyRun
 	if err := json.Unmarshal(got.Body.Bytes(), &run); err != nil {
@@ -276,7 +257,7 @@ func TestModelHTTPFlow(t *testing.T) {
 		t.Fatalf("run=%+v", run)
 	}
 	readBase := "/runtime/v1alpha1/runs/" + run.ID
-	revision := call("GET", readBase+"/policy-revision", key.APIKey, "", nil)
+	revision := call("GET", readBase+"/policy-revision", "", "", nil)
 	expect(revision, 200)
 	var revisionBody struct {
 		ID     string `json:"id"`
@@ -286,9 +267,9 @@ func TestModelHTTPFlow(t *testing.T) {
 		t.Fatal("Revision differs from frozen Run")
 	}
 	expect(call("GET", readBase+"/policy-revision", creation.SubmissionCredential.Token, "", nil), 401)
-	expect(call("GET", readBase+"/policy-revision", login.Token, "", nil), 401)
-	expect(call("GET", "/runtime/v1alpha1/runs/missing/policy-revision", key.APIKey, "", nil), 404)
-	stored := call("GET", readBase+"/submissions/"+*run.FinalSubmissionID, key.APIKey, "", nil)
+	expect(call("GET", readBase+"/policy-revision", "", "", nil), 200)
+	expect(call("GET", "/runtime/v1alpha1/runs/missing/policy-revision", "", "", nil), 404)
+	stored := call("GET", readBase+"/submissions/"+*run.FinalSubmissionID, "", "", nil)
 	expect(stored, 200)
 	var record runapp.StoredSubmission
 	if err := json.Unmarshal(stored.Body.Bytes(), &record); err != nil || record.RunID != run.ID || record.SubmissionNo != 2 || record.Snapshot.Verdict != "PASS" || !record.Snapshot.FinishRun {
@@ -298,10 +279,10 @@ func TestModelHTTPFlow(t *testing.T) {
 		t.Fatalf("empty summary was not preserved: %s", stored.Body.String())
 	}
 	expect(call("GET", readBase+"/submissions/"+*run.FinalSubmissionID, creation.SubmissionCredential.Token, "", nil), 401)
-	expect(call("GET", readBase+"/submissions/missing", key.APIKey, "", nil), 404)
+	expect(call("GET", readBase+"/submissions/missing", "", "", nil), 404)
 	managedSubmission := "/api/v1alpha1/runs/" + run.ID + "/submissions/" + *run.FinalSubmissionID
 	historyPath := "/api/v1alpha1/runs/" + run.ID + "/submissions"
-	submissionHistoryResponse := call("GET", historyPath+"?limit=1", login.Token, "", nil)
+	submissionHistoryResponse := call("GET", historyPath+"?limit=1", "", "", nil)
 	expect(submissionHistoryResponse, 200)
 	var submissionPage runapp.SubmissionPage
 	if err := json.Unmarshal(submissionHistoryResponse.Body.Bytes(), &submissionPage); err != nil || len(submissionPage.Items) != 1 || submissionPage.Items[0].SubmissionNo != 2 || submissionPage.NextBefore == nil || *submissionPage.NextBefore != 2 {
@@ -310,40 +291,18 @@ func TestModelHTTPFlow(t *testing.T) {
 	if bytes.Contains(submissionHistoryResponse.Body.Bytes(), []byte(`"snapshot"`)) || bytes.Contains(submissionHistoryResponse.Body.Bytes(), []byte(`"checks"`)) {
 		t.Fatal("history page must not include evidence payloads")
 	}
-	older := call("GET", historyPath+"?limit=1&before=2", login.Token, "", nil)
+	older := call("GET", historyPath+"?limit=1&before=2", "", "", nil)
 	expect(older, 200)
 	var olderPage runapp.SubmissionPage
 	if err := json.Unmarshal(older.Body.Bytes(), &olderPage); err != nil || len(olderPage.Items) != 1 || olderPage.Items[0].SubmissionNo != 1 || olderPage.Items[0].FinishRun || olderPage.NextBefore != nil {
 		t.Fatalf("unexpected older history: %s", older.Body.String())
 	}
 	for _, query := range []string{"?limit=0", "?limit=51", "?before=0", "?before=-1"} {
-		expect(call("GET", historyPath+query, login.Token, "", nil), 400)
+		expect(call("GET", historyPath+query, "", "", nil), 400)
 	}
-	expect(call("GET", "/api/v1alpha1/runs/missing/submissions", login.Token, "", nil), 404)
-	for _, token := range []string{"", key.APIKey, policyKey.APIKey, creation.SubmissionCredential.Token} {
-		expect(call("GET", historyPath, token, "", nil), 401)
-	}
-	managed := call("GET", managedSubmission, login.Token, "", nil)
-	expect(managed, 200)
-	if !bytes.Equal(managed.Body.Bytes(), stored.Body.Bytes()) {
-		t.Fatal("administrator reader changed the stored Submission or evidence")
-	}
-	for _, token := range []string{"", key.APIKey, policyKey.APIKey, creation.SubmissionCredential.Token} {
-		expect(call("GET", managedSubmission, token, "", nil), 401)
-	}
-	browserLogin, err := identities.Login(ctx, identity.LoginRequest{Username: "admin", Password: "synthetic-password", Kind: "browser"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	browserRequest := httptest.NewRequest("GET", "https://guardrail.example"+managedSubmission, nil)
-	browserRequest.AddCookie(&http.Cookie{Name: "og_session", Value: browserLogin.Token})
-	browserResponse := httptest.NewRecorder()
-	handler.ServeHTTP(browserResponse, browserRequest)
-	expect(browserResponse, 200)
-	if !bytes.Equal(browserResponse.Body.Bytes(), stored.Body.Bytes()) {
-		t.Fatal("browser session cannot read the same stored evidence")
-	}
-	otherCreated := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "other-managed-run", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "other"}})
+	expect(call("GET", "/api/v1alpha1/runs/missing/submissions", "", "", nil), 404)
+	expect(call("GET", managedSubmission, creation.SubmissionCredential.Token, "", nil), 401)
+	otherCreated := call("POST", "/runtime/v1alpha1/runs", "", "other-managed-run", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "other"}})
 	expect(otherCreated, 201)
 	var other struct {
 		Run runapp.PolicyRun `json:"run"`
@@ -351,9 +310,9 @@ func TestModelHTTPFlow(t *testing.T) {
 	if err := json.Unmarshal(otherCreated.Body.Bytes(), &other); err != nil {
 		t.Fatal(err)
 	}
-	expect(call("GET", "/api/v1alpha1/runs/"+other.Run.ID+"/submissions/"+*run.FinalSubmissionID, login.Token, "", nil), 404)
-	expect(call("GET", "/api/v1alpha1/runs/"+run.ID+"/submissions/missing", login.Token, "", nil), 404)
-	expect(call("GET", "/api/v1alpha1/runs/invalid$id/submissions/"+*run.FinalSubmissionID, login.Token, "", nil), 404)
+	expect(call("GET", "/api/v1alpha1/runs/"+other.Run.ID+"/submissions/"+*run.FinalSubmissionID, "", "", nil), 404)
+	expect(call("GET", "/api/v1alpha1/runs/"+run.ID+"/submissions/missing", "", "", nil), 404)
+	expect(call("GET", "/api/v1alpha1/runs/invalid$id/submissions/"+*run.FinalSubmissionID, "", "", nil), 404)
 	for _, field := range []string{"baseSubmissionNo", "finishRun", "checks"} {
 		missing := map[string]any{}
 		for k, v := range snapshot {
@@ -363,7 +322,7 @@ func TestModelHTTPFlow(t *testing.T) {
 		}
 		expect(call("POST", readBase+"/submissions", creation.SubmissionCredential.Token, "missing-"+field, missing), 400)
 	}
-	page := call("GET", "/runtime/v1alpha1/runs?status=FINISHED&limit=20", key.APIKey, "", nil)
+	page := call("GET", "/runtime/v1alpha1/runs?status=FINISHED&limit=20", "", "", nil)
 	expect(page, 200)
 	var listed struct {
 		Items []runapp.PolicyRunSummary `json:"items"`
@@ -375,7 +334,7 @@ func TestModelHTTPFlow(t *testing.T) {
 		t.Fatalf("Run list must expose only the changeSet digest: %s", page.Body.String())
 	}
 
-	raceCreated := call("POST", "/runtime/v1alpha1/runs", key.APIKey, "rotation-run", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "rotation-race"}})
+	raceCreated := call("POST", "/runtime/v1alpha1/runs", "", "rotation-run", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "rotation-race"}})
 	expect(raceCreated, 201)
 	var raceCreation struct {
 		Run                  runapp.PolicyRun `json:"run"`
@@ -399,7 +358,7 @@ func TestModelHTTPFlow(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("old credential request did not reach the authenticated submission boundary")
 	}
-	rotated := call("POST", "/runtime/v1alpha1/runs/"+raceCreation.Run.ID+"/submission-credential:rotate", key.APIKey, "", nil)
+	rotated := call("POST", "/runtime/v1alpha1/runs/"+raceCreation.Run.ID+"/submission-credential:rotate", "", "", nil)
 	expect(rotated, 201)
 	var replacement struct {
 		Token string `json:"token"`

@@ -24,25 +24,10 @@ curl --fail --retry 30 --retry-connrefused --retry-delay 1 \
 
 本地浏览器信任该临时证书后，打开 <https://localhost:8443>。默认发布地址为 `127.0.0.1:8443`，其他机器不能连接。对外 URL 必须精确匹配浏览器源，包括非标准端口，不能包含路径或末尾斜杠。自动化不能关闭 TLS 验证。两个必填变量缺失时，Compose 插值会失败；服务也会在打开存储前拒绝缺失或无效的 HTTPS 源。
 
-## 创建首个管理员
+## 打开控制台
 
-运行时镜像没有 shell 或 `cat`。用 Docker 文件复制命令取出私有令牌，不要把它写进 Compose 环境变量或日志：
-
-```sh
-umask 077
-setup_dir=$(mktemp -d)
-docker compose -f deploy/compose.yaml cp guardrail:/data/bootstrap.token "$setup_dir/bootstrap.token"
-chmod 600 "$setup_dir/bootstrap.token"
-```
-
-在本地读取该文件，在浏览器初始化页面输入其内容，以及管理员用户名和密码。令牌应保密，一小时后过期；未初始化服务重启时会更新过期令牌。初始化完成后，令牌不能再创建第二个管理员。设置完成后删除宿主机副本：
-
-```sh
-rm -f "$setup_dir/bootstrap.token"
-rmdir "$setup_dir"
-```
-
-也可以独立安装 `guardrailctl`，通过 `guardrailctl bootstrap init --server URL --username admin --token-file PATH` 初始化服务；该主机必须信任 TLS 证书。见[管理员初始化](../local-administrator.md)。
+直接打开配置的 HTTPS 地址即可使用，无需初始化令牌、管理员账号或登录。
+访问模型及 Run 提交凭据见[访问指南](access.zh-CN.md)。
 
 ## 持久数据与权限
 
@@ -85,7 +70,7 @@ add_header Strict-Transport-Security "max-age=300" always;
 
 代理的 `proxy_read_timeout 20s` 限制连续响应读取之间的空闲间隔，长于应用 10 秒的协作式请求预算和 15 秒套接字写超时。当前同步 API 围绕该预算设计；更长操作需要异步 API，或协调修改服务和代理的超时。单独增加代理超时不会延长应用预算。
 
-提供的 NGINX 配置保留外部 `Host`（**包括端口**），传递 `Origin` 和授权头，移除常见客户端转发头。应用验证配置的源，在这种部署下始终要求引导令牌。不能发布后端明文 8080 端口，不能把无关容器接入私有网络，也不能通过隧道暴露默认原生回环模式。管理员身份功能仍处于预览，应落实[远程访问](../local-administrator.md#remote-access)中说明的访问控制。
+提供的 NGINX 配置保留外部 `Host`（**包括端口**），传递 `Origin` 和授权头，移除常见客户端转发头。应用验证配置的源，在这种部署下始终要求引导令牌。不能发布后端明文 8080 端口，不能把无关容器接入私有网络，也不能通过隧道暴露默认原生回环模式。管理员身份功能仍处于预览，应落实[远程访问](../access.md)中说明的访问控制。
 
 使用 PostgreSQL 时，显式选择 `OPEN_GUARDRAIL_DATABASE_DRIVER=postgres`，通过私有部署配置注入 `DATABASE_URL`。即使使用外部数据库，仍应保持 `/data` 私密且持久，以保存引导状态；数据库网络访问需在此隔离 SQLite 示例之外单独安排。
 

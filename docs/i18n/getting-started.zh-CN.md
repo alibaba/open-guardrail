@@ -1,5 +1,7 @@
 # 快速开始
 
+页面、CLI 和管理 API 均可直接使用，无需账号或登录；提交评估仍需绑定 Run 的提交凭据。详见[访问指南](access.zh-CN.md)。
+
 首批机器上线后，让你的 AI 编程助手按 Spec 依次排查监控、日志和告警，再决定下一批能否继续发布。[观看 30 秒回放](../media/first-batch-run.mp4)
 
 ## 跑一遍首批检查
@@ -38,7 +40,7 @@ Agent 会自动拉起本地临时服务，按 Spec 排查首批实例的监控�
 python3 examples/cleanup-demo/demo.py
 ```
 
-脚本会从源码构建命令，或使用归档中的二进制，并使用自动生成的临时密码启动本地服务和受控文件清理工具。首次从源码构建可能下载 Go 依赖。Demo 需要 Python 3.9+；发布组装和维护者验证脚本另需 Python 3.12+。
+脚本会从源码构建命令，或使用归档中的二进制，并启动可直接访问的本地服务和受控文件清理工具。首次从源码构建可能下载 Go 依赖。Demo 需要 Python 3.9+；发布组装和维护者验证脚本另需 Python 3.12+。
 
 先打开终端输出的 **Demo** URL。清理任务和 Run 详情不需要登录。保留默认选择，点击 **Run cleanup task（运行清理任务）**：
 
@@ -47,11 +49,8 @@ python3 examples/cleanup-demo/demo.py
 3. 删除工具重新读取 Run 和已接受证据，核验身份与有效期，只删除批准的临时文件。
 4. 在页面检查两个 Run。恢复文件、修改选择或批次上限，再次运行以比较实际结果。
 
-Runner 是不使用模型的预定义代码，服务调用和文件操作均真实执行。[Demo 指南](../../examples/cleanup-demo/README.md)说明执行核验与限制。需要在常规 UI 查看同一批记录时，打开输出的 **Console** URL，使用 `demo` 和输出路径 `console-login.json` 中的自动生成密码（或通过 `--prompt-password` 自行设置的密码）登录，选择 **Runs**。
-
 检查记录时保持终端开启。Ctrl-C 停止服务，移除临时数据和凭据。原始 Recovery 契约自检命令为 `python3 examples/agent-demo/smoke.py`，默认立即退出并清理；加上 `--keep-running` 可保留记录供浏览器查看，直到按 Ctrl-C。需要持久数据或自己的策略时，使用下述操作流程。
 
-自动化启动清理 Demo 时，`--password-stdin` 从标准输入读取设置的密码。不要把密码放在命令参数或提交到仓库的脚本中。仅限源码使用的 `make demo` 等价于上面的交互命令。
 
 ## 手动创建并检查一个 Run
 
@@ -66,36 +65,28 @@ make build
 
 保持终端开启。默认监听 `127.0.0.1:8080`，SQLite 数据保存在相对于启动目录的 `./data/guardrail.db`。
 
-打开 <http://127.0.0.1:8080>，创建名为 `admin` 的管理员并自行设置密码。初始化后自动登录浏览器，没有默认密码。
+远程或容器部署见 [Docker 部署](docker.zh-CN.md)和[访问指南](access.zh-CN.md)。
 
-无引导令牌的本地初始化要求直接回环连接。远程或容器部署见 [Docker 部署](docker.zh-CN.md)及[管理员初始化](local-administrator.zh-CN.md)。
+### 2. 连接 CLI
 
-### 2. 登录 CLI
-
-在同一源码根目录打开第二个终端：
+页面和 CLI 均可直接使用，无需登录：
 
 ```sh
 guardrail_cli=./bin/guardrailctl
 export OPEN_GUARDRAIL_URL=http://127.0.0.1:8080
 umask 077
 guardrail_demo_dir=$(mktemp -d)
-export OPEN_GUARDRAIL_SESSION_FILE="$guardrail_demo_dir/session.json"
 "$guardrail_cli" status
-"$guardrail_cli" auth login --username admin
 ```
 
-使用解压二进制归档时，将 `guardrail_cli` 改为 `./guardrailctl`。在隐藏提示中输入管理员密码。浏览器和 CLI 会话相互独立。示例将 CLI 会话和机器凭据保存在源码树以外的私有临时目录。
+私有临时目录只用于保存 Run 提交凭据。
 
 ### 3. 发布示例策略
 
 ```sh
 "$guardrail_cli" scene apply --key recovery --name Recovery \
   --spec ./examples/policies/recovery.yaml --publish
-"$guardrail_cli" auth create-key --expires-in 1h \
-  --result-file "$guardrail_demo_dir/project-key.json"
 ```
-
-策略要求一项 `readiness` 检查和 `health` 证据。命令发布并激活该修订；临时 Project 密钥有效期为一小时。
 
 策略编辑和发布见[场景与策略](scenes-and-specs.zh-CN.md)。
 
@@ -113,7 +104,7 @@ cat > "$guardrail_demo_dir/change-set.json" <<'JSON'
 JSON
 guardrail_demo_operation="quickstart-$(date +%s)-$$"
 "$guardrail_cli" run create \
-  --key-file "$guardrail_demo_dir/project-key.json" \
+  \
   --scene recovery \
   --change-set "$guardrail_demo_dir/change-set.json" \
   --operation-id "$guardrail_demo_operation-create" \
@@ -164,7 +155,7 @@ JSON
   --operation-id "$guardrail_demo_operation-submit" \
   "$guardrail_demo_run_id"
 "$guardrail_cli" run get \
-  --key-file "$guardrail_demo_dir/project-key.json" \
+  \
   "$guardrail_demo_run_id"
 ```
 
@@ -185,43 +176,8 @@ JSON
 | 服务退出或未就绪 | 清理 Demo 报告安全的错误分类，并尽可能提供命令退出码。从源码运行 `./bin/open-guardrail serve`，或从归档运行 `./open-guardrail serve` 查看启动诊断，检查数据目录、原生二进制和端口。 |
 | Demo 地址返回 403 | 精确打开输出的 `http://127.0.0.1:<port>`，清理 Demo 不接受 `localhost` 或其他主机名。 |
 | 来不及打开 Runs，Recovery 自检就退出 | 运行 `python3 examples/agent-demo/smoke.py --keep-running` 并保持终端开启。默认 Recovery 自检会清理临时记录，清理 Demo 则会持续运行。 |
-| 浏览器登录失败 | 使用 `demo` 和输出路径 `console-login.json` 中的自动生成密码（或通过 `--prompt-password` / `smoke.py --keep-running` 自行设置的密码）。手动流程的 `admin` 账号及已有服务与其相互独立。 |
-| 隐藏密码提示要求终端 | 交互运行，或在自动化中传 `--password-stdin`。查看 Recovery 自检的临时记录还需 `--keep-running`。 |
-
-Demo 不会在终端打印密码本身（默认仅输出 `console-login.json` 凭据文件路径），也不会输出捕获到的含凭据命令内容。报告问题时提供步骤、退出码、版本和平台，密码、会话文件和机器凭据文件应保密。
 
 ## 清理或继续探索
 
-服务数据持久保存在 `./data`。Ctrl-C 停止服务后，从同一目录重启可保留管理员、策略和 Run。需要明确存储位置时，使用 `--data-dir /path/to/persistent/data`。
-
-先撤销本流程创建的那一把 Project 密钥。在管理员 CLI 会话仍有效时，检查不含秘密的元数据：
-
-```sh
-"$guardrail_cli" auth list-keys --page-size 20
-```
-
-根据签发时间、角色和权限范围识别本流程的密钥。私有凭据文件也记录相同的非秘密 `keyId`，需要时只在本地比较该字段，不展示或分享令牌。如果密钥位于下一页，用 `--after CURSOR` 跟随 `nextAfter`。不要撤销其他集成正在使用的密钥。
-
-用选中密钥的 `id` 替换示例 ID，再执行撤销：
-
-```sh
-guardrail_demo_key_id=key_REPLACE_WITH_DEMO_KEY_ID
-"$guardrail_cli" auth revoke-key --key-id "$guardrail_demo_key_id"
-```
-
-撤销成功后，在第二个终端、变量仍已设置的情况下，删除临时 CLI 会话及文件。撤销失败时，保留会话和凭据文件，直到问题解决。
-
-```sh
-"$guardrail_cli" auth logout
-rm -f "$guardrail_demo_dir/session.json" \
-  "$guardrail_demo_dir/project-key.json" \
-  "$guardrail_demo_dir/run-credential.json" \
-  "$guardrail_demo_dir/change-set.json" \
-  "$guardrail_demo_dir/submission.json"
-rmdir "$guardrail_demo_dir"
-unset OPEN_GUARDRAIL_SESSION_FILE
-```
-
-删除机器密钥文件不等于撤销密钥。撤销和秘密轮换已经实现；撤销立即阻止后续密钥认证，但不取消已通过认证的请求。有效期、轮换和恢复规则见 [Project 机器密钥](local-administrator.zh-CN.md#project-机器密钥)。请在本地评估服务上使用本流程。
-
-接下来可以体验 [Agent 驱动的示例](../../examples/agent-demo/README.md)，配置 [PostgreSQL 或远程访问](configuration.zh-CN.md)，或阅读[贡献指南](../../CONTRIBUTING.md)。
+Ctrl-C 停止服务。从同一数据目录重启可保留 Scene、Spec 和 Run。
+妥善保存 Run 提交凭据，使用完毕后删除临时凭据文件。重试与轮换规则见 [Run 指南](runs.zh-CN.md)。

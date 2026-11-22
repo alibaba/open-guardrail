@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/alibaba/open-guardrail/internal/adapters/storage"
-	"github.com/alibaba/open-guardrail/internal/application/identity"
 	"github.com/alibaba/open-guardrail/internal/application/spec"
 )
 
@@ -110,17 +109,17 @@ func TestAccessLogActionRoutesIncludeRejectedMethods(t *testing.T) {
 			t.Run(method+route.pattern, func(t *testing.T) {
 				var output bytes.Buffer
 				handler := New(checker{}, Options{
-					Identity: &identity.Service{}, ModelSpecs: spec.New(&storage.Specs{}),
-					Origin: "https://guardrail.example",
-					Logger: slog.New(slog.NewJSONHandler(&output, nil)),
+					ModelSpecs: spec.New(&storage.Specs{}),
+					Origin:     "https://other.example",
+					Logger:     slog.New(slog.NewJSONHandler(&output, nil)),
 				})
 				request := httptest.NewRequest(method, "https://guardrail.example"+route.path+"?token=private-query", nil)
 				request.Header.Set("X-Guardrail-CSRF", "1")
 				response := httptest.NewRecorder()
 				handler.ServeHTTP(response, request)
-				// Missing credentials must still be rejected before the action runs.
-				if response.Code != http.StatusUnauthorized {
-					t.Fatalf("status = %d, want 401", response.Code)
+				// An untrusted origin must be rejected before the action runs.
+				if response.Code != http.StatusForbidden {
+					t.Fatalf("status = %d, want 403", response.Code)
 				}
 				var record map[string]any
 				if err := json.Unmarshal(output.Bytes(), &record); err != nil {

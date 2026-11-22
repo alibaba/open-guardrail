@@ -12,13 +12,13 @@ function page() {
   const calls = [], downloads = [];
   const context = vm.createContext({document: {getElementById(id) {assert.ok(elements.has(id), id);return elements.get(id);}, createElement: element},
     window: {downloadGuardrailJSON(data) {downloads.push(data);}}, AbortSignal, URLSearchParams, Date,
-    setText(node, key) {node.textContent = key;}, show() {context.window.AuditUI.setSignedIn(false);},
+    setText(node, key) {node.textContent = key;}, show() {context.window.AuditUI.setAvailable(false);},
     fetch: async url => {calls.push(url);if (state.response) return state.response;
       const data = url.includes("redacted=true") ? {items: [{id: "8", actorRef: "digest"}], redacted: true} : state.page;
       return {ok: true, json: async () => data};},
   });
   vm.runInContext(readFileSync(__dirname + "/static/audit.js", "utf8"), context);
-  context.window.AuditUI.setSignedIn(true);
+  context.window.AuditUI.setAvailable(true);
   return {context, elements, state, calls, downloads};
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
@@ -38,7 +38,7 @@ test("audit export uses server redaction and rejects an unsafe response", async 
   await p.elements.get("export-audit").handlers.click();assert.equal(p.downloads.length, 1);assert.equal(p.elements.get("audit-message").textContent, "exportFailed");
 });
 test("audit logout and leaving the view discard delayed responses", async () => {
-  for (const leave of [p => p.context.window.AuditUI.setSignedIn(false), p => p.context.window.AuditUI.leave()]) {
+  for (const leave of [p => p.context.window.AuditUI.setAvailable(false), p => p.context.window.AuditUI.leave()]) {
     const p = page();let resolve;p.state.response = new Promise(done => {resolve = done;});
     p.context.window.AuditUI.route(new URLSearchParams());leave(p);
     resolve({ok: true, json: async () => p.state.page});await settle();

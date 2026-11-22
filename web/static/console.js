@@ -2,7 +2,7 @@
 (() => {
   const el = id => document.getElementById(id);
   const dialog = el("create-scene-dialog");
-  let signedIn = false, busy = false, scenes = [];
+  let available = false, busy = false, scenes = [];
 
   function navigate(view) {
     if (view !== "runs") window.RunUI?.leave();
@@ -16,7 +16,6 @@
       if (selected) el(id).setAttribute("aria-current", "page");
       else el(id).removeAttribute("aria-current");
     }
-    if (view !== "settings" && typeof clearKey === "function") clearKey();
   }
   function tab(history) {
     for (const [name, selected] of [["draft", !history], ["history", history]]) {
@@ -40,7 +39,7 @@
     return {parts, params: new URLSearchParams(query)};
   }
   function route() {
-    if (!signedIn) return;
+    if (!available) return;
     if (!window.location.hash) { go("scenes", true); return; }
     const {parts: [view, id], params} = routeState();
     if (view === "audit" && !id) { navigate("audit"); window.AuditUI?.route(params); return; }
@@ -101,13 +100,11 @@
   window.ConsoleUI = {
     go,
     route,
-    setSignedIn(value) {
-      el("shell").classList.toggle("signed-in", value);
+    setAvailable(value) {
+      el("shell").classList.toggle("console-ready", value);
       el("sidebar").hidden = !value;
-      el("auth-intro").hidden = value;
-      el("auth-footer").hidden = value;
-      if (signedIn === value) return;
-      signedIn = value;
+      if (available === value) return;
+      available = value;
       if (!value) {
         scenes = []; renderList(); dialog.close();
         el("scene-create-form").reset();

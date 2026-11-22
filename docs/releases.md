@@ -1,5 +1,7 @@
 # Release verification
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 A preview archive contains the native `open-guardrail` server and `guardrailctl`,
 configuration and user guides, the OpenAPI document, policy/observation examples,
 CD integration recipes and `.agents/skills/open-guardrail-demo`. Archives also retain
@@ -30,7 +32,7 @@ awk -v name="$release_archive" '$2 == name { print }' SHA256SUMS | sha256sum -c 
 Choose the version and platform you downloaded. For publisher authentication, follow
 [provenance verification](#verify-release-provenance). Extract the verified native
 archive into an empty directory and run `./open-guardrail serve`; initialize the
-administrator in the browser. Use a persistent `--data-dir` for data you want to keep.
+console directly in the browser. Use a persistent `--data-dir` for data you want to keep.
 
 The older `alpha.0` detached-checksum layout is described in its
 [versioned verification guide](https://github.com/alibaba/open-guardrail/blob/v0.1.0-alpha.0/docs/releases.md).
@@ -41,14 +43,6 @@ For an interactive trial from the extraction root:
 python3 examples/cleanup-demo/demo.py
 ```
 
-Open the printed Demo URL. The predefined runner
-uses the packaged service and CLI to create real Runs, while the controlled tool
-acts on files in an isolated temporary directory. The demo page needs no login;
-the separate Console uses username `demo` and the temporary password in the printed
-`console-login.json` file (or a password you choose with `--prompt-password`). Keep the
-terminal open; Ctrl-C stops both services and removes temporary state. See the
-[cleanup guide](../examples/cleanup-demo/README.md) for checks and limits.
-
 For the original isolated Recovery contract self-check:
 
 ```sh
@@ -56,7 +50,7 @@ python3 examples/agent-demo/smoke.py
 ```
 
 This starts a separate loopback service on a free port with temporary data and
-credentials, bootstraps a temporary administrator, publishes the Recovery policy,
+Run credentials, publishes the Recovery policy,
 creates Runs, submits Snapshots through the delivery adapter, reads stored
 Evidence and verifies the management queries. It checks healthy ALLOW, unhealthy
 DENY, unknown DENY and delivery-side rejection of forged Evidence even when
@@ -69,7 +63,7 @@ To inspect those Runs in the browser before cleanup, use:
 python3 examples/agent-demo/smoke.py --keep-running
 ```
 
-Choose a password at the hidden prompts, then open the printed URL and sign in
+Open the printed URL directly
 as `demo`. Select **Runs** to inspect the four records. Keep the terminal open;
 Ctrl-C stops the temporary service and removes its data and credentials.
 Use Python 3.9+ for the demo. Release assembly still requires Python 3.12+. See

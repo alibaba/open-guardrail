@@ -33,11 +33,10 @@ type Readiness interface {
 }
 
 type server struct {
-	check          Readiness
-	options        Options
-	origin         *url.URL
-	static         http.Handler
-	localBootstrap bool
+	check   Readiness
+	options Options
+	origin  *url.URL
+	static  http.Handler
 }
 
 var _ contract.ServerInterface = (*server)(nil)
@@ -59,7 +58,6 @@ func New(check Readiness, options ...Options) http.Handler {
 	if len(options) > 0 {
 		s.options = options[0]
 		s.origin, _ = url.Parse(options[0].Origin)
-		s.localBootstrap = options[0].LocalBootstrap
 	}
 	mux := http.NewServeMux()
 	contract.HandlerWithOptions(s, contract.StdHTTPServerOptions{
@@ -82,7 +80,7 @@ func New(check Readiness, options ...Options) http.Handler {
 }
 
 func hideUnconfiguredRoutes(next http.Handler, options Options) http.Handler {
-	if options.Identity != nil && options.ModelSpecs != nil && options.ModelRuns != nil && options.Audits != nil {
+	if options.ModelSpecs != nil && options.ModelRuns != nil && options.Audits != nil {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +99,7 @@ func hideUnconfiguredRoutes(next http.Handler, options Options) http.Handler {
 			strings.HasPrefix(r.URL.Path, "/api/v1alpha1/policy-revisions/")
 		runRoute := r.URL.Path == "/runtime/v1alpha1/runs" || strings.HasPrefix(r.URL.Path, "/runtime/v1alpha1/runs/") ||
 			r.URL.Path == "/api/v1alpha1/runs" || strings.HasPrefix(r.URL.Path, "/api/v1alpha1/runs/")
-		if (auditRoute && (options.Identity == nil || options.Audits == nil)) || (identityRoute && options.Identity == nil) || (specRoute && options.ModelSpecs == nil) || (runRoute && options.ModelRuns == nil) {
+		if (auditRoute && options.Audits == nil) || identityRoute || (specRoute && options.ModelSpecs == nil) || (runRoute && options.ModelRuns == nil) {
 			writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Resource not found")
 			return
 		}
@@ -130,17 +128,17 @@ func (s *server) GetVersion(w http.ResponseWriter, _ *http.Request) {
 func (s *server) GetCapabilities(w http.ResponseWriter, r *http.Request) {
 	response := publicCapabilities
 	response.Features = []string{}
-	if s.options.Identity != nil {
-		response.Features = append(response.Features, "local-administrator", "project-api-key")
-		if s.options.Audits != nil {
-			response.Features = append(response.Features, "project-audit-query")
-		}
-		if s.options.ModelSpecs != nil {
-			response.Features = append(response.Features, "scene-policy-management", "immutable-policy-revisions", "resource-policy-bindings")
-		}
-		if s.options.ModelRuns != nil {
-			response.Features = append(response.Features, "policy-revision-runs", "explicit-revision-run-scope", "multi-submission-decision", "run-expiry-decision-validity", "run-scoped-submission-token", "run-diagnostic-report")
-		}
+	if s.options.Audits != nil {
+		response.Features = append(response.Features, "project-audit-query")
+	}
+	if s.options.TrustedOperatorNamespace != "" {
+		response.Features = append(response.Features, "trusted-operator")
+	}
+	if s.options.ModelSpecs != nil {
+		response.Features = append(response.Features, "scene-policy-management", "immutable-policy-revisions", "resource-policy-bindings")
+	}
+	if s.options.ModelRuns != nil {
+		response.Features = append(response.Features, "policy-revision-runs", "explicit-revision-run-scope", "multi-submission-decision", "run-expiry-decision-validity", "run-scoped-submission-token", "run-diagnostic-report")
 	}
 	storage := s.check.StorageCapability()
 	supportLevel, ok := contractStorageSupportLevel(storage.SupportLevel)
@@ -161,6 +159,10 @@ func (s *server) GetOpenAPI(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *server) handlePage(w http.ResponseWriter, r *http.Request) {
+	if s.options.TrustedOperatorNamespace != "" {
+		writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Management console is disabled in API-only mode; use the HTTP API")
+		return
+	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -168,9 +170,6 @@ func (s *server) handlePage(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.URL.Path {
 	case "/", "/index.html", "/app.js", "/i18n.js", "/specs.js", "/runs.js", "/audit.js", "/export.js", "/console.js", "/editor.js", "/style.css", "/select-arrow.svg", "/favicon.svg":
-		s.static.ServeHTTP(w, r)
-	case "/login", "/setup":
-		r.URL.Path = "/"
 		s.static.ServeHTTP(w, r)
 	default:
 		writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Resource not found")

@@ -1,5 +1,7 @@
 # Scenes, Policies and GuardrailSpecs
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 A field-by-field YAML guide, complete example and common validation mistakes are
 in the [GuardrailSpec YAML reference](guardrailspec-reference.md).
 
@@ -10,10 +12,6 @@ services by `policyRevisionId`; the number is only for display. See
 [core concepts](concepts.md) for the shared terminology.
 
 ## Initialize a Scene
-
-Use the management page or an administrator CLI session. Run commands from the
-checkout or archive root; see [Getting started](getting-started.md) for login and
-credential setup.
 
 ```sh
 guardrailctl scene apply --key recovery --name Recovery \

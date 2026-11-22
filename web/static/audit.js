@@ -1,8 +1,8 @@
-// Project administrator audit reader. Exports are fetched from the redacted API.
+// Standalone management uses direct same-origin API requests.
 (() => {
   const el = id => document.getElementById(id);
   const fields = ["eventType", "actorId", "resourceType", "resourceId", "from", "to"];
-  let signedIn = false, generation = 0, busy = false, loaded = false;
+  let available = false, generation = 0, busy = false, loaded = false;
   let filters = new URLSearchParams(), cursors = [""], next = "";
   function message(key) { setText(el("audit-message"), key); }
   function buttons() {
@@ -19,7 +19,7 @@
   }
   async function request(params) {
     const response = await fetch("/api/v1alpha1/audit-events?" + params, {
-      credentials: "same-origin", redirect: "error", signal: AbortSignal.timeout(15000),
+      credentials: "omit", redirect: "error", signal: AbortSignal.timeout(15000),
       headers: {"X-Guardrail-CSRF": "1"},
     });
     const page = await response.json();
@@ -61,7 +61,7 @@
     }));
   }
   async function load(stack = [""]) {
-    if (!signedIn || busy) return;
+    if (!available || busy) return;
     const current = generation;
     busy = true; message("auditLoading"); buttons();
     try {
@@ -72,7 +72,7 @@
       el("audit-message").textContent = ""; el("audit-message").removeAttribute("data-i18n");
     } catch (error) {
       if (current !== generation) return;
-      if (error.status === 401) show("login"); else message(error.status === 403 ? "auditForbidden" : "auditFailed");
+      message(error.status === 403 ? "auditForbidden" : "auditFailed");
     } finally { if (current === generation) { busy = false; buttons(); } }
   }
   el("audit-filters").addEventListener("submit", event => {
@@ -94,7 +94,7 @@
   el("previous-audit").addEventListener("click", () => cursors.length > 1 && load(cursors.slice(0, -1)));
   el("next-audit").addEventListener("click", () => next && load([...cursors, next]));
   el("export-audit").addEventListener("click", async () => {
-    if (!signedIn || busy || !loaded) return;
+    if (!available || busy || !loaded) return;
     const current = generation; busy = true; buttons();
     try {
       const page = await request(parameters(cursors.at(-1), true));
@@ -103,11 +103,11 @@
       window.downloadGuardrailJSON(page, "guardrail-audit.json"); message("exportReady");
     } catch (error) {
       if (current !== generation) return;
-      if (error.status === 401) show("login"); else message(error.status === 403 ? "auditForbidden" : "exportFailed");
+      message(error.status === 403 ? "auditForbidden" : "exportFailed");
     } finally { if (current === generation) { busy = false; buttons(); } }
   });
   window.AuditUI = {
-    setSignedIn(value) { if (signedIn !== value) { signedIn = value; filters = new URLSearchParams(); reset(); fields.forEach(name => { el("audit-" + name).value = ""; }); } },
+    setAvailable(value) { if (available !== value) { available = value; filters = new URLSearchParams(); reset(); fields.forEach(name => { el("audit-" + name).value = ""; }); } },
     leave() { reset(); },
     route(params) {
       const query = new URLSearchParams();

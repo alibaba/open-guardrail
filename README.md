@@ -173,8 +173,7 @@ make build
 ./bin/open-guardrail serve
 ```
 
-Open <http://127.0.0.1:8080> and create the first administrator. There is no default
-password. SQLite stores data in `./data`; no separate database service is needed.
+Open <http://127.0.0.1:8080> to use the console directly. No account setup or login is required. SQLite stores data in `./data`; no separate database service is needed.
 
 ### Next steps
 
@@ -205,7 +204,7 @@ and [reference integrations](#reference-integrations) for what works today.*
 The preview includes:
 
 - A standalone Go service, an HTTP CLI and an embedded management UI.
-- Local administrator setup, browser/CLI sessions and scoped machine credentials
+- Direct console and CLI access with Run-scoped Submission credentials
   with bounded lifetimes, metadata listing, secret rotation and revocation.
 - Scenes, editable policy drafts and immutable policy revisions.
 - Runs with frozen policy/evaluation context, intermediate and final submissions,
@@ -255,7 +254,7 @@ Start with the [documentation index](docs/README.md) for reading paths, or read
 | --- | --- |
 | Run a local example and inspect a decision | [Getting started](docs/getting-started.md) |
 | Configure storage or a remote service | [Configuration and storage](docs/configuration.md), [Docker deployment](docs/docker.md) |
-| Manage administrators and credentials | [Administrator guide](docs/local-administrator.md) |
+| Understand access and Run credentials | [Access guide](docs/access.md) |
 | Write and publish a GuardrailSpec | [GuardrailSpec YAML reference](docs/guardrailspec-reference.md), [Scenes and Specs](docs/scenes-and-specs.md) |
 | Trace a decision | [Audit queries and Run reports](docs/audit-and-reports.md) |
 | Create Runs and submit evidence | [Runs and submissions](docs/runs.md) |

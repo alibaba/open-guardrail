@@ -1,5 +1,7 @@
 # Package layout and extension boundaries
 
+The console, CLI and management API use direct access. Only assessment submission requires a Run credential. See [Access](access.md).
+
 OpenGuardrail owns the scenario-independent policy, evidence and decision model.
 Production delivery and recovery are the first reference scenarios. Domain-specific
 observation sources and assessment logic belong in evaluators and integrations.
@@ -38,7 +40,7 @@ internal/
     run/                     Arbitrary ChangeSet canonicalization and identity
     resource/                Exact resource references for Policy bindings
   application/
-    identity/                Local administrator and credential use cases
+    token/                   Opaque resource identifiers
     spec/                    Scene drafts, validated publication commands and repository ports
     run/                     Immutable Run creation/query and repository port
     authorization/           Guardrail resource and operation rules [planned]
@@ -147,16 +149,6 @@ and [runtime architecture](architecture.md) for implemented behavior.
 
 ## Resource bindings
 
-Each Scene maps exact `{kind,id}` resources to one Policy and an optional published
-Revision. Omit the Revision to follow the Policy active Revision. Binding management
-uses the existing administrator session and write CSRF header through the OpenAPI.
-The CLI exposes `binding list|put|delete` and `run create --resources FILE`;
-see the [complete walkthrough](../examples/resource-bindings/README.md).
-A bound Policy can be archived; matching new Runs then fail with
-`SPEC_NOT_PUBLISHED` (409), without default fallback. Existing Runs keep their
-frozen Revision. Binding audit stores before/after values; identical PUT and absent
-DELETE emit no change event.
-
 Trusted integrations supply a flat `resources` array when creating a Run:
 
 ```json
@@ -175,3 +167,13 @@ Scene default; partially bound resources or conflicting bindings return 409.
 `resources`. The final Policy/Revision is frozen in the Run. Optional `selection`
 evidence records matched resources and active/pinned mode only; default and explicit
 selection omit it, and exact retries preserve both the version and existing evidence.
+
+## Optional Run context plugins
+
+Configure each Scene with optional `plugins.changeSet` and `plugins.bindingCandidates` entries. Each entry specifies the complete HTTPS endpoint in `url`, including the provider-defined path. A Scene PATCH replaces the supplied `plugins` object; an empty object clears both entries.
+
+The `plugins.changeSet` plugin enriches the caller's opaque ChangeSet before Run selection.
+The `plugins.bindingCandidates` plugin returns ordered groups of `{kind,id}` references;
+OpenGuardrail then looks up its own bindings and freezes the chosen Revision.
+Neither plugin writes Specs, bindings or decisions. OpenGuardrail sends a POST directly to each configured URL. Callers may provide
+complete ChangeSets and resource references without configuring these plugins.

@@ -1,5 +1,6 @@
 # Agent 清理插件预览
 
+页面、CLI 和管理 API 均可直接使用，无需账号或登录；提交评估仍需绑定 Run 的提交凭据。详见[访问指南](../../docs/i18n/access.zh-CN.md)。
 
 版本化安装、配置诊断与独立验收请见[安装试用指南](https://github.com/alibaba/open-guardrail/blob/main/docs/plugin-trial.zh-CN.md).
 
@@ -41,11 +42,6 @@ DSH 需要 pnpm，用所选 profile 的插件管理入口安装：
 dsh plugin --profile headless add "$plugin_install_dir/openguardrail-agent-plugins-preview-0.1.0-alpha.1.tgz" --ignore-scripts
 dsh --profile headless '使用 guardrail-cleanup Skill，先评估全部四个示例文件并尝试执行，展示拒绝；再缩小到允许的目标，重新评估执行，最后核对实际文件与两条决策。'
 ```
-
-可用 `PI_CODING_AGENT_DIR` 或 `DSH_HOME` 指定单独的测试配置，保留正常工作环境。
-模型、模型地址和推理凭据均由宿主管理，不写入插件。初次工具调用会启动隔离服务；
-不会复用已有管理员会话、数据库或用户工作目录。包内包含示例实现和策略，运行时
-只需上述原生二进制，不依赖源码目录和 Go。
 
 预期结果：首次得到 DENY，四个文件均保留；缩小范围后新建 Run，得到 ALLOW，
 只删除 `cache.tmp` 和 `download.tmp`，保留 `orders.csv` 和 `config.yaml`。

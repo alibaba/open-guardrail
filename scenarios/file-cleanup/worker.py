@@ -67,7 +67,7 @@ class Cleanup:
             self.gateway = runtime.Gateway(binaries / "guardrailctl", self.origin, self.private)
             self.capabilities = json.loads(runtime.command(str(binaries / "guardrailctl"),
                                                        "--server", self.origin, "capabilities"))
-            self.gateway.setup(secrets.token_urlsafe(32))
+
             self.policy = runtime.policy_yaml(2)
             self.gateway.publish(self.policy, self.private)
             self.tool = runtime.FileTool(self.private)
@@ -81,14 +81,14 @@ class Cleanup:
         selected = [self.records[runId]] if runId is not None else list(self.records.values())[-10:]
         records = []
         for record in selected:
-            final = self.gateway.cli("run", "get", "--key-file", str(self.gateway.key), record["runId"])
+            final = self.gateway.cli("run", "get",  record["runId"])
             item = {"runId": record["runId"], "removed": record["removed"]}
             if runId is None:
                 item["run"] = {key: final[key] for key in ("id", "status", "result", "decision",
                     "decisionExpiresAt", "policyRevisionId", "specDigest", "finalSubmissionId") if key in final}
             else:
                 item.update(run=final, revision=record["revision"], acceptedSubmission=(
-                    self.gateway.cli("run", "submission", "--key-file", str(self.gateway.key),
+                    self.gateway.cli("run", "submission",
                         "--submission-id", final["finalSubmissionId"], record["runId"])
                     if final.get("finalSubmissionId") else None))
             records.append(item)
@@ -121,11 +121,11 @@ class Cleanup:
                   "targets": targets, "maxFiles": 2,
                   "observationDigest": hashlib.sha256(runtime.identity(observation).encode()).hexdigest()}
         runtime.private_json(directory / "change.json", change)
-        created = self.gateway.cli("run", "create", "--key-file", str(self.gateway.key),
+        created = self.gateway.cli("run", "create",
                                   "--scene", "file-cleanup", "--change-set", str(directory / "change.json"),
                                   "--operation-id", requestId + "-create", "--submission-credential-file",
                                   str(directory / "credential.json"))
-        revision = self.gateway.cli("run", "revision", "--key-file", str(self.gateway.key), created["id"])
+        revision = self.gateway.cli("run", "revision",  created["id"])
         if (revision["id"] != created["policyRevisionId"] or revision["digest"] != created["specDigest"]
                 or revision["yaml"] != self.policy):
             raise InputError("Run policy differs from the policy selected for this task")
@@ -141,7 +141,7 @@ class Cleanup:
         return {"runId": record["runId"], "targets": record["targets"],
                 "policy": record["revision"]["yaml"], "observation": record["observation"],
                 "observedAt": record["observedAt"], "changeSet": record["changeSet"],
-                "run": self.gateway.cli("run", "get", "--key-file", str(self.gateway.key), record["runId"])}
+                "run": self.gateway.cli("run", "get",  record["runId"])}
 
     def submit(self, runId, checks):
         record = self.records[runId]

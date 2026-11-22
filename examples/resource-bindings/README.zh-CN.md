@@ -1,9 +1,8 @@
 # 资源绑定操作示例
 
-[English](README.md)
+页面、CLI 和管理 API 均可直接使用，无需账号或登录；提交评估仍需绑定 Run 的提交凭据。详见[访问指南](../../docs/i18n/access.zh-CN.md)。
 
-管理员通过 CLI 将资源绑定到策略，可信接入方使用 Project key 和原始资源引用创建 Run。
-服务选出策略版本并冻结在该 Run 中。
+[English](README.md)
 
 ## 隔离环境验收
 
@@ -19,15 +18,13 @@ CLI 需要包含 `binding` 和 `run create --resources`，此前的 Alpha 产物
 
 ## 使用已有服务
 
-先完成[管理员登录和场景发布](../../cmd/guardrailctl/README.md#scenes-and-administrator-sessions)。
+先通过 [CLI 发布场景](../../cmd/guardrailctl/README.md)，无需登录。
 使用 `scene apply` 返回的策略 ID，或同一场景中已有的策略 ID。将凭据和输入文件保存在私密工作目录。
 
 ```sh
 export OPEN_GUARDRAIL_URL=https://guardrail.example
-export OPEN_GUARDRAIL_SESSION_FILE=/absolute/private/admin-session.json
 policy_id=REPLACE_WITH_POLICY_ID
 revision_id=REPLACE_WITH_PUBLISHED_REVISION_ID
-key_file=/absolute/private/orchestrator-key.json
 
 # 跟随策略的活跃版本，资源 ID 直接传原始值。
 guardrailctl binding put --scene recovery --kind repository \
@@ -49,7 +46,7 @@ cat > change-set.json <<'JSON'
 {"changeSetRef":"example-operation-1"}
 JSON
 
-guardrailctl run create --key-file "$key_file" --scene recovery \
+guardrailctl run create --scene recovery \
   --change-set change-set.json --resources resources.json \
   --operation-id example-operation-1 \
   --submission-credential-file /absolute/private/new-run-credential.json
@@ -66,13 +63,3 @@ Run 输出包含 `policyId`、`policyRevisionId`，命中绑定时还有 `select
 重复删除成功，场景默认策略保持原有配置。
 
 ## 选择规则与权限
-
-- 管理命令使用管理员会话，Project key 沿用现有 Run 权限。
-- `--resources` 接收 1–100 个互不重复的 `{kind,id}` JSON 数组，文件上限 64 KiB。
-  ID 使用包含斜杠、中文等字符的原始值。
-- 省略资源或所有资源均未绑定时选场景默认策略。部分命中或命中不同绑定时返回 409。
-  绑定目标未发布或已归档时也会失败。
-- 接入方负责从真实操作生成可信资源引用，并核对执行对象与这些引用一致。
-  具体规则见[绑定契约](../../docs/extensions.md#resource-bindings)。
-- 写请求超时后可能已生效，应先查询绑定实际状态再决定重试。列表每次返回一页，
-  分页时直接使用服务返回的 `nextAfter`。

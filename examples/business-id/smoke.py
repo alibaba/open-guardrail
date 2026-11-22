@@ -37,8 +37,6 @@ def verify(binaries):
                                        cwd=work, env=environment, stdout=log, stderr=log)
         try:
             demo.wait_for_service(process, origin)
-            session, key = work / "session.json", work / "key.json"
-
             def cli(*args, input_text=None, expected=0):
                 result = subprocess.run([str(binaries / "guardrailctl"), *args[:2], "--server", origin, *args[2:]],
                                         cwd=work, env=environment, input=input_text, text=True,
@@ -50,19 +48,15 @@ def verify(binaries):
                     return result.stderr
                 return json.loads(result.stdout) if result.stdout.strip().startswith("{") else None
 
-            password = secrets.token_urlsafe(24) + "\n"
-            cli("bootstrap", "init", "--username", "demo", "--password-stdin", input_text=password)
-            cli("auth", "login", "--username", "demo", "--password-stdin", "--session-file", str(session), input_text=password)
-            cli("auth", "create-key", "--session-file", str(session), "--expires-in", "1h", "--result-file", str(key))
             for scene in ("release-demo", "other-release"):
-                cli("scene", "apply", "--session-file", str(session), "--key", scene,
+                cli("scene", "apply",  "--key", scene,
                     "--name", "Release order checks", "--spec", str(ROOT / "examples/policies/recovery.yaml"), "--publish")
             business = "发布/42 %?# +"
             change = work / "change.json"
             change.write_text(json.dumps({"releaseOrder": business, "batch": 1}))
 
             def create(name, business_id=business, scene="release-demo", expected=0):
-                return cli("run", "create", "--key-file", str(key), "--scene", scene,
+                return cli("run", "create",  "--scene", scene,
                            "--business-id", business_id, "--change-set", str(change),
                            "--operation-id", name, "--submission-credential-file", str(work / (name + ".json")), expected=expected)
 
@@ -74,7 +68,7 @@ def verify(binaries):
             create("first", expected=2)
             if (work / "first.json").read_bytes() != credential:
                 raise RuntimeError("Existing credential was overwritten")
-            listing = cli("run", "list", "--key-file", str(key), "--scene", "release-demo", "--business-id", business)
+            listing = cli("run", "list",  "--scene", "release-demo", "--business-id", business)
             if [item["id"] for item in listing["items"]] != [first["id"]]:
                 raise RuntimeError("Business ID lookup/encoding mismatch")
             change.write_text('{"releaseOrder":"different content"}')
@@ -90,7 +84,7 @@ def verify(binaries):
             def concurrent(index):
                 name = "parallel-" + str(index)
                 result = subprocess.run([str(binaries / "guardrailctl"), "run", "create", "--server", origin,
-                                         "--key-file", str(key), "--scene", "release-demo", "--business-id", "release-43",
+                                          "--scene", "release-demo", "--business-id", "release-43",
                                          "--change-set", str(change), "--operation-id", name,
                                          "--submission-credential-file", str(work / (name + ".json"))],
                                         cwd=work, env=environment, capture_output=True, text=True, timeout=40)
@@ -111,27 +105,27 @@ def verify(binaries):
             submission = work / "submission.json"
             submission.write_text(json.dumps(snapshot))
             cli("run", "submit", "--submission-credential-file", str(work / "first.json"), "--submission", str(submission), first["id"])
-            terminal = cli("run", "list", "--key-file", str(key), "--scene", "release-demo", "--business-id", business, "--status", "FINISHED")
+            terminal = cli("run", "list",  "--scene", "release-demo", "--business-id", business, "--status", "FINISHED")
             if len(terminal["items"]) != 1 or terminal["items"][0]["decision"] != "DENY":
                 raise RuntimeError("Terminal business lookup failed")
             replay = create("terminal-retry", expected=5)
             if first["id"] not in replay or "rotate-credential" in replay:
                 raise RuntimeError("Terminal replay gave invalid recovery guidance")
             report = work / "report.json"
-            cli("run", "report", "--key-file", str(key), "--output", str(report), first["id"])
+            cli("run", "report",  "--output", str(report), first["id"])
             saved = json.loads(report.read_text())
             if saved["run"]["businessId"] != business or saved["revision"]["id"] != first["policyRevisionId"] or not saved.get("finalSubmission"):
                 raise RuntimeError("Report lost the business, frozen policy or evidence linkage")
-            # Short TTL is configured through the existing administrator endpoint.
-            admin = json.loads(session.read_text())["token"]
+            # Short TTL is configured directly through the Scene endpoint.
+
             request = Request(origin + "/api/v1alpha1/scenes/release-demo", method="PATCH",
                               data=b'{"runTtlSeconds":1}', headers={"Content-Type":"application/json",
-                              "Authorization":"Bearer " + admin,"X-Guardrail-CSRF":"1"})
+                              "X-Guardrail-CSRF":"1"})
             with urlopen(request, timeout=15) as response:
                 json.load(response)
             expired = create("expiry", business_id="release-44")
             time.sleep(max(0, expired["deadlineAt"] - time.time()) + 0.1)
-            expiry = cli("run", "list", "--key-file", str(key), "--scene", "release-demo", "--business-id", "release-44", "--status", "EXPIRED")
+            expiry = cli("run", "list",  "--scene", "release-demo", "--business-id", "release-44", "--status", "EXPIRED")
             if len(expiry["items"]) != 1 or expiry["items"][0]["id"] != expired["id"]:
                 raise RuntimeError("Expired business ID lookup failed")
             create("expiry-retry", business_id="release-44", expected=5)

@@ -105,7 +105,7 @@ class CleanupTests(unittest.TestCase):
                 self.assertEqual((directory / "change.json").read_bytes(), change)
                 self.assertEqual(credential.read_bytes() if credential.exists() else None, saved)
                 if created:
-                    self.assertEqual(original("run", "get", "--key-file", str(self.app.gateway.key),
+                    self.assertEqual(original("run", "get",
                                               created[0]["id"])["status"], "OPEN")
                 self.assertEqual(self.names(), set(worker.runtime.SEEDS))
 
