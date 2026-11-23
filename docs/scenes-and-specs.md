@@ -11,6 +11,32 @@ Revision, immutable published Revisions and one active Revision. Revisions are i
 services by `policyRevisionId`; the number is only for display. See
 [core concepts](concepts.md) for the shared terminology.
 
+## Spec identity
+
+`metadata.name` is the immutable Spec business key, unique within its Project and
+Scene. Creating another Policy requires `POST /api/v1alpha1/scenes/{key}/policies`
+with `{"name":"Display label","specKey":"recovery-check"}` and `Idempotency-Key`.
+`name` is a display label and may repeat. `specKey` must start with a lowercase
+letter, contain only lowercase letters, digits and hyphens, end with a letter or
+digit, and contain at most 128 characters. Scene initialization derives it from
+the supplied YAML. Policy responses expose it as `specKey`.
+Exact retries of creation records from before this field was introduced may still
+omit `specKey`. Supplying it on a legacy retry must match the existing identity;
+replay never registers or changes that identity. New creation always requires it.
+
+Every Revision's YAML must keep the same `metadata.name`. Drafts may be empty or
+incomplete; saving a readable different name, publishing it or activating a
+historical Revision with a different name returns `409 SPEC_KEY_MISMATCH`.
+Creating a duplicate key returns `409 SPEC_KEY_CONFLICT`. Archiving a Policy does
+not release its key. Run and binding references continue to use `policyId`.
+
+Legacy Policies remain readable with `specKey` absent. On their first Draft save,
+publication or activation, the service registers the name from their active
+Revision, otherwise latest published Revision, otherwise Draft. Existing names
+are reserved even before registration. Historical duplicate names return a
+conflict on registration and require explicit data cleanup; they are never
+silently renamed or rewritten at startup.
+
 ## Initialize a Scene
 
 ```sh

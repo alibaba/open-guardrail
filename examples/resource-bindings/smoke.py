@@ -59,8 +59,8 @@ def verify(binaries):
                     return json.load(response)
 
             # Existing policy-publication HTTP APIs prepare a non-default Policy.
-            policy = api("POST", "scenes/binding-demo/policies", {"name": "Repository checks"})
-            yaml = (ROOT / "examples/policies/recovery.yaml").read_text()
+            policy = api("POST", "scenes/binding-demo/policies", {"name": "Repository checks", "specKey": "repository-checks"})
+            yaml = (ROOT / "examples/policies/recovery.yaml").read_text().replace("name: recovery", "name: repository-checks", 1)
             first = api("POST", "policies/" + policy["id"] + "/revisions", {"yaml": yaml})
             api("PUT", "policies/" + policy["id"] + "/active-revision", {"policyRevisionId": first["id"]})
             prefix = ( "--scene", "binding-demo")

@@ -2,12 +2,13 @@ package httpapi
 
 import (
 	"context"
-	"github.com/alibaba/open-guardrail/internal/adapters/storage"
-	"github.com/alibaba/open-guardrail/internal/application/spec"
-	"github.com/alibaba/open-guardrail/internal/config"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/alibaba/open-guardrail/internal/adapters/storage"
+	"github.com/alibaba/open-guardrail/internal/application/spec"
+	"github.com/alibaba/open-guardrail/internal/config"
 )
 
 func TestStandaloneEditsLegacyMaintainedPolicy(t *testing.T) {

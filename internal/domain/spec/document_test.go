@@ -11,6 +11,19 @@ import (
 	"testing"
 )
 
+func TestNameFromIncompleteDraft(t *testing.T) {
+	for _, raw := range []string{"metadata:\n  name: recovery\n", "metadata:\n  name: recovery\nspec: incomplete\n"} {
+		if name, err := Name(raw); err != nil || name != "recovery" {
+			t.Fatalf("incomplete Draft identity: %q %v", name, err)
+		}
+	}
+	for _, raw := range []string{"", "metadata:\n  name: Invalid\n", "metadata:\n  name: recovery\n  name: duplicate\n", "metadata:\n  name: recovery\n---\n{}", "metadata: ["} {
+		if _, err := Name(raw); err == nil {
+			t.Fatalf("accepted invalid identity: %q", raw)
+		}
+	}
+}
+
 const validSpec = `apiVersion: guardrail.open/v1alpha1
 kind: GuardrailSpec
 metadata:

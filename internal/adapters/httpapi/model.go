@@ -91,6 +91,10 @@ func (s *server) modelSpecError(w http.ResponseWriter, r *http.Request, err erro
 		return
 	}
 	switch {
+	case errors.Is(err, spec.ErrSpecKeyConflict):
+		writeError(w, r, http.StatusConflict, "SPEC_KEY_CONFLICT", "Spec key already exists in this scene")
+	case errors.Is(err, spec.ErrSpecKeyMismatch):
+		writeError(w, r, http.StatusConflict, "SPEC_KEY_MISMATCH", "YAML metadata.name must match the Spec key")
 	case errors.Is(err, spec.ErrForbidden):
 		writeError(w, r, http.StatusForbidden, "PERMISSION_DENIED", "Spec maintainer required")
 	case errors.Is(err, spec.ErrSceneAlreadyInitialized):
@@ -188,8 +192,20 @@ func (s *server) modelSceneRoute(w http.ResponseWriter, r *http.Request) {
 				s.modelSpecError(w, r, spec.ErrInvalid)
 				return
 			}
-			policy, created, err := s.options.ModelSpecs.CreatePolicy(r.Context(), scope, sceneKey, in.Name, modelKey(r), creationRefs(in.Resource)...)
+			specKey := ""
+			if in.SpecKey != nil {
+				specKey = *in.SpecKey
+				if !specdomain.ValidName(specKey) {
+					writeError(w, r, http.StatusBadRequest, "INVALID_ARGUMENT", "specKey must start with a lowercase letter, contain only lowercase letters, digits or hyphens, end with a letter or digit, and be at most 128 characters")
+					return
+				}
+			}
+			policy, created, err := s.options.ModelSpecs.CreatePolicy(r.Context(), scope, sceneKey, in.Name, specKey, modelKey(r), creationRefs(in.Resource)...)
 			if err != nil {
+				if in.SpecKey == nil && errors.Is(err, spec.ErrInvalid) {
+					writeError(w, r, http.StatusBadRequest, "INVALID_ARGUMENT", "specKey is required when creating a Policy")
+					return
+				}
 				s.modelSpecError(w, r, err)
 				return
 			}

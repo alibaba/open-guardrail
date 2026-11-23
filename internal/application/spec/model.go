@@ -8,6 +8,8 @@ import (
 )
 
 var ErrSceneAlreadyInitialized = errors.New("scene already initialized")
+var ErrSpecKeyConflict = errors.New("Spec key already exists in this scene")
+var ErrSpecKeyMismatch = errors.New("YAML metadata.name must match the Spec key")
 
 type SceneModel struct {
 	Plugins         *resource.Plugins `json:"plugins,omitempty"`
@@ -20,6 +22,7 @@ type Policy struct {
 	ID               string   `json:"id"`
 	SceneKey         string   `json:"sceneKey"`
 	Name             string   `json:"name"`
+	SpecKey          string   `json:"specKey,omitempty"`
 	LifecycleState   string   `json:"lifecycleState"`
 	ActiveRevisionID *string  `json:"activeRevisionId,omitempty"`
 	Maintainers      []string `json:"maintainers"`

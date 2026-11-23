@@ -39,11 +39,11 @@ func (s *Service) ListPolicyRevisions(ctx context.Context, scope Scope, policyID
 	}
 	return s.repository.ListPolicyRevisions(ctx, scope, policyID, pageSize, before)
 }
-func (s *Service) CreatePolicy(ctx context.Context, scope Scope, sceneKey, name, key string, refs ...resource.Reference) (Policy, bool, error) {
+func (s *Service) CreatePolicy(ctx context.Context, scope Scope, sceneKey, name, specKey, key string, refs ...resource.Reference) (Policy, bool, error) {
 	if len(refs) > 0 && (len(refs) != 1 || !refs[0].Valid()) {
 		return Policy{}, false, ErrInvalid
 	}
-	return s.repository.CreatePolicy(ctx, scope, sceneKey, name, key, refs...)
+	return s.repository.CreatePolicy(ctx, scope, sceneKey, name, specKey, key, refs...)
 }
 func (s *Service) GetPolicyDraft(ctx context.Context, scope Scope, id string) (PolicyRevision, error) {
 	if err := s.checkPolicyRead(ctx, scope, id); err != nil {

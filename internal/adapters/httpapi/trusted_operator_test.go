@@ -79,9 +79,9 @@ func TestTrustedOperatorSeparatesSpecMaintainers(t *testing.T) {
 	if json.Unmarshal(initialized.Body.Bytes(), &scene) != nil || !scene.Policy.CanMaintain("example:100001") || scene.Policy.CanMaintain("example:100002") {
 		t.Fatalf("wrong creator: %s", initialized.Body.String())
 	}
-	created := call("POST", "/api/v1alpha1/scenes/recovery/policies", "100002", map[string]string{"name": "Bob's Spec"}, func(r *http.Request) {
+	created := call("POST", "/api/v1alpha1/scenes/recovery/policies", "100002", map[string]string{"name": "Bob's Spec", "specKey": "bob"}, func(r *http.Request) {
 		r.Header.Set("X-Operator", "100002")
-		r.Body = io.NopCloser(strings.NewReader(`{"name":"Bob's Spec"}`))
+		r.Body = io.NopCloser(strings.NewReader(`{"name":"Bob's Spec","specKey":"bob"}`))
 	})
 	expect(created, 201)
 	var b spec.Policy

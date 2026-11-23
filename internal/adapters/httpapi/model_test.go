@@ -69,6 +69,24 @@ func TestModelHTTPFlow(t *testing.T) {
 	}
 	init := call("POST", "/api/v1alpha1/scenes/recovery:initialize", "", "init-1", map[string]any{"name": "Recovery", "defaultPolicyName": "default", "yaml": sampleHTTPSpec})
 	expect(init, 201)
+	for _, invalid := range []any{nil, "", "Uppercase", "white space", strings.Repeat("a", 129)} {
+		body := map[string]any{"name": "Invalid key"}
+		if invalid != nil {
+			body["specKey"] = invalid
+		}
+		out := call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "invalid-key", body)
+		expect(out, 400)
+		var problem struct{ Code, Message string }
+		if err := json.Unmarshal(out.Body.Bytes(), &problem); err != nil || problem.Code != "INVALID_ARGUMENT" || !strings.Contains(problem.Message, "specKey") {
+			t.Fatalf("missing field-specific guidance: %s", out.Body.String())
+		}
+	}
+	duplicate := call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "duplicate-key", map[string]any{"name": "Other label", "specKey": "recovery"})
+	expect(duplicate, 409)
+	var duplicateProblem struct{ Code string }
+	if err := json.Unmarshal(duplicate.Body.Bytes(), &duplicateProblem); err != nil || duplicateProblem.Code != "SPEC_KEY_CONFLICT" {
+		t.Fatalf("duplicate identity response: %s", duplicate.Body.String())
+	}
 	scenePath := "/api/v1alpha1/scenes/plugin-scene"
 	configured := map[string]any{"changeSet": map[string]string{"url": "https://plugin.example.com/custom/enrich"}}
 	sceneInput := map[string]any{"name": "Plugin scene", "defaultPolicyName": "default", "yaml": sampleHTTPSpec, "plugins": configured}
@@ -90,7 +108,8 @@ func TestModelHTTPFlow(t *testing.T) {
 	if strings.Contains(read.Body.String(), `"plugins"`) {
 		t.Fatalf("plugins still configured: %s", read.Body.String())
 	}
-	policyCreated := call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "p-1", map[string]any{"name": "automation-publisher"})
+	automationYAML := strings.Replace(sampleHTTPSpec, "name: recovery", "name: automation", 1)
+	policyCreated := call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "p-1", map[string]any{"name": "automation-publisher", "specKey": "automation"})
 	expect(policyCreated, 201)
 	var policy struct {
 		ID string `json:"id"`
@@ -98,12 +117,16 @@ func TestModelHTTPFlow(t *testing.T) {
 	if err := json.Unmarshal(policyCreated.Body.Bytes(), &policy); err != nil || policy.ID == "" {
 		t.Fatalf("invalid policy: %s: %v", policyCreated.Body.String(), err)
 	}
-	expect(call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "p-1", map[string]any{"name": "automation-publisher"}), 200)
+	expect(call("POST", "/api/v1alpha1/scenes/recovery/policies", "", "p-1", map[string]any{"name": "automation-publisher", "specKey": "automation"}), 200)
 	path := "/api/v1alpha1/policies/" + policy.ID
-	expect(call("GET", path, "", "", nil), 200)
-	draftYAML := strings.Replace(sampleHTTPSpec, "Check recovery readiness", "Check a manual draft", 1)
+	mismatch := call("PUT", path+"/draft", "", "", map[string]any{"yaml": sampleHTTPSpec})
+	expect(mismatch, 409)
+	if err := json.Unmarshal(mismatch.Body.Bytes(), &duplicateProblem); err != nil || duplicateProblem.Code != "SPEC_KEY_MISMATCH" {
+		t.Fatalf("identity mismatch response: %s", mismatch.Body.String())
+	}
+	draftYAML := strings.Replace(automationYAML, "Check recovery readiness", "Check a manual draft", 1)
 	expect(call("PUT", path+"/draft", "", "", map[string]any{"yaml": draftYAML}), 200)
-	revisionCreated := call("POST", path+"/revisions", "", "r-1", map[string]any{"yaml": sampleHTTPSpec})
+	revisionCreated := call("POST", path+"/revisions", "", "r-1", map[string]any{"yaml": automationYAML})
 	expect(revisionCreated, 201)
 	history := call("GET", path+"/revisions?pageSize=1", "", "", nil)
 	expect(history, 200)
@@ -126,7 +149,7 @@ func TestModelHTTPFlow(t *testing.T) {
 	if err := json.Unmarshal(revisionCreated.Body.Bytes(), &publishedRevision); err != nil || publishedRevision.ID == "" {
 		t.Fatalf("invalid Revision response: %s: %v", revisionCreated.Body.String(), err)
 	}
-	expect(call("POST", path+"/revisions", "", "r-1", map[string]any{"yaml": sampleHTTPSpec}), 200)
+	expect(call("POST", path+"/revisions", "", "r-1", map[string]any{"yaml": automationYAML}), 200)
 	explicitBody := map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "app"}, "policyRevisionRef": map[string]any{"policyRevisionId": publishedRevision.ID}}
 	expect(call("POST", "/runtime/v1alpha1/runs", "", "explicit-allowed", explicitBody), 201)
 	policyRead := call("GET", path, "", "", nil)
@@ -152,7 +175,7 @@ func TestModelHTTPFlow(t *testing.T) {
 	for _, invalid := range []any{nil, map[string]any{}, map[string]any{"yaml": nil}} {
 		expect(call("POST", path+"/draft:publish", "", "missing-reviewed-content", invalid), 400)
 	}
-	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": sampleHTTPSpec}), 409)
+	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": automationYAML}), 409)
 	publishedDraft := call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": draftYAML})
 	expect(publishedDraft, 201)
 	var promoted struct{ ID, Status string }
@@ -160,10 +183,10 @@ func TestModelHTTPFlow(t *testing.T) {
 		t.Fatalf("draft identity changed: %s %v", publishedDraft.Body.String(), err)
 	}
 	expect(call("GET", path+"/draft", "", "", nil), 404)
-	expect(call("PUT", path+"/draft", "", "", map[string]any{"yaml": sampleHTTPSpec}), 200)
+	expect(call("PUT", path+"/draft", "", "", map[string]any{"yaml": automationYAML}), 200)
 	// A successful exact retry returns its old Revision even after another edit.
 	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": draftYAML}), 200)
-	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": sampleHTTPSpec}), 409)
+	expect(call("POST", path+"/draft:publish", "", "reviewed-draft", map[string]any{"yaml": automationYAML}), 409)
 	created := call("POST", "/runtime/v1alpha1/runs", "", "create-1", map[string]any{"sceneKey": "recovery", "changeSet": map[string]any{"target": "app"}})
 	expect(created, 201)
 	var creation struct {

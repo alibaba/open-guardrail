@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/alibaba/open-guardrail/internal/application/spec"
@@ -24,15 +25,16 @@ func TestSpecMaintainersControlEveryWrite(t *testing.T) {
 			if !slices.Equal(initial.Policy.Maintainers, []string{"owner"}) {
 				t.Fatal("initializer lost creator")
 			}
-			policy, _, err := seed.CreatePolicy(ctx, owner, "recovery", "Editable", "new")
+			policy, _, err := seed.CreatePolicy(ctx, owner, "recovery", "Editable", "editable", "new")
 			if err != nil {
 				t.Fatal(err)
 			}
-			first, _, err := seed.PublishPolicyRevision(ctx, owner, policy.ID, sampleSpec, "first", false)
+			editableSpec := strings.Replace(sampleSpec, "name: recovery", "name: editable", 1)
+			first, _, err := seed.PublishPolicyRevision(ctx, owner, policy.ID, editableSpec, "first", false)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := seed.SavePolicyDraft(ctx, owner, policy.ID, sampleSpec); err != nil {
+			if _, err := seed.SavePolicyDraft(ctx, owner, policy.ID, editableSpec); err != nil {
 				t.Fatal(err)
 			}
 			service := spec.New(store.Specs())
@@ -41,11 +43,11 @@ func TestSpecMaintainersControlEveryWrite(t *testing.T) {
 			attempts := []func() error{
 				func() error { _, e := service.SavePolicyDraft(ctx, stranger, policy.ID, "changed"); return e },
 				func() error {
-					_, _, e := service.PublishPolicyRevision(ctx, stranger, policy.ID, sampleSpec, "forged-direct", false)
+					_, _, e := service.PublishPolicyRevision(ctx, stranger, policy.ID, editableSpec, "forged-direct", false)
 					return e
 				},
 				func() error {
-					_, _, e := service.PublishPolicyRevision(ctx, stranger, policy.ID, sampleSpec, "forged-draft", true)
+					_, _, e := service.PublishPolicyRevision(ctx, stranger, policy.ID, editableSpec, "forged-draft", true)
 					return e
 				},
 				func() error {
@@ -72,10 +74,10 @@ func TestSpecMaintainersControlEveryWrite(t *testing.T) {
 			if _, err := service.GetPolicy(ctx, editor, policy.ID); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := service.SavePolicyDraft(ctx, editor, policy.ID, sampleSpec); err != nil {
+			if _, err := service.SavePolicyDraft(ctx, editor, policy.ID, editableSpec); err != nil {
 				t.Fatal(err)
 			}
-			second, _, err := service.PublishPolicyRevision(ctx, editor, policy.ID, sampleSpec, "second", true)
+			second, _, err := service.PublishPolicyRevision(ctx, editor, policy.ID, editableSpec, "second", true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +90,7 @@ func TestSpecMaintainersControlEveryWrite(t *testing.T) {
 			if _, err := service.SavePolicyDraft(ctx, owner, policy.ID, "revoked"); !errors.Is(err, spec.ErrForbidden) {
 				t.Fatalf("revoked writer: %v", err)
 			}
-			if _, _, err := service.PublishPolicyRevision(ctx, owner, policy.ID, sampleSpec, "first", false); !errors.Is(err, spec.ErrForbidden) {
+			if _, _, err := service.PublishPolicyRevision(ctx, owner, policy.ID, editableSpec, "first", false); !errors.Is(err, spec.ErrForbidden) {
 				t.Fatalf("publication replay bypassed revocation: %v", err)
 			}
 			if _, err := service.SetPolicyMaintainers(ctx, owner, policy.ID, []string{"owner"}); !errors.Is(err, spec.ErrForbidden) {

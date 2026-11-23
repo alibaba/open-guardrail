@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	keyPattern      = regexp.MustCompile(`^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`)
+	keyPattern      = regexp.MustCompile(`^[a-z]([a-z0-9-]{0,126}[a-z0-9])?$`)
 	durationPattern = regexp.MustCompile(`^[1-9][0-9]*$`)
 )
 
@@ -66,27 +66,55 @@ type ValidationError struct{ Message string }
 func (e *ValidationError) Error() string { return e.Message }
 func invalid(message string) error       { return &ValidationError{message} }
 
-// Validate accepts the v1alpha1 schema. Validity durations are positive safe
-// integers; all other scalar values are strings. No aliases, custom tags,
-// unknown fields, implicit scalar coercions or extra YAML documents are accepted.
-func Validate(raw string) (string, string, error) {
+// ValidName is shared by resource creation and YAML metadata validation.
+func ValidName(name string) bool { return keyPattern.MatchString(name) }
+
+// Name reads identity from a possibly incomplete Draft without validating its checks.
+// Malformed documents remain editable but cannot establish or change identity.
+func Name(raw string) (string, error) {
+	root, err := decodeYAML(raw)
+	if err != nil {
+		return "", err
+	}
+	var doc struct {
+		Metadata struct {
+			Name string `yaml:"name"`
+		} `yaml:"metadata"`
+	}
+	if root.Decode(&doc) != nil || !ValidName(doc.Metadata.Name) {
+		return "", invalid("Spec needs a valid metadata.name")
+	}
+	return doc.Metadata.Name, nil
+}
+
+func decodeYAML(raw string) (*yaml.Node, error) {
 	if len(raw) > MaxYAMLBytes || !utf8.ValidString(raw) {
-		return "", "", invalid("Spec must be UTF-8 and at most 64 KiB")
+		return nil, invalid("Spec must be UTF-8 and at most 64 KiB")
 	}
 	var root yaml.Node
 	decoder := yaml.NewDecoder(strings.NewReader(raw))
 	if decoder.Decode(&root) != nil {
-		return "", "", invalid("Spec must contain one valid YAML document")
+		return nil, invalid("Spec must contain one valid YAML document")
 	}
 	if decoder.Decode(new(yaml.Node)) != io.EOF {
-		return "", "", invalid("Only one YAML document is allowed")
+		return nil, invalid("Only one YAML document is allowed")
 	}
 	count := 0
 	if err := validateNode(&root, 0, &count, nil); err != nil {
+		return nil, err
+	}
+	return &root, nil
+}
+
+// Validate accepts the v1alpha1 schema. Validity durations are positive safe
+// integers; all other scalar values are strings. No aliases, custom tags,
+// unknown fields, implicit scalar coercions or extra YAML documents are accepted.
+func Validate(raw string) (string, string, error) {
+	if _, err := decodeYAML(raw); err != nil {
 		return "", "", err
 	}
 	var doc Document
-	decoder = yaml.NewDecoder(strings.NewReader(raw))
+	decoder := yaml.NewDecoder(strings.NewReader(raw))
 	decoder.KnownFields(true)
 	if decoder.Decode(&doc) != nil {
 		return "", "", invalid("Spec contains unknown fields or incorrect field types")

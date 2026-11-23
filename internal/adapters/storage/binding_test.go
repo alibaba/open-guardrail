@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	runapp "github.com/alibaba/open-guardrail/internal/application/run"
@@ -23,11 +24,11 @@ func TestBindingSelectionAndRunIsolation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			policy, _, err := specs.CreatePolicy(ctx, scope, "recovery", "bound", "new-policy")
+			policy, _, err := specs.CreatePolicy(ctx, scope, "recovery", "bound", "bound", "new-policy")
 			if err != nil {
 				t.Fatal(err)
 			}
-			first, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, sampleSpec, "rev-1", false)
+			first, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, strings.Replace(sampleSpec, "name: recovery", "name: bound", 1), "rev-1", false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -48,7 +49,7 @@ func TestBindingSelectionAndRunIsolation(t *testing.T) {
 			if err != nil || len(page.Items) != 1 {
 				t.Fatalf("duplicate PUT: %+v %v", page, err)
 			}
-			second, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, sampleSpec, "rev-2", false)
+			second, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, strings.Replace(sampleSpec, "name: recovery", "name: bound", 1), "rev-2", false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -119,7 +120,7 @@ func TestBindingSelectionAndRunIsolation(t *testing.T) {
 			if _, err := specs.PutBinding(ctx, scope, "recovery", spec.Binding{Resource: ref, PolicyID: policy.ID, PolicyRevisionID: &initial.Revision.ID}); !errors.Is(err, spec.ErrInvalid) {
 				t.Fatalf("another Policy revision: %v", err)
 			}
-			draft, err := specs.SavePolicyDraft(ctx, scope, policy.ID, sampleSpec)
+			draft, err := specs.SavePolicyDraft(ctx, scope, policy.ID, strings.Replace(sampleSpec, "name: recovery", "name: bound", 1))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -188,18 +189,18 @@ func TestSpecCreationBindingIsAtomicAndIdempotent(t *testing.T) {
 			if _, err = svc.PutBinding(ctx, scope, "authoring", spec.Binding{Resource: repo, PolicyID: initial.Policy.ID}); err != nil {
 				t.Fatal(err)
 			}
-			bound, created, err := svc.CreatePolicy(ctx, scope, "authoring", "application", "create", app)
+			bound, created, err := svc.CreatePolicy(ctx, scope, "authoring", "application", "application", "create", app)
 			if err != nil || !created {
 				t.Fatalf("create: %v", err)
 			}
-			replay, created, err := svc.CreatePolicy(ctx, scope, "authoring", "application", "create", app)
+			replay, created, err := svc.CreatePolicy(ctx, scope, "authoring", "application", "application", "create", app)
 			if err != nil || created || replay.ID != bound.ID {
 				t.Fatalf("retry: %v", err)
 			}
-			if _, _, err = svc.CreatePolicy(ctx, scope, "authoring", "application", "create", repo); !errors.Is(err, spec.ErrConflict) {
+			if _, _, err = svc.CreatePolicy(ctx, scope, "authoring", "application", "application", "create", repo); !errors.Is(err, spec.ErrConflict) {
 				t.Fatalf("changed retry: %v", err)
 			}
-			if _, _, err = svc.CreatePolicy(ctx, scope, "authoring", "duplicate", "conflict", repo); !errors.Is(err, spec.ErrConflict) {
+			if _, _, err = svc.CreatePolicy(ctx, scope, "authoring", "duplicate", "duplicate", "conflict", repo); !errors.Is(err, spec.ErrConflict) {
 				t.Fatalf("collision: %v", err)
 			}
 			policies, err := svc.ListPolicies(ctx, scope, "authoring")
