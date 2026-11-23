@@ -1,0 +1,83 @@
+name: OpenGuardrail Release Gate
+description: Evidence-based CD admission gate using guardrailctl
+inputs:
+  mode:
+    description: "Execution mode: evaluate (create, assess, submit, verify), create (manual handoff), gate (wait for existing Run), or verify (read existing Run)"
+    required: false
+    default: gate
+  server:
+    description: OpenGuardrail service URL
+    required: true
+  scene:
+    description: Scene key to create or independently verify
+    required: false
+    default: release-gate
+  spec-file:
+    description: Optional Spec YAML to publish to this Scene before create/evaluate; omit to use an already configured Scene
+    required: false
+    default: ""
+  assessment-command:
+    description: Trusted shell command for evaluate mode; reads OG_RUN_FILE and OG_SPEC_FILE and writes a complete Snapshot to OG_SUBMISSION_FILE
+    required: false
+    default: ""
+  run-id:
+    description: Existing Run ID (required in gate and verify modes)
+    required: false
+    default: ""
+  business-id:
+    description: Optional exact business identifier to create or independently verify
+    required: false
+    default: ""
+  change-set-json:
+    description: Expected JSON changeSet for this deployment, used at creation and verification; defaults to current GitHub workflow identity
+    required: false
+    default: ""
+  deployment-environment:
+    description: Target environment included in the default changeSet; use the same trusted value at creation and verification
+    required: false
+    default: ""
+  operation-id:
+    description: Idempotency key for Run creation (only reuse when retrying the same Run-creation request)
+    required: false
+    default: ""
+  wait-timeout:
+    description: 'Maximum wait in gate mode as a Go duration with units (for example 300s, 5m, or 1h30m; bare numbers are invalid)'
+    required: false
+    default: 5m
+  guardrailctl-path:
+    description: Path to guardrailctl binary
+    required: false
+    default: guardrailctl
+outputs:
+  run-id:
+    description: OpenGuardrail Run ID
+    value: ${{ steps.guardrail.outputs.run-id }}
+  decision:
+    description: Authoritative decision (ALLOW or DENY)
+    value: ${{ steps.guardrail.outputs.decision }}
+  result:
+    description: Aggregate evaluation result (PASS, BLOCKED, or UNKNOWN)
+    value: ${{ steps.guardrail.outputs.result }}
+  submission-credential-file:
+    description: Path to scoped Run Submission Credential file (when created in create mode)
+    value: ${{ steps.guardrail.outputs.submission-credential-file }}
+runs:
+  using: composite
+  steps:
+    - name: Run OpenGuardrail gate
+      id: guardrail
+      shell: bash
+      env:
+        OG_MODE: ${{ inputs.mode }}
+        OG_SERVER: ${{ inputs.server }}
+        OG_SCENE: ${{ inputs.scene }}
+        OG_SPEC_FILE_INPUT: ${{ inputs.spec-file }}
+        OG_ASSESSMENT_COMMAND: ${{ inputs.assessment-command }}
+        OG_RUN_ID: ${{ inputs.run-id }}
+        OG_BUSINESS_ID: ${{ inputs.business-id }}
+        OG_CHANGE_SET_JSON: ${{ inputs.change-set-json }}
+        OG_DEPLOYMENT_ENVIRONMENT: ${{ inputs.deployment-environment }}
+        OG_OPERATION_ID: ${{ inputs.operation-id }}
+        OG_WAIT_TIMEOUT: ${{ inputs.wait-timeout }}
+        OG_CTL: ${{ inputs.guardrailctl-path }}
+      run: bash "$GITHUB_ACTION_PATH/gate.sh"

@@ -1,0 +1,47 @@
+apiVersion: guardrail.open/v1alpha1
+kind: GuardrailSpec
+metadata:
+  name: release-gate
+spec:
+  description: Production CD release gate requiring freeze-window, compatibility, and rollback evidence
+  instructions: Gather runtime delivery signals and change context, then submit a verdict with evidence for every check
+  validForSeconds: 900
+  checks:
+    - id: freeze-window
+      displayName: Change freeze and incident check
+      description: Confirm no active deployment freeze or ongoing high-severity incident blocks this release
+      instructions: Inspect active incident/freeze status for the target environment and record the source
+      criteria:
+        pass: No active freeze window or blocking incident affects the target environment
+        block: An active freeze window or ongoing high-severity incident blocks deployment
+        unknown: Freeze or incident status cannot be verified from available evidence
+      evidenceRequirements:
+        - id: freeze-status
+          description: Record freeze window state, incident check timestamp, and source system
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]
+
+    - id: compatibility-and-blast-radius
+      displayName: Compatibility and blast radius
+      description: Confirm config, API, and schema changes are backward-compatible and blast radius is bounded
+      instructions: Inspect the release diff, affected services, and canary/staging signals
+      criteria:
+        pass: Changes are backward-compatible and staging/canary checks show no regression
+        block: Breaking unmigrated changes or elevated canary/staging error rates are detected
+        unknown: Compatibility or blast radius cannot be assessed from the submitted diff and signals
+      evidenceRequirements:
+        - id: change-assessment
+          description: Record changed components, compatibility check, and canary/staging signal summary
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]
+
+    - id: rollback-readiness
+      displayName: Rollback readiness
+      description: Confirm a verified rollback target or down-migration path is ready
+      instructions: Verify the previous healthy artifact/revision and rollback procedure
+      criteria:
+        pass: A verified rollback artifact or reversible migration path is recorded
+        block: The change is irreversible without an approved recovery plan
+        unknown: Rollback target or recovery path cannot be confirmed
+      evidenceRequirements:
+        - id: rollback-target
+          description: Record the previous healthy version/revision and rollback command or runbook
+          appliesToVerdicts: [PASS, BLOCKED, UNKNOWN]

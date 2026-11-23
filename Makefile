@@ -53,9 +53,11 @@ test-pages:
 
 test-python:
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s integrations -t . -p 'test_*.py'
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s integrations/github-actions -p 'test_*.py'
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/agent-demo -p 'test_*.py'
 	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -m unittest discover -s examples/cleanup-demo -p 'test_*.py'
 	$(MAKE) test-agent-plugins
+	$(PYTHON) -B integrations/github-actions/demo.py
 	$(PYTHON) -B examples/resource-bindings/smoke.py
 	$(PYTHON) -B examples/business-id/smoke.py
 

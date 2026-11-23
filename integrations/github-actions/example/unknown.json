@@ -1,0 +1,5 @@
+{
+  "freezeWindow": {"source": "sample-change-calendar", "active": false, "blockingIncident": false},
+  "changeAssessment": {"source": "sample-ci-and-canary", "error": "Canary signals are unavailable"},
+  "rollback": {"source": "sample-artifact-registry", "ready": true, "target": "sample-app:v1"}
+}

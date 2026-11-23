@@ -5,9 +5,9 @@ Production delivery and recovery are the first reference scenarios represented
 in this directory. Other domains can use the same HTTP API or CLI with their own
 Scene, policies, evaluation context and evidence sources.
 
-Status: the shared Recovery Agent gate, Jenkins adapter and Argo Rollouts Analysis
-Job are implemented as synthetic CD-side demos. GitHub Actions and Argo CD sync
-hooks remain planned.
+Status: the shared Recovery Agent gate, Jenkins adapter, Argo Rollouts Analysis
+Job, and GitHub Actions composite release gate are implemented as CD-side
+recipes. Argo CD sync hooks remain planned.
 
 Start with [Getting started](../docs/getting-started.md) and the
 [local Agent demo](../examples/agent-demo/README.md) before configuring a delivery
@@ -30,7 +30,7 @@ public dependencies and synthetic data so every adopter can reproduce the same f
 | --- | --- | --- |
 | pi / DeepSeek Harness | [agent-plugins](agent-plugins/README.md) | Internal preview: native tools and Skill for the isolated file-cleanup scenario |
 | Jenkins | [jenkins](jenkins/README.md) | Synthetic Jenkinsfile, build-context adapter and outer-Agent client using encrypted handoff |
-| GitHub Actions | [github-actions](github-actions/README.md) | Planned deployment workflow calling the shared CLI or API |
+| GitHub Actions | [github-actions](github-actions/README.md) | Runnable three-check CD release scenario, configurable Spec and assessment command, and independent deployment verification |
 | Argo Rollouts | [argo](argo/README.md) | Inline Analysis Job, encrypted handoff, layered failure diagnostics and repeatable eight-case acceptance |
 | Argo CD | [argo](argo/README.md) | Sync hooks remain planned |
 
