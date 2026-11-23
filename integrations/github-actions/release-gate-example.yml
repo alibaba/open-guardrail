@@ -1,0 +1,74 @@
+name: OpenGuardrail sample release gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: Structured release signals to evaluate
+        type: choice
+        options: [pass, blocked, unknown]
+        default: pass
+
+permissions:
+  contents: read
+
+# This source-repository example builds the CLI from the reviewed checkout.
+# Set OPEN_GUARDRAIL_URL to a reachable test service before running it.
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run-id: ${{ steps.assess.outputs.run-id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build CLI
+        run: |
+          go build -o "$RUNNER_TEMP/guardrailctl" ./cmd/guardrailctl
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Evaluate sample release
+        id: assess
+        uses: ./integrations/github-actions
+        env:
+          SAMPLE_SIGNAL_FILE: integrations/github-actions/example/${{ inputs.sample }}.json
+        with:
+          mode: evaluate
+          server: ${{ vars.OPEN_GUARDRAIL_URL }}
+          scene: github-actions-demo
+          spec-file: integrations/github-actions/release-gate.yaml
+          assessment-command: python3 integrations/github-actions/example/assess.py --signals "$SAMPLE_SIGNAL_FILE"
+          deployment-environment: demo
+          business-id: gha-${{ github.run_id }}-${{ github.run_attempt }}
+          operation-id: gha-${{ github.run_id }}-${{ github.run_attempt }}-create
+
+  deploy-example:
+    needs: release-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build CLI
+        run: |
+          go build -o "$RUNNER_TEMP/guardrailctl" ./cmd/guardrailctl
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Independently verify this release
+        uses: ./integrations/github-actions
+        with:
+          mode: verify
+          server: ${{ vars.OPEN_GUARDRAIL_URL }}
+          scene: github-actions-demo
+          deployment-environment: demo
+          business-id: gha-${{ github.run_id }}-${{ github.run_attempt }}
+          run-id: ${{ needs.release-gate.outputs.run-id }}
+
+      - name: Simulate deployment
+        run: echo "Sample gate allowed this release. Replace this step for your own deployment."

@@ -1,0 +1,5 @@
+{
+  "freezeWindow": {"source": "sample-change-calendar", "active": true, "blockingIncident": false},
+  "changeAssessment": {"source": "sample-ci-and-canary", "backwardCompatible": true, "blastRadiusBounded": true, "canaryHealthy": true},
+  "rollback": {"source": "sample-artifact-registry", "ready": true, "target": "sample-app:v1"}
+}
