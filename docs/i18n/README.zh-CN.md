@@ -19,9 +19,9 @@
 
 OpenGuardrail 是专为操作真实系统的 AI Agent 打造的安全准入与审计服务。
 
-团队预先定义高风险操作前必须完成的前置检查；Agent 按策略执行检查并提交结构化证据后，OpenGuardrail 会校验证据完整性、落库审计记录并返回 `ALLOW` 或 `DENY`。最终由下游执行工具在真正动手前核验裁决结果及其有效期。
+团队预先定义高风险操作前必须完成的前置检查；Agent 按策略执行检查并提交结构化证据后，OpenGuardrail 会校验证据完整性、持久化审计记录并返回 `ALLOW` 或 `DENY`。最终由下游执行工具在执行前核验决策结果及其有效期。
 
-每次评估都会将策略版本、检查结果、原始证据和最终裁决强绑定，既能作为执行前的准入凭据，也便于事后合规审计。Agent 与业务工具可通过 HTTP API 或 `guardrailctl` CLI 接入。
+每次评估都会将策略版本、检查结果、原始证据和最终决策强绑定，既能作为执行前的准入凭据，也便于事后合规审计。Agent 与业务工具可通过 HTTP API 或 `guardrailctl` CLI 接入。
 
 **当前状态：开发预览版。** API 版本为 `v1alpha1`，具体能力与边界见
 [当前能力与限制](#当前能力与限制)。
@@ -46,13 +46,13 @@ OpenGuardrail 是专为操作真实系统的 AI Agent 打造的安全准入与�
 
 | 证据来源 | Agent 查到了什么 |
 | --- | --- |
-| 监控与告警 | 核对首批实例的错误率与活动告警：错误率处于阈值内，无活动告警。 |
+| 监控与告警 | 核对首批实例的错误率与活跃告警：错误率处于阈值内，无活跃告警。 |
 | 错误日志 | 同一批实例在发布后出现了新的写库异常。 |
-| 代码与数据 | 本次代码恰好改到了报错的写入路径；只读反查确认，订单 `order-42` 已扣款但状态仍停留在 `pending`。 |
+| 代码与数据 | 本次代码恰好改到了报错的写入路径；只读查询确认，订单 `order-42` 已扣款但状态仍停留在 `pending`。 |
 
 Agent 汇总观测窗口、首批实例范围、脱敏摘要及可追溯引用并提交。由于写库异常已波及业务订单，本次检查结论为 `BLOCKED`，OpenGuardrail 记录 `DENY`（本示例仅在本地模拟决策，实际暂停或放行由发布系统执行；若必查日志不可用且现有证据不足以判断，Agent 会上报 `UNKNOWN` 并指明缺失项，系统同样拦截为 `DENY`）。
 
-[![首批检查回放。错误率在阈值内且没有活动告警，日志里的失败写入关联到一笔已扣款、状态仍为 pending 的订单，最终决策为 DENY。](../media/first-batch-run.gif)](../media/first-batch-run.mp4)
+[![首批检查回放。错误率在阈值内且没有活跃告警，日志里的失败写入关联到一笔已扣款、状态仍为 pending 的订单，最终决策为 DENY。](../media/first-batch-run.gif)](../media/first-batch-run.mp4)
 
 [播放 30 秒示例回放（MP4，可暂停）](../media/first-batch-run.mp4)
 
@@ -62,7 +62,7 @@ Agent 汇总观测窗口、首批实例范围、脱敏摘要及可追溯引用�
 
 > 用 $open-guardrail-demo 跑一遍首批检查，告诉我下一批能不能发。
 
-Agent 会自动拉起本地临时服务，按 Spec 依次排查首批实例的监控、日志与告警，并在对话里给出排查过程和最终裁决。默认模拟数据中，订单 `order-42` 已扣款但状态仍停留在 `pending`，因此预期结果为 `BLOCKED / DENY`（全程无需登录控制台；若宿主未自动识别 `.agents/skills/`，可让它按 `.agents/skills/open-guardrail-demo/SKILL.md` 执行）。
+Agent 会自动拉起本地临时服务，按 Spec 依次排查首批实例的监控、日志与告警，并在对话里给出排查过程和最终决策。默认模拟数据中，订单 `order-42` 已扣款但状态仍停留在 `pending`，因此预期结果为 `BLOCKED / DENY`（全程无需登录控制台；若宿主未自动识别 `.agents/skills/`，可让它按 `.agents/skills/open-guardrail-demo/SKILL.md` 执行）。
 
 检查完成后，Agent 会生成一个本地 JSON 报告链接，里面保留了服务端诊断记录与采信的观测证据；哪怕随后关掉临时服务、清理了临时库和凭据，这份报告依然可以随时打开回看。如果想在 Web 控制台查看详情，在启动时告诉它开启即可。
 
@@ -90,13 +90,13 @@ Agent 会自动拉起本地临时服务，按 Spec 依次排查首批实例的�
 
 一旦赋予 AI Agent 操作真实系统的权限，安全检查就不能只停留在口头约束上。光在 System Prompt 里叮嘱“操作前先检查”并不可靠，下游执行工具需要可核验的放行依据，事后安全审计也需要完整追溯当时依据的策略版本、检查结论与原始证据。
 
-如果这些上下文散落在 Agent 对话记录和工具日志里，每个业务工具都得各自去提取、关联、兜底。OpenGuardrail 将其收拢为标准化的评估与存证记录，方便执行端在动手前统一核验，也便于事后复盘。
+如果这些上下文散落在 Agent 对话记录和工具日志里，每个业务工具都得各自去提取、关联、兜底。OpenGuardrail 将其收拢为标准化的评估与存证记录，方便执行端在执行前统一核验，也便于事后复盘。
 
 ### 适用边界
 
 **适用场景：** 当 Agent 或自动化任务需要执行删除数据、发布应用、修改配置等高风险操作，且团队要求对每次放行做到“执行前可核验、事后可审计”时。
 
-**接入要求：** 前置检查由 Agent 或外部集成程序执行并提交证据；真正执行危险动作的下游工具，需在动手前读取权威 Run 记录，核验裁决结果、有效期、依赖证据及当前目标状态。
+**接入要求：** 前置检查由 Agent 或外部集成程序执行并提交证据；真正执行危险动作的下游工具，需在执行前读取权威 Run 记录，核验决策结果、有效期、依赖证据及当前目标状态。
 
 **能力边界：** OpenGuardrail 负责按策略校验提交内容并记录 `ALLOW` 或 `DENY`，但**不独立验证观测事实的真实性**；拿到 `ALLOW` 也不等同于自动授予业务权限。绕过受控工具的直接操作不在防护范围内，OpenGuardrail 本身也不提供进程或网络沙箱隔离。
 
@@ -195,9 +195,9 @@ OpenGuardrail 校验提交内容并记录决策，执行工具在操作前核验
 | 集成 | 当前状态 |
 | --- | --- |
 | [真实文件清理 Demo](../../examples/cleanup-demo/README.md) | 在临时目录中创建真实 Run 并执行受控删除；使用预设程序，未接入模型 |
-| [本地 Recovery Agent Demo](../../examples/agent-demo/README.md) | 使用合成观测数据，支持 Agent 评估与确定性自检 |
-| [Jenkins](../../integrations/jenkins/README.md) | 使用合成数据的流水线 Demo，由外部 Agent 执行检查、交付侧核验证据 |
-| [Argo Rollouts](../../integrations/argo/README.md) | 使用合成数据的 Analysis Job Demo |
+| [本地 Recovery Agent Demo](../../examples/agent-demo/README.md) | 使用模拟观测数据，支持 Agent 评估与确定性自检 |
+| [Jenkins](../../integrations/jenkins/README.md) | 使用模拟数据的流水线 Demo，由外部 Agent 执行检查、交付侧核验证据 |
+| [Argo Rollouts](../../integrations/argo/README.md) | 使用模拟数据的 Analysis Job Demo |
 | [GitHub Actions](../../integrations/github-actions/README.md) | 面向接入方的工作流仍在规划中 |
 | [Argo CD](../../integrations/argo/README.md) | Sync hooks 仍在规划中 |
 
@@ -226,7 +226,7 @@ OpenGuardrail 校验提交内容并记录决策，执行工具在操作前核验
 环境准备、问题反馈要求和 Pull Request 流程见 [CONTRIBUTING.md](../../CONTRIBUTING.md)。
 
 问题咨询和可复现的缺陷报告请提交至 [GitHub Issues](https://github.com/alibaba/open-guardrail/issues)，
-附上版本号和使用合成数据的最小复现示例。安全漏洞请按照 [SECURITY.md](../../SECURITY.md)
+附上版本号和使用模拟数据的最小复现示例。安全漏洞请按照 [SECURITY.md](../../SECURITY.md)
 私下报告。社区参与遵循[行为准则](../../CODE_OF_CONDUCT.md)。
 
 ## 许可证
