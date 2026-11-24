@@ -84,30 +84,31 @@ func testPolicyLifecycleTransactionsBackend(t *testing.T, store *Store) {
 	if _, err := repo.SetPolicyArchived(ctx, scope, initialized.Policy.ID, true); !errors.Is(err, spec.ErrConflict) {
 		t.Fatalf("archive default=%v", err)
 	}
-	alternate, created, err := repo.CreatePolicy(ctx, scope, "recovery", "alternate", "policy-1")
+	alternate, created, err := repo.CreatePolicy(ctx, scope, "recovery", "alternate", "alternate", "policy-1")
 	if err != nil || !created {
 		t.Fatalf("policy=%+v created=%v err=%v", alternate, created, err)
 	}
-	alternateAgain, created, err := repo.CreatePolicy(ctx, scope, "recovery", "alternate", "policy-1")
+	alternateAgain, created, err := repo.CreatePolicy(ctx, scope, "recovery", "alternate", "alternate", "policy-1")
 	if err != nil || created || alternateAgain.ID != alternate.ID {
 		t.Fatalf("replay=%+v created=%v err=%v", alternateAgain, created, err)
 	}
-	draft, err := repo.SavePolicyDraft(ctx, scope, alternate.ID, sampleSpec)
-	if err != nil || draft.YAML != sampleSpec {
+	alternateYAML := strings.Replace(sampleSpec, "name: recovery", "name: alternate", 1)
+	draft, err := repo.SavePolicyDraft(ctx, scope, alternate.ID, alternateYAML)
+	if err != nil || draft.YAML != alternateYAML {
 		t.Fatalf("draft=%+v err=%v", draft, err)
 	}
-	first, created, err := repo.PublishPolicyRevision(ctx, scope, alternate.ID, sampleSpec, "publish-draft", true)
+	first, created, err := repo.PublishPolicyRevision(ctx, scope, alternate.ID, alternateYAML, "publish-draft", true)
 	if err != nil || !created || (first.RevisionNumber == nil || *first.RevisionNumber != 1) {
 		t.Fatalf("first=%+v created=%v err=%v", first, created, err)
 	}
 	if _, err := repo.SavePolicyDraft(ctx, scope, alternate.ID, "invalid: ["); err != nil {
 		t.Fatal(err)
 	}
-	firstAgain, created, err := repo.PublishPolicyRevision(ctx, scope, alternate.ID, sampleSpec, "publish-draft", true)
+	firstAgain, created, err := repo.PublishPolicyRevision(ctx, scope, alternate.ID, alternateYAML, "publish-draft", true)
 	if err != nil || created || firstAgain.ID != first.ID {
 		t.Fatalf("draft replay=%+v created=%v err=%v", firstAgain, created, err)
 	}
-	direct, created, err := repo.PublishPolicyRevision(ctx, scope, alternate.ID, sampleSpec, "publish-direct", false)
+	direct, created, err := repo.PublishPolicyRevision(ctx, scope, alternate.ID, alternateYAML, "publish-direct", false)
 	if err != nil || !created || (direct.RevisionNumber == nil || *direct.RevisionNumber != 2) {
 		t.Fatalf("direct=%+v created=%v err=%v", direct, created, err)
 	}

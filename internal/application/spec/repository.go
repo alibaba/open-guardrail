@@ -18,7 +18,7 @@ type Repository interface {
 	GetPolicyRevision(ctx context.Context, scope Scope, id string) (PolicyRevision, error)
 	ListPolicies(ctx context.Context, scope Scope, sceneKey string) ([]Policy, error)
 	ListPolicyRevisions(ctx context.Context, scope Scope, policyID string, pageSize int, before int64) (RevisionPage, error)
-	CreatePolicy(ctx context.Context, scope Scope, sceneKey, name, key string, refs ...resource.Reference) (Policy, bool, error)
+	CreatePolicy(ctx context.Context, scope Scope, sceneKey, name, specKey, key string, refs ...resource.Reference) (Policy, bool, error)
 	GetPolicyDraft(ctx context.Context, scope Scope, id string) (PolicyRevision, error)
 	SavePolicyDraft(ctx context.Context, scope Scope, id, yaml string) (PolicyRevision, error)
 	// CommitPolicyRevision rechecks the reviewed Draft under its write lock.

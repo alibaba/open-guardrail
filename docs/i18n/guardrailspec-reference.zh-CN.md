@@ -55,7 +55,7 @@ spec:
 | --- | --- | --- |
 | `apiVersion` | 是 | 固定为 `guardrail.open/v1alpha1`。 |
 | `kind` | 是 | 固定为 `GuardrailSpec`。 |
-| `metadata.name` | 是 | Spec 标识符：1–63 个小写字母、数字或连字符；以字母开头，以字母或数字结尾。 |
+| `metadata.name` | 是 | Spec 标识符：1–128 个小写字母、数字或连字符；以字母开头，以字母或数字结尾。 |
 | `spec.description` | 是 | Spec 的用途，最多 1,024 字符。 |
 | `spec.instructions` | 是 | 对评估方的整体指引，最多 8,000 字符。 |
 | `spec.validForSeconds` | 否 | 终态决策的有效秒数：Run 正常完成（`FINISHED`）时从完成时起算；Run 过期（`EXPIRED`）时从逻辑截止时间起算。十进制整数，范围 `1` 至 `9007199254740991`，默认 `3600`；不能加引号或前导零。 |
@@ -72,7 +72,7 @@ spec:
 | `spec.checks[].evidenceRequirements[].description` | 是 | 需要何种观测，最多 1,024 字符。 |
 | `spec.checks[].evidenceRequirements[].appliesToVerdicts` | 是 | 从 `[PASS, BLOCKED, UNKNOWN]` 中选 1–3 个不重复的值。提交所列结论时必须提供这条证据；其他结论不能附带它。 |
 
-标识符的完整格式为 `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`。
+标识符的完整格式为 `^[a-z]([a-z0-9-]{0,126}[a-z0-9])?$`。
 `criteria` 是给评估方的文字判定标准，服务不会执行这些文字。
 最终 Submission 必须覆盖全部 Check 及其适用证据：全部 `PASS` 得到
 `PASS / ALLOW`；有任一 `BLOCKED` 得到 `BLOCKED / DENY`；否则有

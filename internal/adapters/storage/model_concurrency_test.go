@@ -51,22 +51,22 @@ func TestModelConcurrentIdempotency(t *testing.T) {
 				return err
 			})
 			burst(func() error {
-				_, _, err := store.Specs().CreatePolicy(ctx, scope, "recovery", "Other", "create")
+				_, _, err := store.Specs().CreatePolicy(ctx, scope, "recovery", "Other", "other", "create")
 				return err
 			})
-			policy, _, err := store.Specs().CreatePolicy(ctx, scope, "recovery", "Other", "create")
+			policy, _, err := store.Specs().CreatePolicy(ctx, scope, "recovery", "Other", "other", "create")
 			if err != nil {
 				t.Fatal(err)
 			}
 			burst(func() error {
-				_, _, err := spec.New(store.Specs()).PublishPolicyRevision(ctx, scope, policy.ID, sampleSpec, "publish", false)
+				_, _, err := spec.New(store.Specs()).PublishPolicyRevision(ctx, scope, policy.ID, strings.Replace(sampleSpec, "name: recovery", "name: other", 1), "publish", false)
 				return err
 			})
 			history, err := store.Specs().ListPolicyRevisions(ctx, scope, policy.ID, 100, 0)
 			if err != nil || len(history.Items) != 1 {
 				t.Fatalf("history=%v err=%v", history, err)
 			}
-			if _, _, err := store.Specs().CreatePolicy(ctx, scope, "recovery", "Different", "create"); !errors.Is(err, spec.ErrConflict) {
+			if _, _, err := store.Specs().CreatePolicy(ctx, scope, "recovery", "Different", "other", "create"); !errors.Is(err, spec.ErrConflict) {
 				t.Fatalf("conflicting create: %v", err)
 			}
 			runScope := runapp.Scope{WorkspaceID: "w", ProjectID: "p", ActorID: "agent"}

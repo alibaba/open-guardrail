@@ -4,6 +4,27 @@
 
 Scene 具有稳定键、可配置的 Run TTL 和可选默认 Policy，一个 Scene 可以包含多个 Policy。每个 Policy 最多有一个可变草稿修订、多个不可变已发布修订和一个激活修订。服务之间使用 `policyRevisionId` 标识修订，修订号仅用于展示。统一术语见[核心概念](../concepts.md)。
 
+## Spec 标识
+
+`metadata.name` 是 Spec 创建后不可修改的业务标识，在同一 Project 的同一 Scene 内唯一。
+创建另一个 Policy 时，调用 `POST /api/v1alpha1/scenes/{key}/policies`，提交
+`{"name":"展示名称","specKey":"recovery-check"}` 和 `Idempotency-Key`。
+`name` 是允许重名的展示名称；`specKey` 以小写字母开头，仅含小写字母、数字和连字符，
+以字母或数字结尾，最长 128 个字符。初始化 Scene 时直接从 YAML 提取标识。
+Policy 响应通过 `specKey` 返回它。
+升级前创建记录的精确重试仍可省略 `specKey`；若补传，必须与已有标识一致。
+重放不会登记或修改标识，新建 Policy 始终需要提供它。
+
+同一 Policy 的所有 Revision 必须保持相同的 YAML `metadata.name`。
+草稿允许为空或不完整；保存可读取的其他标识、发布不同标识，或激活标识不同的历史修订，
+返回 `409 SPEC_KEY_MISMATCH`。创建重复标识返回 `409 SPEC_KEY_CONFLICT`。
+归档不会释放标识；Run 和绑定继续使用 `policyId` 引用 Policy。
+
+历史 Policy 保持可读，登记前响应不含 `specKey`。首次保存草稿、发布或激活时，
+服务从激活修订提取原标识；没有激活修订时，依次使用最新已发布修订、草稿。
+尚未登记的历史标识也会被保留。历史重名会在登记时返回冲突，需要明确清理数据，
+服务不会在启动时自动改名或改写历史内容。
+
 ## 初始化 Scene
 
 使用管理页面或管理员 CLI 会话，在源码或解压归档的根目录运行命令。登录与凭据设置见[快速开始](../getting-started.md)。

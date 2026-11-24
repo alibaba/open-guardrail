@@ -516,6 +516,9 @@ type Capabilities struct {
 type CreatePolicyRequest struct {
 	Name     string             `json:"name"`
 	Resource *ResourceReference `json:"resource,omitempty"`
+
+	// SpecKey Immutable Spec business key, unique within its Project and Scene and equal to YAML metadata.name. Omitted on legacy Policies until registered on their first write.
+	SpecKey *SpecKey `json:"specKey,omitempty"`
 }
 
 // CreatePolicyRunRequest defines model for CreatePolicyRunRequest.
@@ -581,10 +584,13 @@ type Policy struct {
 	Id               string               `json:"id"`
 	LifecycleState   PolicyLifecycleState `json:"lifecycleState"`
 
-	// Maintainers Maintainer actor IDs used by enterprise trusted-operator access. The creator is the initial maintainer. Enterprise writes require a listed actor; legacy Specs without reliable creator facts have an empty list. Standalone access is unrestricted.
+	// Maintainers Authenticated actor IDs allowed to modify this Spec. The creator is the initial maintainer. Legacy Specs without reliable creator facts have an empty list and reject writes.
 	Maintainers []string `json:"maintainers"`
 	Name        string   `json:"name"`
 	SceneKey    SceneKey `json:"sceneKey"`
+
+	// SpecKey Immutable Spec business key, unique within its Project and Scene and equal to YAML metadata.name. Omitted on legacy Policies until registered on their first write.
+	SpecKey *SpecKey `json:"specKey,omitempty"`
 }
 
 // PolicyLifecycleState defines model for Policy.LifecycleState.
@@ -885,6 +891,9 @@ type SnapshotSubmitRequest struct {
 	Summary          string          `json:"summary"`
 	Verdict          RunResult       `json:"verdict"`
 }
+
+// SpecKey Immutable Spec business key, unique within its Project and Scene and equal to YAML metadata.name. Omitted on legacy Policies until registered on their first write.
+type SpecKey = string
 
 // StorageCapability Non-sensitive operating envelope of the active storage adapter
 type StorageCapability struct {
@@ -1437,13 +1446,13 @@ type ClientInterface interface {
 	// CreatePolicyWithBody performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+	// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	CreatePolicyWithBody(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreatePolicy performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+	// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	CreatePolicy(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// InitializeSceneWithBody performs a POST /api/v1alpha1/scenes/{key}:initialize (the `InitializeScene` operationId) request,
@@ -2032,7 +2041,7 @@ func (c *Client) ListPolicies(ctx context.Context, key string, reqEditors ...Req
 // CreatePolicyWithBody performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 // with any type of body and a specified content type.
 //
-// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 func (c *Client) CreatePolicyWithBody(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRequestWithBody(c.Server, key, params, contentType, body)
 	if err != nil {
@@ -2048,7 +2057,7 @@ func (c *Client) CreatePolicyWithBody(ctx context.Context, key string, params *C
 // CreatePolicy performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 func (c *Client) CreatePolicy(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreatePolicyRequest(c.Server, key, params, body)
 	if err != nil {
@@ -4662,7 +4671,7 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyWithBodyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+	// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	CreatePolicyWithBodyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error)
@@ -4670,7 +4679,7 @@ type ClientWithResponsesInterface interface {
 	// CreatePolicyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+	// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 	CreatePolicyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error)
 
 	// InitializeSceneWithBodyWithResponse performs a POST /api/v1alpha1/scenes/{key}:initialize (the `InitializeScene` operationId) request,
@@ -7656,7 +7665,7 @@ func (c *ClientWithResponses) ListPoliciesWithResponse(ctx context.Context, key 
 // CreatePolicyWithBodyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request,
 // with any type of body and a specified content type.
 //
-// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) CreatePolicyWithBodyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error) {
@@ -7670,7 +7679,7 @@ func (c *ClientWithResponses) CreatePolicyWithBodyWithResponse(ctx context.Conte
 // CreatePolicyWithResponse performs a POST /api/v1alpha1/scenes/{key}/policies (the `CreatePolicy` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Create a Policy in the default project. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
+// New Policies require specKey. Only exact retries of pre-upgrade creation records may omit it. It is unique within the Project and Scene, immutable, and must equal YAML metadata.name in every Revision. name is a display label and need not be unique. Optional resource is bound atomically; an existing resource binding causes a conflict without creating another Policy.
 func (c *ClientWithResponses) CreatePolicyWithResponse(ctx context.Context, key string, params *CreatePolicyParams, body CreatePolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePolicyResponse, error) {
 	rsp, err := c.CreatePolicy(ctx, key, params, body, reqEditors...)
 	if err != nil {

@@ -36,11 +36,12 @@ func TestBindingCLIRealService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, _, err := specs.CreatePolicy(ctx, scope, "recovery", "bound", "policy")
+	policy, _, err := specs.CreatePolicy(ctx, scope, "recovery", "bound", "bound", "policy")
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, yaml, "first", false)
+	boundYAML := strings.Replace(yaml, "name: recovery", "name: bound", 1)
+	first, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, boundYAML, "first", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +122,7 @@ func TestBindingCLIRealService(t *testing.T) {
 	if old.PolicyId != policy.ID || old.PolicyRevisionId != first.ID || old.Selection == nil {
 		t.Fatalf("old=%+v", old)
 	}
-	second, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, strings.Replace(yaml, "Recovery readiness", "Updated recovery readiness", 1), "second", false)
+	second, _, err := specs.PublishPolicyRevision(ctx, scope, policy.ID, strings.Replace(boundYAML, "Recovery readiness", "Updated recovery readiness", 1), "second", false)
 	if err != nil {
 		t.Fatal(err)
 	}

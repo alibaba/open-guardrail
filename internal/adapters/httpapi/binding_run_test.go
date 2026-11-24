@@ -30,11 +30,11 @@ func TestCallerResourceBindingsAndPrivilegedOverride(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, _, err := specs.CreatePolicy(ctx, scope, "recovery", "bound", "policy")
+	p, _, err := specs.CreatePolicy(ctx, scope, "recovery", "bound", "bound", "policy")
 	if err != nil {
 		t.Fatal(err)
 	}
-	rev, _, err := specs.PublishPolicyRevision(ctx, scope, p.ID, sampleHTTPSpec, "publish", false)
+	rev, _, err := specs.PublishPolicyRevision(ctx, scope, p.ID, strings.Replace(sampleHTTPSpec, "name: recovery", "name: bound", 1), "publish", false)
 	if err != nil {
 		t.Fatal(err)
 	}

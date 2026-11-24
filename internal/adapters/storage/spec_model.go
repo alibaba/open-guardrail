@@ -55,14 +55,15 @@ func (s *Specs) ListSceneModels(ctx context.Context, scope spec.Scope) ([]spec.S
 }
 func scanPolicyModel(row scanner) (spec.Policy, error) {
 	var p spec.Policy
-	var activeID, maintainers sql.NullString
-	err := row.Scan(&p.ID, &p.SceneKey, &p.Name, &p.LifecycleState, &activeID, &maintainers)
+	var activeID, specKey, maintainers sql.NullString
+	err := row.Scan(&p.ID, &p.SceneKey, &p.Name, &p.LifecycleState, &activeID, &specKey, &maintainers)
 	if err != nil {
 		return spec.Policy{}, specError(err)
 	}
 	if activeID.Valid {
 		p.ActiveRevisionID = &activeID.String
 	}
+	p.SpecKey = specKey.String
 	p.Maintainers = []string{}
 	if maintainers.Valid && (json.Unmarshal([]byte(maintainers.String), &p.Maintainers) != nil || !spec.ValidMaintainers(p.Maintainers)) {
 		return spec.Policy{}, spec.ErrUnavailable
@@ -71,7 +72,7 @@ func scanPolicyModel(row scanner) (spec.Policy, error) {
 	return p, nil
 }
 
-const policyModelColumns = "p.policy_id,p.scene_key,p.name,p.lifecycle_state,a.policy_revision_id,p.maintainers_json"
+const policyModelColumns = "p.policy_id,p.scene_key,p.name,p.lifecycle_state,a.policy_revision_id,p.spec_key,p.maintainers_json"
 const policyModelFrom = " FROM policy p LEFT JOIN policy_revision a ON a.id=p.active_revision_id"
 const sceneModelColumns = "scene_key,name,(SELECT policy_id FROM policy WHERE id=scene.default_policy_id),run_ttl_seconds,plugins_json"
 
@@ -182,8 +183,8 @@ func lockPolicyModel(ctx context.Context, tx *sql.Tx, scope spec.Scope, id strin
 	}
 	return policyByID(ctx, tx, scope, id)
 }
-func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, name, key string, refs ...resource.Reference) (spec.Policy, bool, error) {
-	if !spec.ValidMaintainers([]string{scope.ActorID}) {
+func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, name, specKey, key string, refs ...resource.Reference) (spec.Policy, bool, error) {
+	if (specKey != "" && !specdomain.ValidName(specKey)) || !spec.ValidMaintainers([]string{scope.ActorID}) {
 		return spec.Policy{}, false, spec.ErrInvalid
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -197,20 +198,42 @@ func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, na
 	if len(refs) > 1 || (len(refs) == 1 && !refs[0].Valid()) {
 		return spec.Policy{}, false, spec.ErrInvalid
 	}
-	raw := sceneKey + "\n" + name
+	legacyRaw := sceneKey + "\n" + name
 	if len(refs) == 1 {
 		encoded, _ := json.Marshal(refs[0])
-		raw += "\nresource\n" + string(encoded)
+		legacyRaw += "\nresource\n" + string(encoded)
 	}
-	requestDigest := modelDigest(raw)
+	// Encode field boundaries explicitly, including the immutable Spec key and binding.
+	request, _ := json.Marshal(struct {
+		SceneKey string
+		Name     string
+		SpecKey  string
+		Refs     []resource.Reference
+	}{sceneKey, name, specKey, refs})
+	requestDigest := modelDigest(string(request))
 	if digest, id, err := recordByKey(ctx, tx, scope, "policy:create", key); err == nil {
-		if digest != requestDigest {
+		legacy := digest == modelDigest(legacyRaw)
+		if digest != requestDigest && !legacy {
 			return spec.Policy{}, false, spec.ErrConflict
 		}
 		p, err := policyByID(ctx, tx, scope, id)
+		if err == nil && legacy && specKey != "" {
+			// Old callers omitted specKey. An upgraded retry may supply it only
+			// when it matches the existing identity; replay never changes a Policy.
+			storedKey := p.SpecKey
+			if storedKey == "" {
+				storedKey, err = legacyPolicySpecKey(ctx, tx, p.ID)
+			}
+			if err == nil && storedKey != specKey {
+				return spec.Policy{}, false, spec.ErrConflict
+			}
+		}
 		return p, false, err
 	} else if !errors.Is(err, spec.ErrNotFound) {
 		return spec.Policy{}, false, err
+	}
+	if !specdomain.ValidName(specKey) {
+		return spec.Policy{}, false, spec.ErrInvalid
 	}
 	result, err := tx.ExecContext(ctx, "UPDATE scene SET name=name WHERE workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND project_id=(SELECT id FROM project WHERE project_id=$2) AND scene_key=$3", scope.WorkspaceID, scope.ProjectID, sceneKey)
 	if err != nil {
@@ -223,8 +246,11 @@ func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, na
 	if n == 0 {
 		return spec.Policy{}, false, spec.ErrNotFound
 	}
-	p := spec.Policy{ID: opaque.RandomToken("pol_"), SceneKey: sceneKey, Name: name, LifecycleState: "ACTIVE", Maintainers: []string{scope.ActorID}}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name,maintainers_json) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5,$6)", p.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, name, creatorMaintainers(scope)); err != nil {
+	if err = checkSpecKeyAvailable(ctx, tx, scope, sceneKey, specKey, ""); err != nil {
+		return spec.Policy{}, false, err
+	}
+	p := spec.Policy{ID: opaque.RandomToken("pol_"), SceneKey: sceneKey, Name: name, SpecKey: specKey, LifecycleState: "ACTIVE", Maintainers: []string{scope.ActorID}}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name,spec_key,maintainers_json) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5,$6,$7)", p.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, name, specKey, creatorMaintainers(scope)); err != nil {
 		return spec.Policy{}, false, specError(err)
 	}
 	if len(refs) == 1 {
@@ -259,12 +285,21 @@ func (s *Specs) SavePolicyDraft(ctx context.Context, scope spec.Scope, id, yaml 
 		return spec.PolicyRevision{}, specError(err)
 	}
 	defer tx.Rollback()
+	if err = lockSpecProject(ctx, tx, scope); err != nil {
+		return spec.PolicyRevision{}, err
+	}
 	policy, err := lockMaintainedPolicy(ctx, tx, scope, id)
 	if err != nil {
 		return spec.PolicyRevision{}, err
 	}
 	if policy.LifecycleState != "ACTIVE" {
 		return spec.PolicyRevision{}, spec.ErrConflict
+	}
+	// Incomplete or malformed Drafts remain editable. Any readable metadata.name
+	// must still agree with the Policy's identity, including before full validation.
+	name, _ := specdomain.Name(yaml)
+	if err = bindPolicySpecKey(ctx, tx, scope, &policy, name); err != nil {
+		return spec.PolicyRevision{}, err
 	}
 	now := time.Now().Unix()
 	inserted, err := tx.ExecContext(ctx, `INSERT INTO policy_revision(policy_revision_id,policy_id,status,yaml,updated_by,updated_at)
@@ -325,6 +360,13 @@ func (s *Specs) CommitPolicyRevision(ctx context.Context, scope spec.Scope, inpu
 	}
 	if p.LifecycleState != "ACTIVE" {
 		return spec.PolicyRevision{}, false, spec.ErrConflict
+	}
+	name, err := specdomain.Name(yaml)
+	if err != nil {
+		return spec.PolicyRevision{}, false, err
+	}
+	if err = bindPolicySpecKey(ctx, tx, scope, &p, name); err != nil {
+		return spec.PolicyRevision{}, false, err
 	}
 	// For Draft publication, yaml is the exact content the caller reviewed.
 	// Compare under the Policy lock so another session cannot change what is published.
@@ -390,6 +432,9 @@ func (s *Specs) ActivatePolicyRevision(ctx context.Context, scope spec.Scope, po
 		return spec.Policy{}, specError(err)
 	}
 	defer tx.Rollback()
+	if err = lockSpecProject(ctx, tx, scope); err != nil {
+		return spec.Policy{}, err
+	}
 	p, err := lockMaintainedPolicy(ctx, tx, scope, policyID)
 	if err != nil {
 		return spec.Policy{}, err
@@ -406,6 +451,13 @@ func (s *Specs) ActivatePolicyRevision(ctx context.Context, scope spec.Scope, po
 	}
 	if r.Status != "PUBLISHED" {
 		return spec.Policy{}, spec.ErrConflict
+	}
+	name, err := specdomain.Name(r.YAML)
+	if err != nil {
+		return spec.Policy{}, err
+	}
+	if err = bindPolicySpecKey(ctx, tx, scope, &p, name); err != nil {
+		return spec.Policy{}, err
 	}
 	if _, err = tx.ExecContext(ctx, "UPDATE policy SET active_revision_id=(SELECT id FROM policy_revision WHERE policy_revision_id=$1 AND status='PUBLISHED') WHERE policy_id=$2", revisionID, policyID); err != nil {
 		return spec.Policy{}, specError(err)
@@ -614,11 +666,18 @@ func (s *Specs) CommitSceneInitialization(ctx context.Context, scope spec.Scope,
 	if scene.DefaultPolicyID != nil {
 		return spec.InitializedScene{}, false, spec.ErrSceneAlreadyInitialized
 	}
+	specKey, err := specdomain.Name(yaml)
+	if err != nil {
+		return spec.InitializedScene{}, false, err
+	}
+	if err = checkSpecKeyAvailable(ctx, tx, scope, sceneKey, specKey, ""); err != nil {
+		return spec.InitializedScene{}, false, err
+	}
 	now := input.Now()
-	policy := spec.Policy{ID: opaque.RandomToken("pol_"), SceneKey: sceneKey, Name: policyName, LifecycleState: "ACTIVE", Maintainers: []string{scope.ActorID}}
+	policy := spec.Policy{ID: opaque.RandomToken("pol_"), SceneKey: sceneKey, Name: policyName, SpecKey: specKey, LifecycleState: "ACTIVE", Maintainers: []string{scope.ActorID}}
 	number := int64(1)
 	revision := spec.PolicyRevision{ID: opaque.RandomToken("rev_"), PolicyID: policy.ID, RevisionNumber: &number, YAML: yaml, Digest: &specDigest, PublishedAt: &now, PublishedBy: &scope.ActorID, Status: "PUBLISHED", UpdatedBy: scope.ActorID, UpdatedAt: now}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name,maintainers_json) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5,$6)", policy.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, policyName, creatorMaintainers(scope)); err != nil {
+	if _, err = tx.ExecContext(ctx, "INSERT INTO policy(policy_id,workspace_id,project_id,scene_key,name,spec_key,maintainers_json) VALUES($1,(SELECT id FROM workspace WHERE workspace_id=$2),(SELECT id FROM project WHERE project_id=$3),$4,$5,$6,$7)", policy.ID, scope.WorkspaceID, scope.ProjectID, sceneKey, policyName, specKey, creatorMaintainers(scope)); err != nil {
 		return spec.InitializedScene{}, false, specError(err)
 	}
 	if _, err = tx.ExecContext(ctx, "INSERT INTO policy_revision(policy_revision_id,policy_id,status,revision_number,yaml,canonical_json,digest,published_at,published_by,updated_at,updated_by) VALUES($1,(SELECT id FROM policy WHERE policy_id=$2),'PUBLISHED',1,$3,$4,$5,$6,$7,$8,$9)", revision.ID, policy.ID, yaml, canonical, specDigest, now, scope.ActorID, revision.UpdatedAt, revision.UpdatedBy); err != nil {

@@ -60,7 +60,7 @@ characters. Unknown fields are rejected.
 | --- | --- | --- |
 | `apiVersion` | Yes | Exactly `guardrail.open/v1alpha1`. |
 | `kind` | Yes | Exactly `GuardrailSpec`. |
-| `metadata.name` | Yes | Spec identifier. Use 1–63 lowercase letters, digits or hyphens; start with a letter and end with a letter or digit. |
+| `metadata.name` | Yes | Spec identifier. Use 1–128 lowercase letters, digits or hyphens; start with a letter and end with a letter or digit. |
 | `spec.description` | Yes | Purpose of the Spec; at most 1,024 characters. |
 | `spec.instructions` | Yes | Instructions for the evaluator; at most 8,000 characters. |
 | `spec.validForSeconds` | No | Lifetime in seconds of a terminal Decision. It starts when the Run finishes (`FINISHED`) or at the logical deadline if the Run expires (`EXPIRED`). Positive base-10 integer from `1` to `9007199254740991`; default `3600`. Write it without quotes or leading zeros. |
@@ -77,7 +77,7 @@ characters. Unknown fields are rejected.
 | `spec.checks[].evidenceRequirements[].description` | Yes | What observation this requirement expects; at most 1,024 characters. |
 | `spec.checks[].evidenceRequirements[].appliesToVerdicts` | Yes | Nonempty, unique subset of `[PASS, BLOCKED, UNKNOWN]`. Evidence for this requirement is accepted only for the listed Check verdicts and required when one of those verdicts is submitted. |
 
-The identifier pattern is `^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`.
+The identifier pattern is `^[a-z]([a-z0-9-]{0,126}[a-z0-9])?$`.
 `criteria` describes how an evaluator should classify observations; it is not
 code evaluated by the service. A final Submission includes every Check and its
 applicable evidence. The service aggregates Check verdicts: all `PASS` means

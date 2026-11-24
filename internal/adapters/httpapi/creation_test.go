@@ -51,7 +51,7 @@ func TestAtomicBoundCreationHTTP(t *testing.T) {
 	if out := call("GET", "/api/v1alpha1/scenes/authoring/bindings", nil, true, ""); out.Code != 200 || !strings.Contains(out.Body.String(), `"items":[]`) {
 		t.Fatalf("initialization created a resource binding: %d %s", out.Code, out.Body)
 	}
-	body = map[string]any{"name": "Application Spec", "resource": map[string]string{"kind": "application", "id": "7"}}
+	body = map[string]any{"name": "Application Spec", "specKey": "application", "resource": map[string]string{"kind": "application", "id": "7"}}
 	first := call("POST", "/api/v1alpha1/scenes/authoring/policies", body, true, "create")
 	if first.Code != 201 {
 		t.Fatalf("create: %d %s", first.Code, first.Body)
