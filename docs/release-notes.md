@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `guardrailctl mcp-proxy` selectively gates stdio MCP tool calls with
+  argument-bound Runs, expiring ALLOW reuse, conservative single-statement SQL
+  recognition and downstream `destructiveHint` annotations. Ordinary calls make
+  no OpenGuardrail HTTP requests. The integration includes a database-write
+  Spec, policy example and [client setup guide](../integrations/mcp-proxy/README.md).
+  Only Runs created by the current proxy process are accepted; ambiguous SQL
+  syntax and function calls require assessment.
 - Standalone deployments open directly in the console and CLI without
   administrator accounts, login sessions or Project API Keys. Per-Run Submission
   Credentials remain required. Run creation, inspection and credential rotation
