@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -36,7 +37,20 @@ func open(dir string, create bool) (*sql.DB, error) {
 	if err = f.Close(); err != nil {
 		return nil, errors.New("cannot close SQLite database file")
 	}
-	u := url.URL{Scheme: "file", Path: filepath.ToSlash(path)}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, errors.New("cannot resolve SQLite database path")
+	}
+	// url.URL writes "//" after the scheme whenever Path is non-empty, so a
+	// path without a leading slash ("data/guardrail.db", or "C:/..." from
+	// filepath.Abs on Windows) would leave its first segment in the authority,
+	// which SQLite rejects as "invalid uri authority". A slash-rooted absolute
+	// path keeps the authority empty.
+	slash := filepath.ToSlash(abs)
+	if !strings.HasPrefix(slash, "/") {
+		slash = "/" + slash
+	}
+	u := url.URL{Scheme: "file", Path: slash}
 	q := u.Query()
 	if !create {
 		q.Set("mode", "rw")
