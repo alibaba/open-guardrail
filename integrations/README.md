@@ -28,6 +28,7 @@ public dependencies and synthetic data so every adopter can reproduce the same f
 
 | Platform | Directory | Integration status |
 | --- | --- | --- |
+| MCP stdio clients | [mcp-proxy](mcp-proxy/README.md) | Selective tool gate with argument-bound Runs, conservative SQL recognition and destructive-tool annotations |
 | pi / DeepSeek Harness | [agent-plugins](agent-plugins/README.md) | Internal preview: native tools and Skill for the isolated file-cleanup scenario |
 | Jenkins | [jenkins](jenkins/README.md) | Synthetic Jenkinsfile, build-context adapter and outer-Agent client using encrypted handoff |
 | GitHub Actions | [github-actions](github-actions/README.md) | Runnable three-check CD release scenario, configurable Spec and assessment command, and independent deployment verification |

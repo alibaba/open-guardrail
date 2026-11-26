@@ -8,6 +8,7 @@ The console, CLI and management API use direct access. Only assessment submissio
 | `scene apply`, `binding list/put/delete`, `audit list/export` | None |
 | `run create/get/wait/list/report/revision/submission/rotate-credential` | None |
 | `run submit` | Credential bound to the selected Run |
+| `mcp-proxy` | Creates and privately saves a credential for each guarded Run |
 
 ```sh
 guardrailctl scene apply --key recovery --name Recovery   --spec ./examples/policies/recovery.yaml --publish
@@ -20,6 +21,17 @@ publishes them. A new Scene requires `--publish`; an existing Scene may save an
 incomplete draft. Conflicts fail without overwriting another edit.
 Run credential files must be regular files with mode `0600`.
 See [Access](../../docs/access.md).
+
+## MCP stdio proxy
+
+```sh
+guardrailctl mcp-proxy --config ./policy.yaml [--server URL] [--run-dir DIR] -- downstream-command args
+```
+
+The proxy passes ordinary tools through without HTTP calls and gates matching
+or destructive tools using an immutable Run bound to the exact arguments.
+See [MCP proxy setup, client configuration and custom policies](../../integrations/mcp-proxy/README.md)
+for a runnable database-write Scene and the assessment/retry flow.
 
 ## Runs and submissions
 

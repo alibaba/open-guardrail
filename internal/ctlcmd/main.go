@@ -21,6 +21,9 @@ func Main() {
 	}
 }
 func run(args []string, out io.Writer) error {
+	if len(args) > 0 && args[0] == "mcp-proxy" {
+		return runMCPProxy(args[1:], os.Stdin, out, os.Stderr)
+	}
 	if len(args) > 0 && args[0] == "run" {
 		return runRun(args, out)
 	}
@@ -36,7 +39,7 @@ func run(args []string, out io.Writer) error {
 	flags := flag.NewFlagSet("guardrailctl", flag.ContinueOnError)
 	flags.SetOutput(out)
 	flags.Usage = func() {
-		fmt.Fprintln(out, "Usage: guardrailctl [--server URL] status|version|capabilities\n       guardrailctl scene apply --help\n       guardrailctl binding list|put|delete --help\n       guardrailctl audit list|export --help\n       guardrailctl run create|get|wait|report|revision|submission|list|submit|rotate-credential --help")
+		fmt.Fprintln(out, "Usage: guardrailctl [--server URL] status|version|capabilities\n       guardrailctl scene apply --help\n       guardrailctl binding list|put|delete --help\n       guardrailctl audit list|export --help\n       guardrailctl run create|get|wait|report|revision|submission|list|submit|rotate-credential --help\n       guardrailctl mcp-proxy --config POLICY.yaml [--server URL] [--run-dir DIR] -- <downstream-cmd> [args...]")
 		flags.PrintDefaults()
 	}
 	server := flags.String("server", defaultServerURL(), "OpenGuardrail service URL")

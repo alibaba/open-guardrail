@@ -1,0 +1,18 @@
+version: 1
+server: http://127.0.0.1:8080
+defaultAction: pass_through
+
+# Unmatched destructiveHint tools fail closed without a configured scene.
+# Reuse this example Scene, or publish a dedicated destructive-tool Spec.
+destructiveHintPolicy:
+  scene: db-write-guard
+  reuseValidRun: true
+
+rules:
+  - name: db-write-guard
+    tools: [execute_sql, run_sql, query]
+    when:
+      arg: query
+      notReadOnlySql: true
+    scene: db-write-guard
+    reuseValidRun: true

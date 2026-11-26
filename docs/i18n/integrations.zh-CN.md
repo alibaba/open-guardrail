@@ -12,6 +12,7 @@ CD 平台负责部署和继续执行。[共享 Recovery 门禁](../../integratio
 
 | 平台 | 目录 | 集成状态 |
 | --- | --- | --- |
+| MCP 标准输入输出客户端 | [mcp-proxy](../../integrations/mcp-proxy/README.md) | 选择性工具门禁：绑定参数的 Run、保守 SQL 判定和破坏性工具注解 |
 | pi / DeepSeek Harness | [agent-plugins](../../integrations/agent-plugins/README.md) | 内部预览：通过原生工具和 Skill 运行隔离目录中的真实文件清理示例 |
 | Jenkins | [jenkins](../../integrations/jenkins/README.md) | 模拟观测 Jenkinsfile、构建上下文适配器，以及使用加密交接的外部 Agent 客户端 |
 | GitHub Actions | [github-actions](../../integrations/github-actions/README.md) | 规划中的部署工作流，调用共享 CLI 或 API |

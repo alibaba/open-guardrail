@@ -8,6 +8,7 @@
 | `scene apply`、`binding list/put/delete`、`audit list/export` | 无需凭据 |
 | `run create/get/wait/list/report/revision/submission/rotate-credential` | 无需凭据 |
 | `run submit` | 绑定对应 Run 的提交凭据 |
+| `mcp-proxy` | 为每个受保护 Run 创建凭据并保存到私有文件 |
 
 ```sh
 guardrailctl scene apply --key recovery --name Recovery   --spec ./examples/policies/recovery.yaml --publish
@@ -16,6 +17,15 @@ guardrail_credentials_dir=$(mktemp -d)
 ```
 
 Scene apply 复用匹配的 Scene、保存发生变化的草稿，并可选择发布。新 Scene 必须带 --publish；已有 Scene 可以保存不完整草稿。遇到冲突时失败，不覆盖其他编辑。Run 凭据文件必须是权限为 0600 的普通文件。
+
+## MCP 标准输入输出代理
+
+```sh
+guardrailctl mcp-proxy --config ./policy.yaml [--server URL] [--run-dir DIR] -- downstream-command args
+```
+
+代理直接转发普通工具调用，不发送 HTTP 请求；匹配规则或标记为破坏性操作的工具，必须通过绑定精确参数的不可变 Run 才能执行。
+可运行的数据库写操作 Scene、客户端配置、自定义策略和举证重试流程，见 [MCP 代理接入指南](../../integrations/mcp-proxy/README.md)。
 
 ## Run 与 Submission
 
