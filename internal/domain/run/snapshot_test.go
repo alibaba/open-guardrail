@@ -134,6 +134,16 @@ func TestSnapshotDeniedDecisions(t *testing.T) {
 	}
 }
 
+func TestEvaluateStructuredSnapshotAcceptsSummaryBoundaries(t *testing.T) {
+	input := snapshotFixture()
+	input.Summary = strings.Repeat("界", MaxSummaryUTF16Units)
+	input.Checks[1].Summary = strings.Repeat("界", MaxSummaryUTF16Units)
+	input.Checks[1].Evidence[0].QuerySummary = strings.Repeat("界", MaxEvidenceSummaryUTF16Units)
+	if _, err := EvaluateSnapshot(submissionSpec, input); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestEvaluateStructuredSnapshotRejectsInvalid(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -146,7 +156,15 @@ func TestEvaluateStructuredSnapshotRejectsInvalid(t *testing.T) {
 		}, ErrInvalidSubmission},
 		{"inapplicable evidence", func(s *SubmissionSnapshot) { s.Checks[0].Verdict = "UNKNOWN" }, ErrInvalidSubmission},
 		{"missing evidence", func(s *SubmissionSnapshot) { s.Checks[1].Evidence = nil }, ErrInvalidSubmission},
-		{"oversize summary", func(s *SubmissionSnapshot) { s.Summary = strings.Repeat("界", MaxSummaryRunes+1) }, ErrInvalidSubmission},
+		{"oversize summary", func(s *SubmissionSnapshot) { s.Summary = strings.Repeat("界", MaxSummaryUTF16Units+1) }, ErrInvalidSubmission},
+		{"oversize check summary", func(s *SubmissionSnapshot) { s.Checks[1].Summary = strings.Repeat("界", MaxSummaryUTF16Units+1) }, ErrInvalidSubmission},
+		{"oversize evidence query", func(s *SubmissionSnapshot) {
+			s.Checks[1].Evidence[0].QuerySummary = strings.Repeat("界", MaxEvidenceSummaryUTF16Units+1)
+		}, ErrInvalidSubmission},
+		{"oversize emoji summary", func(s *SubmissionSnapshot) { s.Summary = strings.Repeat("😀", MaxSummaryUTF16Units/2+1) }, ErrInvalidSubmission},
+		{"oversize emoji evidence", func(s *SubmissionSnapshot) {
+			s.Checks[1].Evidence[0].QuerySummary = strings.Repeat("😀", MaxEvidenceSummaryUTF16Units/2+1)
+		}, ErrInvalidSubmission},
 		{"whitespace summary", func(s *SubmissionSnapshot) { s.Summary = " \t\n" }, ErrInvalidSubmission},
 		{"invalid UTF-8 summary", func(s *SubmissionSnapshot) { s.Summary = string([]byte{0xff}) }, ErrInvalidSubmission},
 		{"empty check summary", func(s *SubmissionSnapshot) { s.Checks[1].Summary = "" }, ErrInvalidSubmission},

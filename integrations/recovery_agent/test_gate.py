@@ -19,6 +19,18 @@ def snapshot(observation, verdict="PASS", summary="Healthy"):
 
 
 class RecoveryGateTest(unittest.TestCase):
+    def test_summary_limits_match_submission_contract(self):
+        observation = {"ready": True}
+        submission = snapshot(observation)
+        submission["summary"] = "中" * gate.MAX_SUMMARY_UTF16_UNITS
+        submission["checks"][0]["summary"] = "中" * gate.MAX_SUMMARY_UTF16_UNITS
+        submission["checks"][0]["evidence"][0]["querySummary"] = "中" * gate.MAX_EVIDENCE_SUMMARY_UTF16_UNITS
+        gate.validate_submission(submission, observation)
+        submission["checks"][0]["summary"] += "中"
+        with self.assertRaises(ValueError):
+            gate.validate_submission(submission, observation)
+        self.assertFalse(gate.valid_summary("😀" * (gate.MAX_SUMMARY_UTF16_UNITS // 2 + 1), gate.MAX_SUMMARY_UTF16_UNITS))
+
     def test_rfc3339_fractional_seconds_preserve_original_evidence(self):
         observation = {"status": "healthy"}
         for fraction in ("", ".1", ".12", ".123", ".1234", ".12345", ".123456",
@@ -83,10 +95,15 @@ class RecoveryGateTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "finite"):
             gate.json_identity({"latency": float("nan")})
 
-    def test_summary_limit_counts_utf8_bytes(self):
-        submission = snapshot({"ready": True}, summary="界" * 1366)
+    def test_summary_limit_counts_utf16_units(self):
+        observation = {"ready": True}
+        submission = snapshot(observation, summary="界" * 1366)
+        gate.validate_submission(submission, observation)
+        submission["summary"] = "😀" * (gate.MAX_SUMMARY_UTF16_UNITS // 2)
+        gate.validate_submission(submission, observation)
+        submission["summary"] += "😀"
         with self.assertRaisesRegex(ValueError, "invalid Submission"):
-            gate.validate_submission(submission, {"ready": True})
+            gate.validate_submission(submission, observation)
 
     def test_command_times_out_without_exposing_output(self):
         with mock.patch.object(gate.subprocess, "run", side_effect=

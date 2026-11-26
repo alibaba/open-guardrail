@@ -83,9 +83,12 @@ It is a complete Snapshot, including for an intermediate submission.
 `baseSubmissionNo` must match the Run's latest number. The server verifies the
 aggregate verdict: `BLOCKED` overrides `UNKNOWN`, and `UNKNOWN` overrides `PASS`.
 
-The top-level `summary` field is required and may be `""`. Nonempty summaries
-must contain non-whitespace text and stay within 2048 characters. Check summaries
-and Evidence query/result summaries must contain non-whitespace text.
+The top-level `summary` field is required and may be `""`. Nonempty top-level
+and Check summaries must contain non-whitespace text and stay within 8192 UTF-16
+code units. Evidence query/result summaries must contain non-whitespace text and
+stay within 4096 UTF-16 code units each; an Evidence entry is also limited to
+16 KiB after JSON serialization. Optional Evidence references remain limited to
+2048 Unicode code points.
 
 The JSON below is an illustrative shape. Use the actual observation time and
 findings, and include every Check required by your Run's frozen Spec.
@@ -162,7 +165,8 @@ full evidence Snapshot.
 ## Evidence limits
 
 Evidence is limited to 16 KiB per entry, 100 entries per Submission, and 1 MiB per
-request. Text limits are counted in Unicode code points. Credential-shaped content
+request. Summary limits are counted in UTF-16 code units; identifier and reference
+limits are counted in Unicode code points. Credential-shaped content
 is rejected, including known credential fields in JSON summaries, nested objects,
 arrays and JSON-encoded strings. Duplicate JSON keys and excessive JSON structure
 are rejected too.

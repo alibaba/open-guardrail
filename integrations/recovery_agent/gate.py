@@ -18,7 +18,8 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 ROOT = Path(__file__).resolve().parents[2]
 MAX_OBSERVATION_BYTES = 32 << 10
 COMMAND_TIMEOUT_SECONDS = 300
-MAX_SUMMARY_BYTES = 4096
+MAX_SUMMARY_UTF16_UNITS = 8192
+MAX_EVIDENCE_SUMMARY_UTF16_UNITS = 4096
 
 
 class GateStopped(RuntimeError):
@@ -111,7 +112,7 @@ def validate_submission(submission, observation):
         raise ValueError("Agent returned an invalid Submission")
     if (type(submission["baseSubmissionNo"]) is not int or submission["baseSubmissionNo"] < 0
         or submission["finishRun"] is not True
-        or (submission["summary"] != "" and not valid_summary(submission["summary"]))):
+        or (submission["summary"] != "" and not valid_summary(submission["summary"], MAX_SUMMARY_UTF16_UNITS))):
         raise ValueError("Agent returned an invalid Submission")
     checks = submission["checks"]
     if not isinstance(checks, list) or len(checks) != 1 or not isinstance(checks[0], dict):
@@ -120,7 +121,7 @@ def validate_submission(submission, observation):
     if (set(check) != {"checkId", "verdict", "summary", "evidence"}
         or check["checkId"] != "readiness"
         or check["verdict"] not in ("PASS", "BLOCKED", "UNKNOWN")
-        or not valid_summary(check["summary"])):
+        or not valid_summary(check["summary"], MAX_SUMMARY_UTF16_UNITS)):
         raise ValueError("Agent returned an invalid Check")
     if submission["verdict"] != check["verdict"]:
         raise ValueError("Submission verdict differs from Check")
@@ -129,8 +130,8 @@ def validate_submission(submission, observation):
         raise ValueError("Agent Evidence differs from the observed health")
     item = evidence[0]
     if (set(item) != {"requirementId", "observedAt", "querySummary", "resultSummary"}
-        or item["requirementId"] != "health" or not valid_summary(item["querySummary"])
-        or not valid_summary(item["resultSummary"])):
+        or item["requirementId"] != "health" or not valid_summary(item["querySummary"], MAX_EVIDENCE_SUMMARY_UTF16_UNITS)
+        or not valid_summary(item["resultSummary"], MAX_EVIDENCE_SUMMARY_UTF16_UNITS)):
         raise ValueError("Agent returned invalid Evidence")
     try:
         raw_time = item["observedAt"]
@@ -154,8 +155,13 @@ def validate_submission(submission, observation):
         raise ValueError("Agent Evidence differs from the observed health")
 
 
-def valid_summary(value):
-    return isinstance(value, str) and bool(value.strip()) and len(value) <= 2048 and len(value.encode("utf-8")) <= MAX_SUMMARY_BYTES
+def valid_summary(value, limit):
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        return len(value.encode("utf-16-le")) // 2 <= limit
+    except UnicodeEncodeError:
+        return False
 
 
 def json_identity(value):
