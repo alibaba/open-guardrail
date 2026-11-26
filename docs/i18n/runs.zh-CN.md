@@ -52,7 +52,7 @@ API 路径为 `POST /runtime/v1alpha1/runs/{runId}/submission-credential:rotate`
 
 每次 Submission 都包含所有 Check 结论及适用结构化证据，即使中间提交也必须是完整快照。`baseSubmissionNo` 必须匹配 Run 的最新编号。服务验证汇总结论：`BLOCKED` 优先于 `UNKNOWN`，`UNKNOWN` 优先于 `PASS`。
 
-顶层 `summary` 必填，可以为 `""`。非空摘要必须包含非空白文本，且不超过 2048 字符。Check 摘要和 Evidence 的查询 / 结果摘要必须包含非空白文本。
+顶层 `summary` 必填，可以为 `""`。非空的顶层和 Check 摘要必须包含非空白文本，且分别不超过 8192 个 UTF-16 码元。Evidence 的查询 / 结果摘要分别不超过 4096 个 UTF-16 码元，并仍受每条 Evidence 序列化后 16 KiB 的整体限制；可选的 Evidence `reference` 保持最多 2048 个 Unicode 码点。
 
 以下 JSON 仅展示结构。实际使用时应填写真实观测时间和调查结论，并包含 Run 冻结 Spec 要求的每个 Check。
 
@@ -110,7 +110,7 @@ guardrailctl run submission \
 
 ## 证据限制
 
-每条 Evidence 最多 16 KiB，每个 Submission 最多 100 条 Evidence，每个请求最多 1 MiB。文本长度按 Unicode 码点计算。具有凭据特征的内容会被拒绝，包括 JSON 摘要、嵌套对象、数组及 JSON 编码字符串中的已知凭据字段；重复 JSON 键和过度复杂的 JSON 结构也会被拒绝。
+每条 Evidence 最多 16 KiB，每个 Submission 最多 100 条 Evidence，每个请求最多 1 MiB。摘要长度按 UTF-16 码元计算，标识符与 `reference` 长度按 Unicode 码点计算。具有凭据特征的内容会被拒绝，包括 JSON 摘要、嵌套对象、数组及 JSON 编码字符串中的已知凭据字段；重复 JSON 键和过度复杂的 JSON 结构也会被拒绝。
 
 筛查会保留已接受文本及其重试身份。调用方仍必须在提交前清除秘密，因为自由文本筛查不是通用的数据防泄漏系统。管理 UI 可以列出和检查 Run，不暴露凭据，也不接受 Submission。字段及错误码见 [OpenAPI 契约](../../api/openapi/openapi.yaml)。
 

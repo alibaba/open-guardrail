@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Run Submission top-level and Check summaries now accept up to 8192 UTF-16
+  code units each; Evidence query/result summaries accept up to 4096 each.
+  Per-Evidence 16 KiB, 100-Evidence and 1 MiB request limits still apply. Align
+  clients and the receiving service before sending longer summaries.
 - `guardrailctl mcp-proxy` selectively gates stdio MCP tool calls with
   argument-bound Runs, expiring ALLOW reuse, conservative single-statement SQL
   recognition and downstream `destructiveHint` annotations. Ordinary calls make

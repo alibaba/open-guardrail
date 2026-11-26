@@ -13,10 +13,12 @@ import (
 )
 
 const (
-	MaxStructuredEvidenceBytes = 16 << 10
-	MaxEvidenceCount           = 100
-	MaxSummaryRunes            = 2048
-	MaxIdentifierRunes         = 128
+	MaxStructuredEvidenceBytes   = 16 << 10
+	MaxEvidenceCount             = 100
+	MaxSummaryUTF16Units         = 8192
+	MaxEvidenceSummaryUTF16Units = 4096
+	MaxReferenceRunes            = 2048
+	MaxIdentifierRunes           = 128
 )
 
 var ErrVerdictMismatch = errors.New("declared verdict differs from evaluated verdict")
@@ -53,7 +55,7 @@ type EvaluatedSnapshot struct {
 // EvaluateSnapshot validates a complete observation against an immutable PolicyRevision.
 // The declared top-level verdict is never trusted as the source of the decision.
 func EvaluateSnapshot(specCanonicalJSON string, in SubmissionSnapshot) (EvaluatedSnapshot, error) {
-	if in.BaseSubmissionNo < 0 || !validVerdict(in.Verdict) || (in.Summary != "" && !validText(in.Summary, MaxSummaryRunes)) {
+	if in.BaseSubmissionNo < 0 || !validVerdict(in.Verdict) || (in.Summary != "" && !validSummaryText(in.Summary, MaxSummaryUTF16Units)) {
 		return EvaluatedSnapshot{}, ErrInvalidSubmission
 	}
 	if containsSensitive(in.Summary) {
@@ -65,7 +67,7 @@ func EvaluateSnapshot(specCanonicalJSON string, in SubmissionSnapshot) (Evaluate
 	}
 	provided := make(map[string]CheckSnapshot, len(in.Checks))
 	for _, check := range in.Checks {
-		if _, exists := provided[check.CheckID]; exists || !validID(check.CheckID) || !validVerdict(check.Verdict) || !validText(check.Summary, MaxSummaryRunes) {
+		if _, exists := provided[check.CheckID]; exists || !validID(check.CheckID) || !validVerdict(check.Verdict) || !validSummaryText(check.Summary, MaxSummaryUTF16Units) {
 			return EvaluatedSnapshot{}, ErrInvalidSubmission
 		}
 		if containsSensitive(check.Summary) {
@@ -95,10 +97,10 @@ func EvaluateSnapshot(specCanonicalJSON string, in SubmissionSnapshot) (Evaluate
 		seen := make(map[string]bool)
 		for _, evidence := range check.Evidence {
 			totalEvidence++
-			if totalEvidence > MaxEvidenceCount || !validID(evidence.RequirementID) || !validText(evidence.QuerySummary, MaxSummaryRunes) || !validText(evidence.ResultSummary, MaxSummaryRunes) {
+			if totalEvidence > MaxEvidenceCount || !validID(evidence.RequirementID) || !validSummaryText(evidence.QuerySummary, MaxEvidenceSummaryUTF16Units) || !validSummaryText(evidence.ResultSummary, MaxEvidenceSummaryUTF16Units) {
 				return EvaluatedSnapshot{}, ErrInvalidSubmission
 			}
-			if evidence.Reference != nil && !validText(*evidence.Reference, MaxSummaryRunes) {
+			if evidence.Reference != nil && !validText(*evidence.Reference, MaxReferenceRunes) {
 				return EvaluatedSnapshot{}, ErrInvalidSubmission
 			}
 			observed, err := time.Parse(time.RFC3339Nano, evidence.ObservedAt)
@@ -160,6 +162,22 @@ func EvaluateSnapshot(specCanonicalJSON string, in SubmissionSnapshot) (Evaluate
 
 func validText(value string, limit int) bool {
 	return utf8.ValidString(value) && strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= limit
+}
+func validSummaryText(value string, limit int) bool {
+	if !utf8.ValidString(value) || strings.TrimSpace(value) == "" {
+		return false
+	}
+	units := 0
+	for _, r := range value {
+		units++
+		if r > 0xffff {
+			units++
+		}
+		if units > limit {
+			return false
+		}
+	}
+	return true
 }
 func validID(value string) bool {
 	return validText(value, MaxIdentifierRunes)
