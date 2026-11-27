@@ -44,7 +44,10 @@ A partial unique index permits at most one DRAFT per Policy. Saving edits that
 same row. Publication locks the parent, checks the exact reviewed YAML, assigns
 one number and changes the row to PUBLISHED without changing its identity.
 The next edit creates a new DRAFT. Published rows cannot be updated or deleted.
-Only published Revisions may be active or selected by a Run.
+Only published Revisions may be active. A Run may select a valid Draft; its
+`guardrail_run.spec_yaml` and `spec_canonical_json` snapshot preserve the tested
+content and digest when the Draft changes or is published. Published history
+still excludes Drafts.
 
 Trusted direct publication creates a PUBLISHED row without modifying an existing
 human draft. Publication and activation remain separate operations. Policy

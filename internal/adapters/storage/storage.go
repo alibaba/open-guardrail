@@ -88,8 +88,28 @@ func openDatabase(ctx context.Context, c config.Config, migrationFiles fs.FS, ex
 		if version > sources[len(sources)-1].Version {
 			return nil, errors.New("database schema is newer than this server; use a compatible binary")
 		}
+		// SQLite cannot disable foreign keys inside a transaction. The database
+		// uses one connection, so the table rebuild and goose version record stay
+		// in one transaction while foreign keys are temporarily disabled.
+		sqliteRebuild := driver.dialect == goose.DialectSQLite3 && version < 11 && sources[len(sources)-1].Version >= 11
+		if sqliteRebuild {
+			if _, err = db.ExecContext(ctx, "PRAGMA foreign_keys=OFF"); err != nil {
+				return nil, errors.New("cannot prepare SQLite migration")
+			}
+		}
 		if _, err = p.Up(ctx); err != nil {
 			return nil, errors.New("database migration failed; service will not start")
+		}
+		if sqliteRebuild {
+			var table, parent string
+			var rowID, foreignKey int64
+			err = db.QueryRowContext(ctx, "PRAGMA foreign_key_check").Scan(&table, &rowID, &parent, &foreignKey)
+			if !errors.Is(err, sql.ErrNoRows) {
+				return nil, errors.New("SQLite migration produced invalid foreign keys")
+			}
+			if _, err = db.ExecContext(ctx, "PRAGMA foreign_keys=ON"); err != nil {
+				return nil, errors.New("cannot restore SQLite foreign keys")
+			}
 		}
 	}
 	s := &Store{db: db, storage: driver.capability, driver: driver}

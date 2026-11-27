@@ -81,7 +81,7 @@ func TestSingleDraftKeepsIdentityUntilPublication(t *testing.T) {
 			}
 			runScope := runapp.Scope{WorkspaceID: "w", ProjectID: "p", ActorID: "test", CanSelectRevision: true}
 			_, created, err := store.Runs().CreatePolicyRun(ctx, runScope, runapp.PolicyRunCreateInput{SceneKey: "recovery", PolicyRevisionID: next.ID, CanSelectRevision: true, IdempotencyKey: "draft-run", Now: time.Now().Unix()})
-			if !errors.Is(err, runapp.ErrSpecNotPublished) || created {
+			if !errors.Is(err, runapp.ErrSpecInvalid) || created {
 				t.Fatalf("Run draft selection: created=%v err=%v", created, err)
 			}
 		})

@@ -10,13 +10,17 @@ const MaxMaintainers = 100
 
 var maintainerID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,127}$`)
 
+func ValidActorID(id string) bool {
+	return maintainerID.MatchString(id)
+}
+
 func ValidMaintainers(ids []string) bool {
 	if len(ids) == 0 || len(ids) > MaxMaintainers {
 		return false
 	}
 	seen := make(map[string]bool, len(ids))
 	for _, id := range ids {
-		if !maintainerID.MatchString(id) || seen[id] {
+		if !ValidActorID(id) || seen[id] {
 			return false
 		}
 		seen[id] = true

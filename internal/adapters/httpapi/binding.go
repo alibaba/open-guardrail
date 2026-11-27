@@ -73,7 +73,7 @@ func (s *server) PutBinding(w http.ResponseWriter, r *http.Request, key, kind, r
 		s.modelSpecError(w, r, spec.ErrInvalid)
 		return
 	}
-	binding, err := s.options.ModelSpecs.PutBindingWithOptions(r.Context(), scope, key, spec.Binding{Resource: ref, PolicyID: body.PolicyId, PolicyRevisionID: body.PolicyRevisionId}, spec.BindingWriteOptions{CreateOnly: precondition == "*"})
+	binding, err := s.options.ModelSpecs.PutBindingWithOptions(r.Context(), scope, key, spec.Binding{Resource: ref, PolicyID: body.PolicyId, PolicyRevisionID: body.PolicyRevisionId}, spec.BindingWriteOptions{CreateOnly: precondition == "*", AllowDraft: body.AllowDraft != nil && *body.AllowDraft})
 	if err != nil {
 		s.modelSpecError(w, r, err)
 		return

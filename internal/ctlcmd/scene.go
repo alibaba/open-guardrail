@@ -254,7 +254,7 @@ func readSpecFile(path string) (string, error) {
 		return "", usageError("cannot read --spec file")
 	}
 	if len(contents) > specdomain.MaxYAMLBytes {
-		return "", usageError("--spec exceeds the 64 KiB limit")
+		return "", usageError("--spec exceeds the 65,535-byte limit")
 	}
 	if !utf8.Valid(contents) {
 		return "", usageError("--spec must contain valid UTF-8")

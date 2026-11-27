@@ -12,6 +12,7 @@ var ErrSpecKeyConflict = errors.New("Spec key already exists in this scene")
 var ErrSpecKeyMismatch = errors.New("YAML metadata.name must match the Spec key")
 
 type SceneModel struct {
+	CreatedBy       *string           `json:"createdBy"`
 	Plugins         *resource.Plugins `json:"plugins,omitempty"`
 	Key             string            `json:"key"`
 	Name            string            `json:"name"`
