@@ -79,16 +79,16 @@ func (e PolicyLifecycleState) Valid() bool {
 
 // Defines values for PolicyRevisionStatus.
 const (
-	DRAFT     PolicyRevisionStatus = "DRAFT"
-	PUBLISHED PolicyRevisionStatus = "PUBLISHED"
+	PolicyRevisionStatusDRAFT     PolicyRevisionStatus = "DRAFT"
+	PolicyRevisionStatusPUBLISHED PolicyRevisionStatus = "PUBLISHED"
 )
 
 // Valid indicates whether the value is a known member of the PolicyRevisionStatus enum.
 func (e PolicyRevisionStatus) Valid() bool {
 	switch e {
-	case DRAFT:
+	case PolicyRevisionStatusDRAFT:
 		return true
-	case PUBLISHED:
+	case PolicyRevisionStatusPUBLISHED:
 		return true
 	default:
 		return false
@@ -137,6 +137,24 @@ func (e PolicyRunSummaryStatus) Valid() bool {
 	}
 }
 
+// Defines values for RunReportRevisionStatus.
+const (
+	RunReportRevisionStatusDRAFT     RunReportRevisionStatus = "DRAFT"
+	RunReportRevisionStatusPUBLISHED RunReportRevisionStatus = "PUBLISHED"
+)
+
+// Valid indicates whether the value is a known member of the RunReportRevisionStatus enum.
+func (e RunReportRevisionStatus) Valid() bool {
+	switch e {
+	case RunReportRevisionStatusDRAFT:
+		return true
+	case RunReportRevisionStatusPUBLISHED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RunResult.
 const (
 	BLOCKED RunResult = "BLOCKED"
@@ -176,15 +194,36 @@ func (e RunSelectionRevisionMode) Valid() bool {
 	}
 }
 
+// Defines values for RunSelectionRevisionStatus.
+const (
+	RunSelectionRevisionStatusDRAFT     RunSelectionRevisionStatus = "DRAFT"
+	RunSelectionRevisionStatusPUBLISHED RunSelectionRevisionStatus = "PUBLISHED"
+)
+
+// Valid indicates whether the value is a known member of the RunSelectionRevisionStatus enum.
+func (e RunSelectionRevisionStatus) Valid() bool {
+	switch e {
+	case RunSelectionRevisionStatusDRAFT:
+		return true
+	case RunSelectionRevisionStatusPUBLISHED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RunSelectionSource.
 const (
-	Binding RunSelectionSource = "binding"
+	Binding  RunSelectionSource = "binding"
+	Revision RunSelectionSource = "revision"
 )
 
 // Valid indicates whether the value is a known member of the RunSelectionSource enum.
 func (e RunSelectionSource) Valid() bool {
 	switch e {
 	case Binding:
+		return true
+	case Revision:
 		return true
 	default:
 		return false
@@ -665,7 +704,7 @@ type PolicyRun struct {
 	RunTtlSeconds      int64           `json:"runTtlSeconds"`
 	SceneKey           SceneKey        `json:"sceneKey"`
 
-	// Selection Optional frozen selection details beyond the Policy and final Revision IDs on the Run. New Runs record matched resource bindings only; default and explicit-Revision selection omit this field. Existing evidence or its absence stays unchanged. Resources contain only the matched group.
+	// Selection Frozen selection details. Draft Runs retain the revision status at creation.
 	Selection  *RunSelection   `json:"selection,omitempty"`
 	SpecDigest string          `json:"specDigest"`
 	Status     PolicyRunStatus `json:"status"`
@@ -719,6 +758,7 @@ type PublishPolicyRevisionRequest struct {
 
 // PutBindingRequest defines model for PutBindingRequest.
 type PutBindingRequest struct {
+	AllowDraft       *bool   `json:"allowDraft,omitempty"`
 	PolicyId         string  `json:"policyId"`
 	PolicyRevisionId *string `json:"policyRevisionId,omitempty"`
 }
@@ -771,12 +811,16 @@ type RunReportEvidence struct {
 
 // RunReportRevision defines model for RunReportRevision.
 type RunReportRevision struct {
-	Digest         string `json:"digest"`
-	Id             string `json:"id"`
-	PolicyId       string `json:"policyId"`
-	PublishedAt    *int64 `json:"publishedAt,omitempty"`
-	RevisionNumber *int64 `json:"revisionNumber,omitempty"`
+	Digest         string                  `json:"digest"`
+	Id             string                  `json:"id"`
+	PolicyId       string                  `json:"policyId"`
+	PublishedAt    *int64                  `json:"publishedAt,omitempty"`
+	RevisionNumber *int64                  `json:"revisionNumber,omitempty"`
+	Status         RunReportRevisionStatus `json:"status"`
 }
+
+// RunReportRevisionStatus defines model for RunReportRevision.Status.
+type RunReportRevisionStatus string
 
 // RunReportSubmission defines model for RunReportSubmission.
 type RunReportSubmission struct {
@@ -792,17 +836,19 @@ type RunReportSubmission struct {
 // RunResult defines model for RunResult.
 type RunResult string
 
-// RunSelection Optional frozen selection details beyond the Policy and final Revision IDs on the Run. New Runs record matched resource bindings only; default and explicit-Revision selection omit this field. Existing evidence or its absence stays unchanged. Resources contain only the matched group.
+// RunSelection Frozen selection details. Draft Runs retain the revision status at creation.
 type RunSelection struct {
-	Resources *[]ResourceReference `json:"resources,omitempty"`
-
-	// RevisionMode Present only for binding selections; explains the binding at Run creation.
-	RevisionMode *RunSelectionRevisionMode `json:"revisionMode,omitempty"`
-	Source       RunSelectionSource        `json:"source"`
+	Resources      *[]ResourceReference        `json:"resources,omitempty"`
+	RevisionMode   *RunSelectionRevisionMode   `json:"revisionMode,omitempty"`
+	RevisionStatus *RunSelectionRevisionStatus `json:"revisionStatus,omitempty"`
+	Source         RunSelectionSource          `json:"source"`
 }
 
-// RunSelectionRevisionMode Present only for binding selections; explains the binding at Run creation.
+// RunSelectionRevisionMode defines model for RunSelection.RevisionMode.
 type RunSelectionRevisionMode string
+
+// RunSelectionRevisionStatus defines model for RunSelection.RevisionStatus.
+type RunSelectionRevisionStatus string
 
 // RunSelectionSource defines model for RunSelection.Source.
 type RunSelectionSource string
@@ -824,6 +870,8 @@ type SceneKey = string
 
 // SceneModel defines model for SceneModel.
 type SceneModel struct {
+	// CreatedBy Authenticated creator; null only when historical attribution is unknown.
+	CreatedBy       *string       `json:"createdBy"`
 	DefaultPolicyId *string       `json:"defaultPolicyId,omitempty"`
 	Key             SceneKey      `json:"key"`
 	Name            string        `json:"name"`

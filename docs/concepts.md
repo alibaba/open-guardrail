@@ -13,8 +13,8 @@ it, and the calling system decides how to use the recorded outcome.
 | Scene | A scenario with a stable key, a Run timeout (`runTtlSeconds`) and an optional default Policy. A Scene may contain multiple Policies. |
 | Policy | Strategy identity, ownership, name, lifecycle and the active Revision pointer within a Scene. |
 | GuardrailSpec | The YAML policy document defining instructions, Checks, evidence requirements and decision validity. Its document version is `guardrail.open/v1alpha1`. |
-| Policy Revision | Rule content in `DRAFT` or `PUBLISHED` state. One editable Draft is allowed per Policy; publication assigns its number and freezes it. Runs select published Revisions. Publication and activation are separate operations. |
-| Run | One independent evaluation. It freezes the Scene, Policy Revision reference, Spec digest, caller-supplied context and Run deadline. |
+| Policy Revision | Rule content in `DRAFT` or `PUBLISHED` state. One editable Draft is allowed per Policy; publication assigns its number and freezes it. Runs can select a valid Draft for testing; only published Revisions can be active. Publication and activation are separate operations. |
+| Run | One independent evaluation. It freezes the Scene, Policy Revision reference, Spec content and digest, caller-supplied context and Run deadline. A Draft remains editable after Run creation. |
 | Evaluation context | The arbitrary JSON object carried in the API field `changeSet`. The caller defines its business fields; the service normalizes and records it. |
 | Check | One assessment required by the frozen Spec, with a `PASS`, `BLOCKED` or `UNKNOWN` verdict and applicable evidence. |
 | Submission | One complete Snapshot of all Checks and their applicable evidence. A Run may accept intermediate Snapshots and one final Snapshot. |

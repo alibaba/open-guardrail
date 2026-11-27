@@ -438,6 +438,8 @@ func (s *server) modelRunError(w http.ResponseWriter, r *http.Request, err error
 		writeError(w, r, http.StatusNotFound, "NOT_FOUND", "Run not found")
 	case errors.Is(err, runapp.ErrSpecNotPublished):
 		writeError(w, r, http.StatusConflict, "SPEC_NOT_PUBLISHED", "No usable Policy Revision")
+	case errors.Is(err, runapp.ErrSpecInvalid):
+		writeError(w, r, http.StatusUnprocessableEntity, "SPEC_VALIDATION_FAILED", "Draft Spec is invalid")
 	case errors.Is(err, runapp.ErrBindingConflict):
 		writeError(w, r, http.StatusConflict, "BINDING_CONFLICT", "Resources have incomplete or conflicting Policy bindings")
 	case errors.Is(err, resource.ErrUnavailable):

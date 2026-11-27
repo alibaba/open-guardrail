@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	MaxYAMLBytes           = 64 << 10
+	MaxYAMLBytes           = 65535
 	DefaultValidForSeconds = int64(3600)
 	// MaxValidForSeconds keeps the schema's only numeric field within the
 	// IEEE 754 safe-integer range used by RFC 8785 / ECMAScript consumers.
@@ -89,7 +89,7 @@ func Name(raw string) (string, error) {
 
 func decodeYAML(raw string) (*yaml.Node, error) {
 	if len(raw) > MaxYAMLBytes || !utf8.ValidString(raw) {
-		return nil, invalid("Spec must be UTF-8 and at most 64 KiB")
+		return nil, invalid("Spec must be UTF-8 and at most 65,535 bytes")
 	}
 	var root yaml.Node
 	decoder := yaml.NewDecoder(strings.NewReader(raw))

@@ -63,8 +63,11 @@ func (s *Specs) PutBindingWithOptions(ctx context.Context, scope spec.Scope, sce
 		if err != nil {
 			return spec.Binding{}, err
 		}
-		if r.PolicyID != p.ID || r.Status != "PUBLISHED" {
+		if r.PolicyID != p.ID || (r.Status != "PUBLISHED" && !(options.AllowDraft && r.Status == "DRAFT")) {
 			return spec.Binding{}, spec.ErrInvalid
+		}
+		if r.Status == "DRAFT" && !scope.Unrestricted && !p.CanMaintain(scope.ActorID) {
+			return spec.Binding{}, spec.ErrForbidden
 		}
 		revision = *b.PolicyRevisionID
 	}

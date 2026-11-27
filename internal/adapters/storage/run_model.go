@@ -13,6 +13,7 @@ import (
 	"github.com/alibaba/open-guardrail/internal/domain/resource"
 	rundomain "github.com/alibaba/open-guardrail/internal/domain/run"
 	specdomain "github.com/alibaba/open-guardrail/internal/domain/spec"
+	"github.com/pressly/goose/v3"
 )
 
 const policyRunColumns = "gr.run_id,gr.business_id,gr.scene_key,p.policy_id,pr.policy_revision_id,gr.spec_digest,gr.status,gr.change_set_json,gr.change_set_digest,gr.run_ttl_seconds,gr.deadline_at,gr.latest_submission_no,fs.submission_id,gr.created_at,gr.finished_at,gr.expired_at,gr.result_verdict,gr.decision_verdict,gr.decision_expires_at,gr.selection_json"
@@ -201,23 +202,23 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 			selection = &runapp.Selection{Source: "binding", Resources: selected.Resources, RevisionMode: mode}
 		}
 	}
-	var policyID, revisionID, digest, canonical string
+	var policyID, revisionID, digest, canonical, yaml, revisionStatus string
 	var ttl int64
 	if selectedRevision == "" && selectedPolicy == "" {
-		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,sc.run_ttl_seconds
+		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,r.yaml,r.status,sc.run_ttl_seconds
    FROM scene sc JOIN policy p ON p.id=sc.default_policy_id
    JOIN policy_revision r ON r.id=p.active_revision_id
-   WHERE sc.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND sc.project_id=(SELECT id FROM project WHERE project_id=$2) AND sc.scene_key=$3 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey).Scan(&policyID, &revisionID, &digest, &canonical, &ttl)
+	   WHERE sc.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND sc.project_id=(SELECT id FROM project WHERE project_id=$2) AND sc.scene_key=$3 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey).Scan(&policyID, &revisionID, &digest, &canonical, &yaml, &revisionStatus, &ttl)
 	} else if selectedRevision == "" {
-		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,sc.run_ttl_seconds
+		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,r.yaml,r.status,sc.run_ttl_seconds
    FROM policy p JOIN scene sc ON sc.workspace_id=p.workspace_id AND sc.project_id=p.project_id AND sc.scene_key=p.scene_key
    JOIN policy_revision r ON r.id=p.active_revision_id
-   WHERE p.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND p.project_id=(SELECT id FROM project WHERE project_id=$2) AND p.scene_key=$3 AND p.policy_id=$4 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey, selectedPolicy).Scan(&policyID, &revisionID, &digest, &canonical, &ttl)
+	   WHERE p.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND p.project_id=(SELECT id FROM project WHERE project_id=$2) AND p.scene_key=$3 AND p.policy_id=$4 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey, selectedPolicy).Scan(&policyID, &revisionID, &digest, &canonical, &yaml, &revisionStatus, &ttl)
 	} else {
-		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,r.digest,r.canonical_json,sc.run_ttl_seconds
+		err = tx.QueryRowContext(ctx, `SELECT p.policy_id,r.policy_revision_id,COALESCE(r.digest,''),COALESCE(r.canonical_json,''),r.yaml,r.status,sc.run_ttl_seconds
    FROM scene sc JOIN policy p ON p.workspace_id=sc.workspace_id AND p.project_id=sc.project_id AND p.scene_key=sc.scene_key
    JOIN policy_revision r ON r.policy_id=p.id
-   WHERE sc.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND sc.project_id=(SELECT id FROM project WHERE project_id=$2) AND sc.scene_key=$3 AND r.policy_revision_id=$4 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, scope.WorkspaceID, scope.ProjectID, input.SceneKey, selectedRevision).Scan(&policyID, &revisionID, &digest, &canonical, &ttl)
+	   WHERE sc.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND sc.project_id=(SELECT id FROM project WHERE project_id=$2) AND sc.scene_key=$3 AND r.policy_revision_id=$4 AND p.lifecycle_state='ACTIVE' AND r.status IN ('PUBLISHED','DRAFT')`, scope.WorkspaceID, scope.ProjectID, input.SceneKey, selectedRevision).Scan(&policyID, &revisionID, &digest, &canonical, &yaml, &revisionStatus, &ttl)
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return runapp.PolicyRun{}, false, runapp.ErrSpecNotPublished
@@ -233,10 +234,13 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	if _, err = tx.ExecContext(ctx, "UPDATE policy SET lifecycle_state=lifecycle_state WHERE policy_id=$1 AND workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND project_id=(SELECT id FROM project WHERE project_id=$3)", policyID, scope.WorkspaceID, scope.ProjectID); err != nil {
 		return runapp.PolicyRun{}, false, runError(err)
 	}
+	var revisionUpdatedBy string
+	var revisionUpdatedAt int64
+	var revisionMetadata sql.NullString
 	if selectedRevision == "" {
-		err = tx.QueryRowContext(ctx, `SELECT r.policy_revision_id,r.digest,r.canonical_json FROM policy p
+		err = tx.QueryRowContext(ctx, `SELECT r.policy_revision_id,r.digest,r.canonical_json,r.yaml,r.status,r.updated_by,r.updated_at,r.metadata_json FROM policy p
 		 JOIN policy_revision r ON r.id=p.active_revision_id
-		 WHERE p.policy_id=$1 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, policyID).Scan(&revisionID, &digest, &canonical)
+			 WHERE p.policy_id=$1 AND p.lifecycle_state='ACTIVE' AND r.status='PUBLISHED'`, policyID).Scan(&revisionID, &digest, &canonical, &yaml, &revisionStatus, &revisionUpdatedBy, &revisionUpdatedAt, &revisionMetadata)
 		if errors.Is(err, sql.ErrNoRows) {
 			return runapp.PolicyRun{}, false, runapp.ErrSpecNotPublished
 		}
@@ -251,6 +255,33 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 		if state != "ACTIVE" {
 			return runapp.PolicyRun{}, false, runapp.ErrSpecNotPublished
 		}
+		query := `SELECT r.yaml,COALESCE(r.digest,''),COALESCE(r.canonical_json,''),r.status,r.updated_by,r.updated_at,r.metadata_json
+		 FROM policy_revision r JOIN policy p ON p.id=r.policy_id
+		 WHERE p.policy_id=$1 AND r.policy_revision_id=$2`
+		if s.driver.dialect != goose.DialectSQLite3 {
+			query += " FOR UPDATE"
+		}
+		if err = tx.QueryRowContext(ctx, query, policyID, revisionID).Scan(&yaml, &digest, &canonical, &revisionStatus, &revisionUpdatedBy, &revisionUpdatedAt, &revisionMetadata); err != nil {
+			return runapp.PolicyRun{}, false, runError(err)
+		}
+	}
+	if revisionStatus == "DRAFT" {
+		canonical, digest, err = specdomain.Validate(yaml)
+		if err != nil {
+			return runapp.PolicyRun{}, false, runapp.ErrSpecInvalid
+		}
+		var key string
+		if err = tx.QueryRowContext(ctx, "SELECT COALESCE(spec_key,'') FROM policy WHERE policy_id=$1", policyID).Scan(&key); err != nil {
+			return runapp.PolicyRun{}, false, runError(err)
+		}
+		name, err := specdomain.Name(yaml)
+		if err != nil || (key != "" && name != key) {
+			return runapp.PolicyRun{}, false, runapp.ErrSpecInvalid
+		}
+		if selection == nil {
+			selection = &runapp.Selection{Source: "revision"}
+		}
+		selection.RevisionStatus = "DRAFT"
 	}
 	decisionTTL, err := specdomain.ResolveValidForSeconds(canonical)
 	if err != nil || ttl < 1 || ttl > 604800 || input.Now > 9223372036854775807-ttl-decisionTTL {
@@ -272,10 +303,19 @@ func (s *Runs) CreatePolicyRun(ctx context.Context, scope runapp.Scope, input ru
 	if input.BusinessID != "" {
 		run.BusinessID = &input.BusinessID
 	}
-	insert := `INSERT INTO guardrail_run(run_id,business_id,workspace_id,project_id,scene_key,policy_id,policy_revision_id,spec_digest,status,change_set_json,change_set_digest,idempotency_key,request_digest,run_ttl_seconds,deadline_at,decision_ttl_seconds,created_by,created_at,selection_json)
-  VALUES($1,$2,(SELECT id FROM workspace WHERE workspace_id=$3),(SELECT id FROM project WHERE project_id=$4),$5,(SELECT id FROM policy WHERE policy_id=$6),(SELECT id FROM policy_revision WHERE policy_revision_id=$7 AND status='PUBLISHED'),$8,'OPEN',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`
+	insert := `INSERT INTO guardrail_run(run_id,business_id,workspace_id,project_id,scene_key,policy_id,policy_revision_id,spec_digest,status,change_set_json,change_set_digest,idempotency_key,request_digest,run_ttl_seconds,deadline_at,decision_ttl_seconds,created_by,created_at,selection_json,spec_yaml,spec_canonical_json,spec_updated_by,spec_updated_at,spec_metadata_json)
+	  VALUES($1,$2,(SELECT id FROM workspace WHERE workspace_id=$3),(SELECT id FROM project WHERE project_id=$4),$5,(SELECT id FROM policy WHERE policy_id=$6),(SELECT id FROM policy_revision WHERE policy_revision_id=$7),$8,'OPEN',$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`
 	insert += s.driver.conflictClause("workspace_id,project_id,idempotency_key")
-	result, err := tx.ExecContext(ctx, insert, run.ID, businessID, scope.WorkspaceID, scope.ProjectID, run.SceneKey, run.PolicyID, run.PolicyRevisionID, run.SpecDigest, input.ChangeSetJSON, run.ChangeSetDigest, input.IdempotencyKey, input.RequestDigest, run.RunTTLSeconds, run.DeadlineAt, decisionTTL, scope.ActorID, run.CreatedAt, selectionJSON)
+	var snapshotYAML, snapshotCanonical any
+	var snapshotUpdatedBy, snapshotUpdatedAt, snapshotMetadata any
+	if revisionStatus == "DRAFT" {
+		snapshotYAML, snapshotCanonical = yaml, canonical
+		snapshotUpdatedBy, snapshotUpdatedAt = revisionUpdatedBy, revisionUpdatedAt
+		if revisionMetadata.Valid {
+			snapshotMetadata = revisionMetadata.String
+		}
+	}
+	result, err := tx.ExecContext(ctx, insert, run.ID, businessID, scope.WorkspaceID, scope.ProjectID, run.SceneKey, run.PolicyID, run.PolicyRevisionID, run.SpecDigest, input.ChangeSetJSON, run.ChangeSetDigest, input.IdempotencyKey, input.RequestDigest, run.RunTTLSeconds, run.DeadlineAt, decisionTTL, scope.ActorID, run.CreatedAt, selectionJSON, snapshotYAML, snapshotCanonical, snapshotUpdatedBy, snapshotUpdatedAt, snapshotMetadata)
 	duplicate := s.driver.isDuplicate(err)
 	if err != nil && !duplicate {
 		return runapp.PolicyRun{}, false, runError(err)
@@ -386,7 +426,7 @@ func (s *Runs) SubmitSnapshot(ctx context.Context, scope runapp.Scope, runID str
 		return runapp.SnapshotSubmission{}, false, runError(err)
 	}
 	var canonical string
-	err = tx.QueryRowContext(ctx, `SELECT pr.canonical_json FROM guardrail_run gr
+	err = tx.QueryRowContext(ctx, `SELECT COALESCE(gr.spec_canonical_json,pr.canonical_json) FROM guardrail_run gr
   JOIN policy_revision pr ON pr.id=gr.policy_revision_id
   WHERE gr.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND gr.project_id=(SELECT id FROM project WHERE project_id=$2) AND gr.run_id=$3`, scope.WorkspaceID, scope.ProjectID, runID).Scan(&canonical)
 	if err != nil {
@@ -638,16 +678,30 @@ func (s *Runs) ListPolicyRuns(ctx context.Context, scope runapp.Scope, sceneKey,
 	return out, more, nil
 }
 
-// GetRunPolicyRevision only exposes the immutable Revision selected by this Run.
+// GetRunPolicyRevision returns the Spec content frozen when this Run was created.
 func (s *Runs) GetRunPolicyRevision(ctx context.Context, scope runapp.Scope, runID string) (spec.PolicyRevision, error) {
-	revision, err := scanPolicyRevision(s.db.QueryRowContext(ctx, `SELECT pr.policy_revision_id,p.policy_id,pr.revision_number,pr.yaml,pr.digest,pr.published_at,pr.published_by,pr.status,pr.updated_by,pr.updated_at,pr.metadata_json
+	var revision spec.PolicyRevision
+	var metadata, raw sql.NullString
+	err := s.db.QueryRowContext(ctx, `SELECT pr.policy_revision_id,p.policy_id,pr.revision_number,COALESCE(gr.spec_yaml,pr.yaml),gr.spec_digest,pr.published_at,pr.published_by,pr.status,COALESCE(gr.spec_updated_by,pr.updated_by),COALESCE(gr.spec_updated_at,pr.updated_at),CASE WHEN gr.spec_updated_by IS NOT NULL THEN gr.spec_metadata_json ELSE pr.metadata_json END,gr.selection_json
  FROM policy_revision pr JOIN policy p ON p.id=pr.policy_id JOIN guardrail_run gr ON gr.policy_revision_id=pr.id
- WHERE gr.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND gr.project_id=(SELECT id FROM project WHERE project_id=$2) AND gr.run_id=$3`, scope.WorkspaceID, scope.ProjectID, runID))
-	if errors.Is(err, spec.ErrNotFound) {
-		return spec.PolicyRevision{}, runError(sql.ErrNoRows)
-	}
+ WHERE gr.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$1) AND gr.project_id=(SELECT id FROM project WHERE project_id=$2) AND gr.run_id=$3`, scope.WorkspaceID, scope.ProjectID, runID).Scan(
+		&revision.ID, &revision.PolicyID, &revision.RevisionNumber, &revision.YAML, &revision.Digest, &revision.PublishedAt, &revision.PublishedBy, &revision.Status, &revision.UpdatedBy, &revision.UpdatedAt, &metadata, &raw,
+	)
 	if err != nil {
 		return spec.PolicyRevision{}, runError(err)
+	}
+	if metadata.Valid {
+		revision.Metadata = json.RawMessage(metadata.String)
+	}
+	if raw.Valid {
+		var selection runapp.Selection
+		if json.Unmarshal([]byte(raw.String), &selection) != nil {
+			return spec.PolicyRevision{}, runapp.ErrUnavailable
+		}
+		if selection.RevisionStatus == "DRAFT" {
+			revision.Status = "DRAFT"
+			revision.RevisionNumber, revision.PublishedAt, revision.PublishedBy = nil, nil, nil
+		}
 	}
 	return revision, nil
 }

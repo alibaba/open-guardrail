@@ -18,9 +18,9 @@ import (
 
 func scanSceneModel(row scanner) (spec.SceneModel, error) {
 	var m spec.SceneModel
-	var defaultID sql.NullString
+	var defaultID, createdBy sql.NullString
 	var plugins []byte
-	err := row.Scan(&m.Key, &m.Name, &defaultID, &m.RunTTLSeconds, &plugins)
+	err := row.Scan(&m.Key, &m.Name, &defaultID, &m.RunTTLSeconds, &plugins, &createdBy)
 	if err != nil {
 		return spec.SceneModel{}, specError(err)
 	}
@@ -31,6 +31,9 @@ func scanSceneModel(row scanner) (spec.SceneModel, error) {
 	}
 	if defaultID.Valid {
 		m.DefaultPolicyID = &defaultID.String
+	}
+	if createdBy.Valid {
+		m.CreatedBy = &createdBy.String
 	}
 	return m, nil
 }
@@ -74,7 +77,7 @@ func scanPolicyModel(row scanner) (spec.Policy, error) {
 
 const policyModelColumns = "p.policy_id,p.scene_key,p.name,p.lifecycle_state,a.policy_revision_id,p.spec_key,p.maintainers_json"
 const policyModelFrom = " FROM policy p LEFT JOIN policy_revision a ON a.id=p.active_revision_id"
-const sceneModelColumns = "scene_key,name,(SELECT policy_id FROM policy WHERE id=scene.default_policy_id),run_ttl_seconds,plugins_json"
+const sceneModelColumns = "scene_key,name,(SELECT policy_id FROM policy WHERE id=scene.default_policy_id),run_ttl_seconds,plugins_json,created_by"
 
 func policyByID(ctx context.Context, q rowQueryer, scope spec.Scope, id string) (spec.Policy, error) {
 	return scanPolicyModel(q.QueryRowContext(ctx, "SELECT "+policyModelColumns+policyModelFrom+" WHERE p.policy_id=$1 AND p.workspace_id=(SELECT id FROM workspace WHERE workspace_id=$2) AND p.project_id=(SELECT id FROM project WHERE project_id=$3)", id, scope.WorkspaceID, scope.ProjectID))
@@ -184,7 +187,7 @@ func lockPolicyModel(ctx context.Context, tx *sql.Tx, scope spec.Scope, id strin
 	return policyByID(ctx, tx, scope, id)
 }
 func (s *Specs) CreatePolicy(ctx context.Context, scope spec.Scope, sceneKey, name, specKey, key string, refs ...resource.Reference) (spec.Policy, bool, error) {
-	if (specKey != "" && !specdomain.ValidName(specKey)) || !spec.ValidMaintainers([]string{scope.ActorID}) {
+	if (specKey != "" && !specdomain.ValidName(specKey)) || !spec.ValidActorID(scope.ActorID) {
 		return spec.Policy{}, false, spec.ErrInvalid
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -613,7 +616,7 @@ func (s *Specs) SetPolicyArchived(ctx context.Context, scope spec.Scope, id stri
 // CommitSceneInitialization atomically creates the default Policy and its first active
 // Revision. An existing uninitialized Scene may be initialized once.
 func (s *Specs) CommitSceneInitialization(ctx context.Context, scope spec.Scope, input spec.InitializationInput) (spec.InitializedScene, bool, error) {
-	if !spec.ValidMaintainers([]string{scope.ActorID}) {
+	if !spec.ValidActorID(scope.ActorID) {
 		return spec.InitializedScene{}, false, spec.ErrInvalid
 	}
 	if input.Now == nil {
@@ -649,9 +652,9 @@ func (s *Specs) CommitSceneInitialization(ctx context.Context, scope spec.Scope,
 	} else if !errors.Is(err, spec.ErrNotFound) {
 		return spec.InitializedScene{}, false, err
 	}
-	insertScene := "INSERT INTO scene(workspace_id,project_id,scene_key,name) VALUES((SELECT id FROM workspace WHERE workspace_id=$1),(SELECT id FROM project WHERE project_id=$2),$3,$4)"
+	insertScene := "INSERT INTO scene(workspace_id,project_id,scene_key,name,created_by) VALUES((SELECT id FROM workspace WHERE workspace_id=$1),(SELECT id FROM project WHERE project_id=$2),$3,$4,$5)"
 	insertScene += s.driver.conflictClause("workspace_id,project_id,scene_key")
-	_, err = tx.ExecContext(ctx, insertScene, scope.WorkspaceID, scope.ProjectID, sceneKey, sceneName)
+	_, err = tx.ExecContext(ctx, insertScene, scope.WorkspaceID, scope.ProjectID, sceneKey, sceneName, scope.ActorID)
 	if err != nil && !(s.driver.isDuplicate(err)) {
 		return spec.InitializedScene{}, false, specError(err)
 	}

@@ -19,6 +19,7 @@ type BindingPage struct {
 
 type BindingWriteOptions struct {
 	CreateOnly bool
+	AllowDraft bool
 }
 
 func (s *Service) PutBinding(ctx context.Context, scope Scope, scene string, binding Binding) (Binding, error) {

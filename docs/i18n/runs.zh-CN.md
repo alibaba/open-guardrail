@@ -12,7 +12,19 @@ guardrail_credentials_dir=/absolute/path/to/private/guardrail-credentials
 
 新 Run 凭据保存在这个目录。`change-set.json` 和 `submission.json` 示例见快速开始。
 
-创建时通过资源绑定选择 Policy / Revision；资源全部未绑定时使用 Scene 默认激活修订，操作与规则见[资源绑定](../../examples/resource-bindings/README.zh-CN.md)。HTTP 调用方可以通过 `policyRevisionRef` 显式选择不可变修订。当前 CLI 没有显式修订参数。
+创建时通过资源绑定选择 Policy / Revision；资源全部未绑定时使用 Scene 默认激活修订，操作与规则见[资源绑定](../../examples/resource-bindings/README.zh-CN.md)。HTTP 调用方可以通过 `policyRevisionRef` 显式选择已发布修订或有效草稿。显式选择需要 Run scope 的修订选择权限；HTTP 管理接口将此权限授予配置的可信操作人，直接访问模式则授予本地操作人。当前 CLI 没有显式修订参数。
+
+测试草稿时，先通过 `GET /api/v1alpha1/policies/{policyId}/draft` 获取草稿 `id`，再创建 Run：
+
+```http
+POST /runtime/v1alpha1/runs
+Idempotency-Key: test-draft-1
+Content-Type: application/json
+
+{"sceneKey":"recovery","changeSet":{},"policyRevisionRef":{"policyRevisionId":"<draft-id>"}}
+```
+
+也可调用 `PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId}`，提交 `{"policyId":"<policy-id>","policyRevisionId":"<draft-id>","allowDraft":true}`，然后创建带匹配 `resources`、不带 `policyRevisionRef` 的 Run。`allowDraft` 只用于允许创建指向草稿的固定绑定；在可信操作人模式下，调用人还须是该 Policy 的维护者。省略 `allowDraft` 时，绑定草稿会被拒绝。未绑定资源和跟随激活修订的绑定仍选择已发布修订。创建 Run 时草稿必须有效；Run 冻结当时的 YAML、规范化 Spec 和摘要，草稿本身仍可继续编辑，后续编辑或发布不会改变已有 Run 的评估输入。
 
 ```sh
 guardrailctl run create \

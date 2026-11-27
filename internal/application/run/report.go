@@ -11,6 +11,7 @@ type ReportRevision struct {
 	ID             string `json:"id"`
 	PolicyID       string `json:"policyId"`
 	Digest         string `json:"digest"`
+	Status         string `json:"status"`
 	RevisionNumber *int64 `json:"revisionNumber,omitempty"`
 	PublishedAt    *int64 `json:"publishedAt,omitempty"`
 }
@@ -62,11 +63,11 @@ func (s *Service) Report(ctx context.Context, scope Scope, id string) (Report, e
 	if err != nil {
 		return Report{}, err
 	}
-	if revision.Status != "PUBLISHED" || revision.ID != current.PolicyRevisionID || revision.PolicyID != current.PolicyID || revision.Digest == nil || *revision.Digest != current.SpecDigest {
+	if (revision.Status != "PUBLISHED" && revision.Status != "DRAFT") || revision.ID != current.PolicyRevisionID || revision.PolicyID != current.PolicyID || revision.Digest == nil || *revision.Digest != current.SpecDigest {
 		return Report{}, ErrUnavailable
 	}
 	report := Report{Format: "openguardrail.run-report.v1", GeneratedAt: s.nowUnix(), Run: current.Summary(), Reasons: []string{}, Submissions: []ReportSubmission{}, NextBefore: page.NextBefore}
-	report.Revision = ReportRevision{ID: revision.ID, PolicyID: revision.PolicyID, Digest: *revision.Digest, RevisionNumber: revision.RevisionNumber, PublishedAt: revision.PublishedAt}
+	report.Revision = ReportRevision{ID: revision.ID, PolicyID: revision.PolicyID, Digest: *revision.Digest, Status: revision.Status, RevisionNumber: revision.RevisionNumber, PublishedAt: revision.PublishedAt}
 	switch {
 	case current.Status == "OPEN":
 		report.Reasons = append(report.Reasons, "RUN_OPEN")

@@ -54,6 +54,25 @@ Administrators can also call `POST /api/v1alpha1/scenes/{key}:initialize` with
 return the original resources; a changed request or a separately initialized
 Scene returns a conflict.
 
+## Scene creator
+
+Scene responses expose the authenticated creator as read-only `createdBy`. New
+Scenes persist the actor from the authenticated server scope and reject
+initialization without a valid actor. Editing an existing Scene or replaying
+initialization never replaces its creator.
+
+Historical Scenes without a recorded creator keep SQL `NULL` and return
+`"createdBy": null` without placeholder identities or backfill from default
+Policy maintainers, since the default Policy can change and its maintainer list
+can be edited or transferred.
+
+Apply `00010_scene_created_by.sql` for SQLite or PostgreSQL storage.
+In `auto` migration mode, rollback follows the
+[standard backup/restore procedure](releases.md) because older binaries reject
+schema version 10; in `external` mode, keep the additive nullable column on
+rollback so recorded attribution is retained. See
+[database migration mode](configuration.md#schema-migration-mode).
+
 ## Edit and publish
 
 For the default Policy, the management page saves Draft YAML with last-write-wins
@@ -88,7 +107,9 @@ editable Revision with `GET /api/v1alpha1/policies/{policyId}/draft`; no draft
 returns `404 NOT_FOUND`. Saving returns that `DRAFT` Revision, including its
 identity, YAML and edit metadata. Publication-only fields are absent until it is
 published. Policy responses do not contain rule content or draft fields.
-Revision history and Run selection include only published Revisions; a direct
+Revision history includes only published Revisions. A Run may select a valid
+Draft explicitly or through a binding created with `allowDraft: true`; the
+Draft remains editable, while each Run freezes its content at creation. A direct
 management lookup by Revision ID can read either state. See the
 [persistence model](adr/0002-persistence-model.md) for the schema.
 
@@ -109,7 +130,7 @@ publication of that same Draft again.
 
 GuardrailSpec YAML uses `apiVersion: guardrail.open/v1alpha1` and
 `kind: GuardrailSpec`. The parser rejects duplicate keys, anchors, aliases, unknown
-fields and invalid constraints. The file limit is 64 KiB.
+fields and invalid constraints. The file limit is 65,535 bytes.
 `spec.validForSeconds` controls the final Decision's validity; the Scene's
 `runTtlSeconds` controls the Run deadline. See the
 [OpenAPI contract](../api/openapi/openapi.yaml) and

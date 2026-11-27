@@ -68,7 +68,7 @@ func TestSpecCommandsRejectInvalidDocumentsBeforePersistence(t *testing.T) {
 	if _, _, err := service.PublishPolicyRevision(context.Background(), Scope{}, "policy", "invalid: [", "key", false); !errors.As(err, &validation) {
 		t.Fatalf("publication error=%v", err)
 	}
-	if _, _, err := service.InitializeScene(context.Background(), Scope{}, "recovery", "Recovery", "Default", "invalid: [", "key"); !errors.As(err, &validation) {
+	if _, _, err := service.InitializeScene(context.Background(), Scope{ActorID: "admin"}, "recovery", "Recovery", "Default", "invalid: [", "key"); !errors.As(err, &validation) {
 		t.Fatalf("initialization error=%v", err)
 	}
 	if repository.calls != 0 {
@@ -126,14 +126,24 @@ func TestSpecCommandIdentityAndDeferredTime(t *testing.T) {
 	if !repository.publication.FromDraft || repository.publication.OperationType == first.OperationType || repository.publication.RequestDigest == first.RequestDigest {
 		t.Fatal("Draft publication reused direct-publication retry identity")
 	}
-	if _, _, err := service.InitializeScene(ctx, Scope{}, "recovery", "Recovery", "Default", policyFixture, "init"); err != nil {
+	if _, _, err := service.InitializeScene(ctx, Scope{ActorID: "admin"}, "recovery", "Recovery", "Default", policyFixture, "init"); err != nil {
 		t.Fatal(err)
 	}
 	initial := repository.initialization
-	if _, _, err := service.InitializeScene(ctx, Scope{}, "recovery", "Recovery", "Default", commented, "init"); err != nil {
+	if _, _, err := service.InitializeScene(ctx, Scope{ActorID: "admin"}, "recovery", "Recovery", "Default", commented, "init"); err != nil {
 		t.Fatal(err)
 	}
 	if initial.RequestDigest != repository.initialization.RequestDigest || initial.SpecDigest != repository.initialization.SpecDigest {
 		t.Fatal("initialization retry identity changed for a YAML comment")
+	}
+}
+
+func TestSceneCreationRequiresAuthenticatedCreatorBeforePersistence(t *testing.T) {
+	for _, actor := range []string{"", " ", "bad/actor"} {
+		repository := &recordingRepository{}
+		_, _, err := New(repository).InitializeScene(context.Background(), Scope{ActorID: actor}, "recovery", "Recovery", "Default", policyFixture, "init")
+		if !errors.Is(err, ErrInvalid) || repository.calls != 0 {
+			t.Fatalf("invalid actor %q reached persistence: calls=%d err=%v", actor, repository.calls, err)
+		}
 	}
 }

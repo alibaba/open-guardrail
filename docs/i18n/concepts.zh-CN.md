@@ -11,8 +11,8 @@ OpenGuardrail 为每次评估记录策略、评估上下文、评估结果和决
 | Scene（场景） | 具有稳定键、Run 超时时间（`runTtlSeconds`）和可选默认 Policy 的场景。一个 Scene 可以包含多个 Policy。 |
 | Policy（策略） | Scene 内策略的身份、归属、名称、生命周期及当前激活修订的指针。 |
 | GuardrailSpec | 定义指令、Check、证据要求和决策有效期的 YAML 策略文档，文档版本为 `guardrail.open/v1alpha1`。 |
-| Policy Revision（策略修订） | 处于 `DRAFT` 或 `PUBLISHED` 状态的规则内容。每个 Policy 最多有一个可编辑草稿；发布时分配修订号并冻结内容。Run 选择已发布修订。发布和激活是两个独立操作。 |
-| Run | 一次独立评估，冻结 Scene、策略修订引用、Spec 摘要、调用方提供的上下文和 Run 截止时间。 |
+| Policy Revision（策略修订） | 处于 `DRAFT` 或 `PUBLISHED` 状态的规则内容。每个 Policy 最多有一个可编辑草稿；发布时分配修订号并冻结内容。Run 可选择有效草稿用于测试；只有已发布修订可以激活。发布和激活是两个独立操作。 |
+| Run | 一次独立评估，冻结 Scene、策略修订引用、Spec 内容和摘要、调用方提供的上下文和 Run 截止时间。创建 Run 后草稿仍可编辑。 |
 | Evaluation context（评估上下文） | API 字段 `changeSet` 携带的任意 JSON 对象。业务字段由调用方定义，服务负责规范化并记录。 |
 | Check（检查项） | 冻结的 Spec 要求完成的一项评估，具有 `PASS`、`BLOCKED` 或 `UNKNOWN` 结论及适用证据。 |
 | Submission（提交） | 包含所有 Check 及其适用证据的一份完整快照。一个 Run 可以接受多个中间快照和一个最终快照。 |

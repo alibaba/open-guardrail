@@ -156,7 +156,7 @@ func TestReadSpecFileErrors(t *testing.T) {
 	}
 	large := filepath.Join(dir, "large")
 	_ = os.WriteFile(large, bytes.Repeat([]byte("a"), specdomain.MaxYAMLBytes+1), 0600)
-	if _, err := readSpecFile(large); err == nil || !strings.Contains(err.Error(), "64 KiB") {
+	if _, err := readSpecFile(large); err == nil || !strings.Contains(err.Error(), "65,535-byte") {
 		t.Fatalf("err=%v", err)
 	}
 	invalid := filepath.Join(dir, "invalid")

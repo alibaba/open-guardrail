@@ -82,6 +82,9 @@ func (s *Service) InitializeScene(ctx context.Context, scope Scope, sceneKey, sc
 }
 
 func (s *Service) InitializeSceneWithPlugins(ctx context.Context, scope Scope, sceneKey, sceneName, policyName, yaml, key string, plugins *resource.Plugins) (InitializedScene, bool, error) {
+	if !ValidActorID(scope.ActorID) {
+		return InitializedScene{}, false, ErrInvalid
+	}
 	if !plugins.Valid() {
 		return InitializedScene{}, false, ErrInvalid
 	}

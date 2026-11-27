@@ -17,8 +17,33 @@ New Run credentials stay in this directory. See Getting started for example
 
 Resource bindings select the Policy/Revision at creation; entirely unbound resources
 use the Scene default active Revision. See [bindings](extensions.md#resource-bindings).
-An HTTP caller may explicitly select an immutable Revision through
-`policyRevisionRef`. The current CLI has no explicit-Revision flag.
+An HTTP caller may explicitly select a published or valid Draft Revision through
+`policyRevisionRef`. The current CLI has no explicit-Revision flag. Explicit
+selection requires a Run scope with revision-selection permission; the HTTP
+management route grants it to the configured trusted operator (or the local
+operator in direct-access mode).
+
+For a Draft test Run, first read `GET /api/v1alpha1/policies/{policyId}/draft`
+to obtain its `id`, then create a Run:
+
+```http
+POST /runtime/v1alpha1/runs
+Idempotency-Key: test-draft-1
+Content-Type: application/json
+
+{"sceneKey":"recovery","changeSet":{},"policyRevisionRef":{"policyRevisionId":"<draft-id>"}}
+```
+
+Alternatively, `PUT /api/v1alpha1/scenes/{key}/bindings/{kind}/{resourceId}`
+with `{"policyId":"<policy-id>","policyRevisionId":"<draft-id>","allowDraft":true}`;
+then create a Run with a matching `resources` entry and no `policyRevisionRef`.
+`allowDraft` only permits creating that pinned binding. In trusted-operator mode,
+the caller must be a maintainer of the Draft's Policy; without `allowDraft`,
+binding a Draft is rejected. Unbound resources and active-Revision bindings
+continue to select published Revisions. The Draft must be valid when the Run is
+created. The Run freezes its YAML, canonical Spec and digest at creation, while
+the Draft itself remains editable. Later Draft edits or publication do not change
+the Run's assessment input.
 
 ```sh
 guardrailctl run create \
