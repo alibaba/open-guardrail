@@ -52,6 +52,13 @@ python3 examples/cleanup-demo/demo.py
 检查记录时保持终端开启。Ctrl-C 停止服务，移除临时数据和凭据。原始 Recovery 契约自检命令为 `python3 examples/agent-demo/smoke.py`，默认立即退出并清理；加上 `--keep-running` 可保留记录供浏览器查看，直到按 Ctrl-C。需要持久数据或自己的策略时，使用下述操作流程。
 
 
+## 接入你自己的工作流
+
+了解 Run 的完整流转后，可以直接把 OpenGuardrail 接到日常开发或发布流程中：
+
+- **保护 MCP 工具（Cursor / Claude Code / Cline）：** 用 `guardrailctl mcp-proxy` 包裹任意 stdio MCP Server，未命中门禁规则的普通调用零开销直通，命中规则或破坏性调用按精确参数强制举证。详见 [MCP Proxy 接入指南](../../integrations/mcp-proxy/README.md)。
+- **GitHub Actions 生产发布门禁：** 直接复用复合 Action 与 3 项检查模板 `release-gate.yaml`，在生产部署前独立复验未过期的 `ALLOW` 决策。详见 [GitHub Actions 指南](../../integrations/github-actions/README.md)。
+
 ## 手动创建并检查一个 Run
 
 ### 1. 启动服务

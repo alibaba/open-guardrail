@@ -17,19 +17,13 @@
 
 ## 概述
 
-OpenGuardrail 是专为操作真实系统的 AI Agent 打造的安全准入与审计服务。
+别只靠系统提示词祈祷 AI Agent 不出事故。**OpenGuardrail** 在高危 MCP 工具调用、数据库写操作和生产发布前建立强制的循证准入关口。
 
-团队预先定义高风险操作前必须完成的前置检查；Agent 按策略执行检查并提交结构化证据后，OpenGuardrail 会校验证据完整性、持久化审计记录并返回 `ALLOW` 或 `DENY`。最终由下游执行工具在执行前核验决策结果及其有效期。
-
-每次评估都会将策略版本、检查结果、原始证据和最终决策强绑定，既能作为执行前的准入凭据，也便于事后合规审计。Agent 与业务工具可通过 HTTP API 或 `guardrailctl` CLI 接入。
-
-**当前状态：开发预览版。** API 版本为 `v1alpha1`，具体能力与边界见
-[当前能力与限制](#当前能力与限制)。
+团队用版本化 Spec 定义高风险操作前必须完成的前置检查；Agent 按策略排查并提交结构化证据后，OpenGuardrail 校验证据完整性、记录带有效期和完整审计链路的 `ALLOW` 或 `DENY` 决策，最终由执行工具或代理在真正动手前核验放行。
 
 [![OpenGuardrail 概览：AI Agent 提交检查结果与证据；OpenGuardrail 记录带有效期和审计链路的 ALLOW 或 DENY 决策；执行工具在操作前核验决策。](../images/readme-hero.zh-CN.png)](../images/readme-hero.zh-CN.svg)
 
-*Agent 提出请求，门禁做出决策。OpenGuardrail 校验证据的结构与完整性；
-调用方核验观测结果并执行决策。*
+*Agent 提出请求，门禁做出决策。当前处于 `v1alpha1` 开发预览阶段，具体能力与边界见[当前能力与限制](#当前能力与限制)。*
 
 [源代码](https://github.com/alibaba/open-guardrail) · [问题反馈](https://github.com/alibaba/open-guardrail/issues) ·
 [入门指南](getting-started.zh-CN.md) · [文档](#文档) · [API 与 CLI](api.zh-CN.md) ·
@@ -84,7 +78,35 @@ Agent 会自动拉起本地临时服务，按 Spec 依次排查首批实例的�
 
 **可选：不用模型体验文件清理。** 在仓库根目录运行 `python3 examples/cleanup-demo/demo.py`，直接打开输出的 Demo 地址（无需登录，也无需手动设置密码）。点击「运行清理任务」，看看包含订单文件的请求如何被拦截，以及缩小范围后哪两个临时文件被删除。[文件清理指南](../../examples/cleanup-demo/README.md)
 
-**保护你自己的 Agent 或流水线。** 建议优先通过 `PreToolUse` 钩子或宿主适配器接入（参考 [Agent 插件](../../integrations/agent-plugins/README.md)），在工具实际执行前自动创建 Run、附带观测证据并拦截高风险调用；也可以在 [CI/CD 交付流水线](../../integrations/README.md) 的关键卡点接入。
+**保护你自己的 MCP 工具（Cursor / Claude Code / Cline）。** 先安装最新版 `guardrailctl`（`go install github.com/alibaba/open-guardrail/cmd/guardrailctl@main` 或 `make build`），再用 `guardrailctl mcp-proxy` 包裹任意 stdio MCP Server：未命中门禁规则的普通调用零开销直通，命中规则（如 SQL 写操作）或声明了 `destructiveHint: true` 的高危调用必须针对精确参数提交证据并通过门禁后才会转发执行：
+
+```json
+{
+  "mcpServers": {
+    "postgres-guarded": {
+      "command": "guardrailctl",
+      "args": [
+        "mcp-proxy", "--config", "/path/to/example-policy.yaml",
+        "--", "npx", "-y", "@modelcontextprotocol/server-postgres", "postgres://..."
+      ]
+    }
+  }
+}
+```
+
+**在 GitHub Actions 中卡点生产发布。** 在生产部署 Job 前加入复合 Action，独立复验与当前提交和环境强绑定且未过期的 `ALLOW` 决策：
+
+```yaml
+- uses: ./integrations/github-actions
+  with:
+    mode: verify
+    server: ${{ vars.OPEN_GUARDRAIL_URL }}
+    scene: release-gate
+    deployment-environment: production
+    run-id: ${{ needs.release-gate.outputs.run-id }}
+```
+
+[MCP Proxy 接入指南](../../integrations/mcp-proxy/README.md) · [GitHub Actions 发布门禁](../../integrations/github-actions/README.md) · [全部集成](integrations.zh-CN.md)
 
 ## 为什么需要 OpenGuardrail？
 
@@ -194,11 +216,12 @@ OpenGuardrail 校验提交内容并记录决策，执行工具在操作前核验
 
 | 集成 | 当前状态 |
 | --- | --- |
+| [MCP Proxy（`guardrailctl mcp-proxy`）](../../integrations/mcp-proxy/README.md) | 通用 stdio MCP 护栏代理（适配 Cursor / Claude Code / Cline 等）：未命中规则的普通调用直通、Fail-Closed SQL 防护、`destructiveHint` 自动升级、参数哈希防重放 |
+| [GitHub Actions](../../integrations/github-actions/README.md) | 复合 Action（`action.yml`）、3 项生产 CD 检查 `release-gate.yaml`、双 Job 工作流示例与本地一键可跑 Demo |
 | [真实文件清理 Demo](../../examples/cleanup-demo/README.md) | 在临时目录中创建真实 Run 并执行受控删除；使用预设程序，未接入模型 |
 | [本地 Recovery Agent Demo](../../examples/agent-demo/README.md) | 使用模拟观测数据，支持 Agent 评估与确定性自检 |
 | [Jenkins](../../integrations/jenkins/README.md) | 使用模拟数据的流水线 Demo，由外部 Agent 执行检查、交付侧核验证据 |
 | [Argo Rollouts](../../integrations/argo/README.md) | 使用模拟数据的 Analysis Job Demo |
-| [GitHub Actions](../../integrations/github-actions/README.md) | 面向接入方的工作流仍在规划中 |
 | [Argo CD](../../integrations/argo/README.md) | Sync hooks 仍在规划中 |
 
 这些示例用于展示集成契约，适用范围和前置条件见[集成指南](integrations.zh-CN.md)。
