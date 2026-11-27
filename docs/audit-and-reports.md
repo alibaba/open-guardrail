@@ -102,8 +102,8 @@ service and files afterward; it does not use production credentials or resources
 
 [简体中文](i18n/audit-and-reports.zh-CN.md)
 
-The audit pagination index is introduced by schema migration 4 on SQLite,
-PostgreSQL and MySQL. Automatic migration applies it at startup. Externally
+The audit pagination index is introduced by schema migration 4 on SQLite
+and PostgreSQL. Automatic migration applies it at startup. Externally
 managed databases must apply the bundled migration before starting this binary.
 The index preserves existing events and supports descending project pagination.
 Follow the [database migration configuration](configuration.md) for deployment

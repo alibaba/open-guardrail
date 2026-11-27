@@ -14,6 +14,8 @@ Start with [Getting started](../docs/getting-started.md) and the
 platform. See [core concepts](../docs/concepts.md) for the policy, Run and
 Submission model, and the [CLI guide](../cmd/guardrailctl/README.md) for commands.
 
+## Responsibilities
+
 The current delivery recipes run on the CD side and call the common HTTP API or
 CLI at explicit checkpoints. They preserve platform build/change identity, wait
 for an authoritative decision and stop when checks fail or the outcome is uncertain.
@@ -34,6 +36,8 @@ public dependencies and synthetic data so every adopter can reproduce the same f
 | GitHub Actions | [github-actions](github-actions/README.md) | Runnable three-check CD release scenario, configurable Spec and assessment command, and independent deployment verification |
 | Argo Rollouts | [argo](argo/README.md) | Inline Analysis Job, encrypted handoff, layered failure diagnostics and repeatable eight-case acceptance |
 | Argo CD | [argo](argo/README.md) | Sync hooks remain planned |
+
+## Related guides
 
 The shared CLI lives in [cmd/guardrailctl](../cmd/guardrailctl/README.md).
 Scenario source and its installable status are listed in

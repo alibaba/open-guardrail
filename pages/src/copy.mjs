@@ -3,7 +3,7 @@ export const copy = {
     "lang": "en",
     "other": "简体中文",
     "title": "OpenGuardrail — Evidence before action",
-    "description": "Evidence-based action guardrails for AI agents. Define versioned policies, collect structured evidence, and verify auditable ALLOW or DENY decisions before tools act.",
+    "description": "Don't rely on system prompts to stop risky AI agent actions. OpenGuardrail enforces evidence-based ALLOW / DENY gates before destructive MCP tool calls and production rollouts.",
     "nav": [
       "How it works",
       "Documentation"
@@ -14,13 +14,13 @@ export const copy = {
       "Evidence-based guardrails",
       "for AI agents"
     ],
-    "intro": "Your team defines the checks in a Spec. The agent investigates and submits evidence. The execution tool verifies the decision and evidence before acting.",
+    "intro": "Don't trust system prompts alone to stop risky agent actions. Require verified evidence and auditable ALLOW decisions before destructive MCP tool calls and production rollouts.",
     "try": "Run the first-batch check",
     "explore": "Explore the docs",
     "meta": [
       "Apache 2.0",
-      "Self-hosted",
-      "HTTP API + CLI"
+      "MCP Proxy + GitHub Actions",
+      "Self-hosted Go"
     ],
     "flowLabel": "THE EXECUTION CHECKPOINT",
     "flowTitle": "From policy to verified action.",
@@ -74,7 +74,7 @@ export const copy = {
     "quickTitle": "Try OpenGuardrail locally",
     "quickTabs": [
       "First batch · Source",
-      "Cleanup · Download",
+      "Native binaries · Download",
       "Cleanup · Plugin"
     ],
     "copy": "Copy commands",
@@ -83,7 +83,7 @@ export const copy = {
     "prereq": "For the source walkthrough, use Git, Make, Python 3.9+, the Go version in go.mod and a coding agent with shell access (Claude Code, Cursor, Codex, etc.).",
     "quickHints": [
       "First-batch rollout scenario: open the checkout in your coding agent and ask: Use $open-guardrail-demo to check the first batch and tell me whether the next batch can proceed.",
-      "File-cleanup scenario: the native service and CLI need no Go, Node.js or Python. Run the optional cleanup demo with Python 3.9+ (no login or password prompt).",
+      "Prebuilt native binaries (no Go, Node.js or Python needed for the service and CLI; Python 3.9+ for the optional cleanup demo). For guardrailctl mcp-proxy before the next tagged release, install from main with go install github.com/alibaba/open-guardrail/cmd/guardrailctl@main.",
       "File-cleanup scenario in pi / DSH (PreToolUse tool adapter): requires matching native binaries, Python, Node.js (22+ for pi / 24.9+ for DeepSeek Harness), pnpm for DSH and your host's model login. Full prerequisites are in the guide."
     ],
     "fullGuide": "Follow the complete guide",
@@ -136,7 +136,7 @@ export const copy = {
         "Evidence source",
         "What the agent finds"
       ],
-      "outcome": "The write failures affected business data (check verdict: BLOCKED). After the agent submits its findings and evidence, OpenGuardrail records DENY. This local example has no connection to a release system; in a live rollout, the execution tool applies the decision to pause or resume.",
+      "outcome": "The write failures affected business data (verdict: BLOCKED). After the agent submits its findings and evidence, OpenGuardrail records DENY so the rollout stops before the next batch.",
       "link": "How to inspect a Run report",
       "rows": [
         [
@@ -158,7 +158,7 @@ export const copy = {
     "lang": "zh-CN",
     "other": "English",
     "title": "OpenGuardrail — 行动之前，先有证据",
-    "description": "面向 AI Agent 的循证操作护栏：通过版本化策略、结构化证据与可审计的 ALLOW / DENY 决策，在工具执行前建立核验关口。",
+    "description": "别只靠提示词约束 AI Agent：在高危 MCP 工具调用、删库操作和生产发布前，强制要求结构化证据与可审计的 ALLOW / DENY 放行决策。",
     "nav": [
       "工作原理",
       "文档"
@@ -169,13 +169,13 @@ export const copy = {
       "面向 AI Agent 的",
       "循证操作护栏"
     ],
-    "intro": "团队在 Spec 中定义好前置检查项，Agent 排查后提交结构化证据，执行工具核验决策与证据后再执行。",
+    "intro": "别只靠系统提示词祈祷 AI Agent 不出事故——在删库、高危 MCP 调用和生产发布前，强制要求结构化证据与可审计放行。",
     "try": "运行首批发布检查",
     "explore": "阅读文档",
     "meta": [
       "Apache 2.0",
-      "私有化部署",
-      "HTTP API + CLI"
+      "MCP Proxy + GitHub Actions",
+      "原生二进制私有化部署"
     ],
     "flowLabel": "执行前的检查点",
     "flowTitle": "从定义策略到核验执行。",
@@ -229,7 +229,7 @@ export const copy = {
     "quickTitle": "在本地体验 OpenGuardrail",
     "quickTabs": [
       "首批检查 · 源码",
-      "文件清理 · 下载",
+      "原生二进制 · 下载",
       "文件清理 · 插件"
     ],
     "copy": "复制命令",
@@ -238,7 +238,7 @@ export const copy = {
     "prereq": "源码体验需要 Git、Make、Python 3.9+、go.mod 指定的 Go 版本，以及支持执行命令的 AI 编程助手（如 Claude Code、Cursor、Codex 等）。",
     "quickHints": [
       "首批发布复核场景：在你的 AI 编程助手中打开仓库，发送：“用 $open-guardrail-demo 跑一遍首批检查，告诉我下一批能不能发。”",
-      "文件清理场景：原生服务与 CLI 无需 Go、Node.js 或 Python；运行可选的文件清理示例需要 Python 3.9+（该示例无需登录或输入密码）。",
+      "预构建原生二进制（运行服务与 CLI 无需 Go / Node.js / Python；可选文件清理示例需 Python 3.9+）。在新版 Release 发布前，体验 guardrailctl mcp-proxy 可通过 go install github.com/alibaba/open-guardrail/cmd/guardrailctl@main 从 main 安装。",
       "pi / DSH 文件清理场景（PreToolUse 工具拦截适配器）：需配套原生二进制、Python、Node.js（pi 需 22+ / DeepSeek Harness 需 24.9+）、DSH 所需的 pnpm，以及在宿主工具中完成模型认证。完整前置条件见指南。"
     ],
     "fullGuide": "阅读完整指南",
@@ -291,7 +291,7 @@ export const copy = {
         "证据来源",
         "Agent 排查结果"
       ],
-      "outcome": "写库异常已波及业务订单（检查结论为 BLOCKED），Agent 上报检查结果与证据后，本地 OpenGuardrail 记录 DENY（本示例不连接真实发布系统，实际暂停或放行由执行工具负责）。",
+      "outcome": "写库异常已波及业务订单（检查结论为 BLOCKED），Agent 上报检查结果与证据后，OpenGuardrail 记录 DENY，在放行下一批之前及时拦截风险。",
       "link": "查看 Run 排障报告说明",
       "rows": [
         [

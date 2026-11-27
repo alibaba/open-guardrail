@@ -48,7 +48,7 @@ python3 examples/cleanup-demo/demo.py
 ```
 
 The script builds the commands from source or uses the binaries in an archive.
-It starts a temporary local service with an auto-generated console password and a controlled file cleanup tool. Source builds can download Go
+It starts a temporary direct-access local service and a controlled file cleanup tool. Source builds can download Go
 dependencies on their first run. The demo needs Python 3.9+; release assembly
 and the maintainer verification scripts separately require Python 3.12+.
 
@@ -71,6 +71,13 @@ and cleans up immediately. Its `--keep-running` option preserves the records for
 browser inspection until Ctrl-C.
 Use the walkthrough below when you want persistent data or your own policy.
 
+
+## Connect to your own workflow
+
+Once you've seen how a Run works, connect OpenGuardrail directly to your agent or CD pipeline:
+
+- **MCP tools (Cursor, Claude Code, Cline):** Wrap any stdio MCP server with `guardrailctl mcp-proxy` so ordinary unmatched calls pass through and configured or destructive calls require argument-bound evidence. See the [MCP Proxy guide](../integrations/mcp-proxy/README.md).
+- **GitHub Actions CD gate:** Use the composite Action and 3-check `release-gate.yaml` Spec to independently verify an unexpired `ALLOW` before production deployment. See the [GitHub Actions guide](../integrations/github-actions/README.md).
 
 ## Manual walkthrough: create and inspect your first Run
 

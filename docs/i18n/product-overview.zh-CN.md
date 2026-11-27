@@ -1,21 +1,25 @@
 # 认识 OpenGuardrail
 
-面向 AI Agent 的开源循证操作护栏：先定义前置检查、再收集结构化证据，工具执行前必须先核验决策。
+别只靠系统提示词祈祷 AI Agent 不出事故。**OpenGuardrail** 是一套开源的循证操作护栏，在删库、高危 MCP 工具调用和生产发布前建立强制的准入与审计关口。
 
-## 为什么选择它
+## 为什么选择 OpenGuardrail？
 
-把单次高风险操作背后的策略版本、检查结果和原始证据收拢进同一份可追溯的评估记录中，并支持按资源绑定对应策略修订。执行端在行动前统一核验，团队在事后随时追溯。
+当 AI Agent 拥有操作数据库、删除文件或推进发布的权限时，只在 Prompt 里叮嘱“操作前先检查”既不可靠也无法审计。OpenGuardrail 把**策略版本**、**各项检查结论**、**结构化证据**和**最终决策**强绑定在同一份不可篡改的 Run 记录里：
+
+- **给人看（团队与审计）：** 每次放行或拦截依据什么策略、查了什么数据，一目了然，事后随时可追溯。
+- **给程序和 Agent 看（执行门禁）：** 下游代理或发布流水线只需核验一条与当前目标强绑定、且在有效期内的权威 `ALLOW` 记录即可决定放行与否。
 
 ## 工作机制
 
-1. **定义要求：** 发布策略（Spec），明确操作前必须完成的检查项和证据格式。
-2. **提交评估：** Agent 或外部集成程序执行检查，并上报观测结论与证据。
-3. **核验放行：** OpenGuardrail 持久化 `ALLOW` 或 `DENY` 决策，下游工具核验证据、有效期及业务权限后再执行。
+1. **定义规则：** 用版本化的 `GuardrailSpec` YAML 声明前置检查项、通过/拦截/未知判定标准与必交证据。
+2. **排查举证：** Agent 或 CI 脚本采集实时信号，持 Run 专属提交凭据上报完整评估快照。
+3. **核验放行：** 全部检查为 `PASS` 时记录 `ALLOW`，任一项为 `BLOCKED`、`UNKNOWN` 或超时则一律 `DENY`；执行端核验通过后才真正执行动作。
 
-## 立即体验
+## 按你的场景快速上手
 
-[让你的 AI 编程助手跑一遍首批检查](getting-started.zh-CN.md#跑一遍首批检查)，在模拟的结算服务发布场景中，直观感受 Agent 如何顺着写库报错反查出“已扣款但状态仍停留在 `pending`”的订单，并提交阻止下一批放量的证据。
+- **保护 Cursor / Claude Code / Cline 的高危 MCP 工具：** 使用 `guardrailctl mcp-proxy`，未命中门禁规则的普通调用零开销直通，写库和破坏性调用按精确参数强制举证。详见 [MCP Proxy 接入指南](../../integrations/mcp-proxy/README.md)。
+- **在 GitHub Actions 中卡点生产发布：** 直接复用复合 Action 与 3 项生产检查模板 `release-gate.yaml`。详见 [GitHub Actions 发布门禁](../../integrations/github-actions/README.md)。
+- **体验 30 秒首批发布复核：** [让你的 AI 编程助手跑一遍首批检查](getting-started.zh-CN.md#跑一遍首批检查)，直观感受 Agent 如何顺着写库报错反查出“已扣款但状态仍停留在 `pending`”的订单并阻止下一批放量。
+- **下载单二进制或体验插件：** 直接[下载原生二进制包](native-install.zh-CN.md)（运行无需 Go/Node/Python 环境），或在 pi / DeepSeek Harness 中体验 [Agent 插件](../plugin-trial.zh-CN.md)。
 
-也可以[下载原生二进制包](native-install.zh-CN.md)，无需模型账号即可试跑本地文件清理，或在 pi / DeepSeek Harness 中体验 [Agent 插件](../plugin-trial.zh-CN.md)。
-
-准备接入自己的业务工具？请继续阅读[集成指南](integrations.zh-CN.md)。
+准备接入自己的工具或流水线？继续阅读[集成指南](integrations.zh-CN.md)。

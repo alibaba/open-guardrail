@@ -252,6 +252,6 @@ request; inspect the Run before retrying or rotating a credential. See
 The Action, evaluator, demo and Python tests need no third-party Python packages.
 Lightweight asset checks and real Bash execution tests always run without skips.
 The live demo exercises actual Spec YAML parsing by the server. `make test-python`
-runs these checks and the CD demo on both Aone and GitHub CI without invoking pip.
+runs these checks and the CD demo in GitHub CI without invoking pip.
 The source and native archive walkthroughs for the core service remain in
 [Getting started](../../docs/getting-started.md).

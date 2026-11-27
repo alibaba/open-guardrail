@@ -17,26 +17,20 @@ English | [简体中文](docs/i18n/README.zh-CN.md)
 
 ## Overview
 
-OpenGuardrail is a standalone guardrail service for AI agents that operate real
-systems.
+Don't rely on system prompts alone to stop risky AI agent actions.
+**OpenGuardrail** puts an evidence-based admission gate in front of destructive
+MCP tool calls, database mutations, and production rollouts.
 
-Developers define the checks required before an action. The agent follows the
-policy, performs the checks and submits results and evidence. OpenGuardrail
-validates the submission, records the assessment and returns `ALLOW` or `DENY`.
-The execution tool verifies the decision and its validity before acting.
-
-Each assessment links the policy revision, check results, evidence and decision
-for verification and audit. Agents and tools use the HTTP API or the
-`guardrailctl` CLI.
-
-**Status: development preview.** The API is `v1alpha1`. See
-[current capabilities and limits](#current-capabilities-and-limits) for details.
+Developers define the checks required before an action in a versioned Spec. The
+agent investigates, performs the checks, and submits structured evidence.
+OpenGuardrail validates the submission, records an auditable `ALLOW` or `DENY`
+decision with a bounded validity window, and the execution tool or proxy
+verifies that decision before acting.
 
 [![OpenGuardrail overview: an AI agent submits checks and evidence; OpenGuardrail records an ALLOW or DENY decision with a validity window and audit trail; the execution tool verifies the decision before acting.](docs/images/readme-hero.png)](docs/images/readme-hero.svg)
 
-*The agent proposes; the gate decides. OpenGuardrail validates the structure and
-completeness of evidence; the calling system verifies observations and applies the
-decision.*
+*The agent proposes; the gate decides. Currently in `v1alpha1` development
+preview — see [current capabilities and limits](#current-capabilities-and-limits).*
 
 [Source](https://github.com/alibaba/open-guardrail) · [Issues](https://github.com/alibaba/open-guardrail/issues) ·
 [Get started](docs/getting-started.md) · [Documentation](docs/README.md) · [API and CLI](docs/api.md) ·
@@ -91,7 +85,35 @@ To get the source, run `git clone https://github.com/alibaba/open-guardrail.git`
 
 **Optional file cleanup without a model.** From the checkout root, run `python3 examples/cleanup-demo/demo.py` and open the printed Demo URL (no login or password prompt is needed). Click **Run cleanup task** to see a request that includes an order file denied, then watch the narrower request delete just two temporary files. [File cleanup guide](examples/cleanup-demo/README.md)
 
-**Protect your own agent or pipeline.** Start with a `PreToolUse` hook / host adapter (see [Agent plugins](integrations/agent-plugins/README.md)) so your agent automatically creates a Run, attaches evidence, and blocks unsafe tool calls before execution, or add a checkpoint in [CI/CD delivery](integrations/README.md).
+**Guard your own MCP tools (Cursor / Claude Code / Cline).** Install the latest `guardrailctl` (`go install github.com/alibaba/open-guardrail/cmd/guardrailctl@main` or `make build`), then wrap any stdio MCP server with `guardrailctl mcp-proxy`: ordinary unmatched calls pass through with zero HTTP overhead, while configured or `destructiveHint: true` calls require verified evidence bound to the exact arguments:
+
+```json
+{
+  "mcpServers": {
+    "postgres-guarded": {
+      "command": "guardrailctl",
+      "args": [
+        "mcp-proxy", "--config", "/path/to/example-policy.yaml",
+        "--", "npx", "-y", "@modelcontextprotocol/server-postgres", "postgres://..."
+      ]
+    }
+  }
+}
+```
+
+**Gate production rollouts in GitHub Actions.** Add the composite Action before deployment so production jobs independently verify an unexpired `ALLOW` bound to the current commit and environment:
+
+```yaml
+- uses: ./integrations/github-actions
+  with:
+    mode: verify
+    server: ${{ vars.OPEN_GUARDRAIL_URL }}
+    scene: release-gate
+    deployment-environment: production
+    run-id: ${{ needs.release-gate.outputs.run-id }}
+```
+
+[MCP Proxy guide](integrations/mcp-proxy/README.md) · [GitHub Actions release gate](integrations/github-actions/README.md) · [All integrations](integrations/README.md)
 
 ## Why OpenGuardrail?
 
@@ -235,11 +257,12 @@ script or agent. The examples cover local file operations and delivery workflows
 
 | Integration | Current status |
 | --- | --- |
+| [MCP Proxy (`guardrailctl mcp-proxy`)](integrations/mcp-proxy/README.md) | Selective stdio MCP guardrail proxy for Cursor, Claude Code, Cline, etc.: ordinary unmatched calls pass through, fail-closed SQL guard, `destructiveHint` auto-escalation, argument-hash replay protection |
+| [GitHub Actions](integrations/github-actions/README.md) | Composite Action (`action.yml`), 3-check production `release-gate.yaml` Spec, two-job workflow example and local runnable demo |
 | [Live file cleanup demo](examples/cleanup-demo/README.md) | Real Runs and guarded deletion in a disposable directory; predefined runner without a model |
 | [Local Recovery Agent demo](examples/agent-demo/README.md) | Synthetic observations; agent-driven assessment and a deterministic self-check |
 | [Jenkins](integrations/jenkins/README.md) | Synthetic pipeline demo with an outside agent and delivery-side evidence verification |
 | [Argo Rollouts](integrations/argo/README.md) | Synthetic Analysis Job demo |
-| [GitHub Actions](integrations/github-actions/README.md) | Planned adopter-facing workflow |
 | [Argo CD](integrations/argo/README.md) | Sync hooks planned |
 
 These examples demonstrate integration contracts. See the
